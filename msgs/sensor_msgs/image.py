@@ -6,11 +6,12 @@ from typing import Protocol
 from datetime import datetime
 import numpy as np
 import cv2
+import roslibpy
 
 class Subscriber(Protocol):
     def receive_binary(self) -> bytes:
         ...
-    def send(self, message: dict) -> None:
+    def send(self, topic: str, topic_data_type: str, message: roslibpy.Message) -> None:
         ...
 
 class Image:
@@ -21,11 +22,9 @@ class Image:
     def subscribe(self, save_path: Optional[str] = None) -> Optional[bytes]:
         try:
             subscribe_msg = {
-                "op": "subscribe",
-                "topic": self.topic,
-                "type": "sensor_msgs/Image"
+                "op": "subscribe"
             }
-            self.subscriber.send(subscribe_msg)
+            self.subscriber.send( self.topic, 'sensor_msgs/Image', subscribe_msg )
 
             raw = self.subscriber.receive_binary()
             if not raw:

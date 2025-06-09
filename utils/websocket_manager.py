@@ -32,7 +32,7 @@ class WebSocketManager:
         self.connect()
         if self.ws:
             try:
-                raw = self.ws.get_message_details()  # raw is JSON string (type: str)
+                raw = self.ws.recv()  # raw is JSON string (type: str)
                 return raw
             except Exception as e:
                 print(f"Receive error: {e}")
