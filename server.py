@@ -47,6 +47,23 @@ def make_one_step():
 
 
 # @mcp.tool()
+# def make_walk():
+#     ws_manager.connect()
+
+#     for i in range(10):
+#         message = ({
+#             'axes': [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+#             'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+#         })
+
+#         ws_manager.send('/joy', 'sensor_msgs/Joy', message)
+        
+
+#     ws_manager.close()
+
+#     return "prompt"
+
+# @mcp.tool()
 # def pub_twist(linear: List[Any], angular: List[Any]):
 #     msg = twist.publish(linear, angular)
 #     ws_manager.close()
@@ -60,9 +77,8 @@ def make_one_step():
 #def pub_twist_seq(linear: List[Any], angular: List[Any], duration: List[Any]):
 #    twist.publish_sequence(linear, angular, duration)
 
-
 @mcp.tool()
-def sub_image(save_path=None):
+def get_image(save_path=None):
     ws_manager.connect()
 
     image_topic = roslibpy.Topic(
@@ -80,18 +96,16 @@ def sub_image(save_path=None):
 
         image_topic.subscribe(on_image_received)
 
-        # Ждём сообщение (например, 5 секунд)
         start_time = time.time()
         while received_msg is None and (time.time() - start_time) < 5:
             time.sleep(0.1)
 
         if received_msg is None:
             print("[Image] No data received from subscriber")
-            image_topic.unsubscribe()  # Важно отписаться
+            image_topic.unsubscribe()
             return None
 
-        # Если сообщение пришло, обрабатываем его
-        msg = received_msg  # Допустим, что msg уже распарсен в dict
+        msg = received_msg
 
         height = msg["height"]
         width = msg["width"]
@@ -123,7 +137,8 @@ def sub_image(save_path=None):
         os.startfile(save_path)
         print(f"[Image] Saved to {save_path}")
 
-        image_topic.unsubscribe()  # Отписываемся после обработки
+        image_topic.unsubscribe()
+        ws_manager.close()
         return img_cv
 
     except Exception as e:
