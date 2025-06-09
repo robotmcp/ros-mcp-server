@@ -1,36 +1,30 @@
-import socket
 import json
-import websocket
-import base64
+import roslibpy
 
 class WebSocketManager:
-    def __init__(self, ip: str, port: int, local_ip: str):
+    def __init__(self, ip: str, port: 9090):
         self.ip = ip
         self.port = port
-        self.local_ip = local_ip
         self.ws = None
 
     def connect(self):
-        if self.ws is None or not self.ws.connected:
-            sock = socket.create_connection((self.ip, self.port), source_address=(self.local_ip, 0))
-            ws = websocket.WebSocket()
-            ws.sock = sock
-            ws.connect(f"ws://{self.ip}:{self.port}")
-            self.ws = ws
-            print("[WebSocket] Connected")
+        if self.ws is None or not self.ws.is_connected:
+            self.ws = roslibpy.Ros( self.ip, self.port )
+            self.ws.run()
+            print("[roslibpy] Connected!")
 
-    def send(self, message: dict):
+    def send(self, topic: str, topic_data_type: str, message: roslibpy.Message):
         self.connect()
         if self.ws:
             try:
-                # Ensure message is JSON serializable
-                json_msg = json.dumps(message)
-                self.ws.send(json_msg)
+                topic = roslibpy.Topic( self.ws, topic, topic_data_type )
+                topic.publish( message )
+
             except TypeError as e:
-                print(f"[WebSocket] JSON serialization error: {e}")
+                print(f"[roslibpy] JSON serialization error: {e}")
                 self.close()
             except Exception as e:
-                print(f"[WebSocket] Send error: {e}")
+                print(f"[roslibpy] Send error: {e}")
                 self.close()
 
 
@@ -38,7 +32,7 @@ class WebSocketManager:
         self.connect()
         if self.ws:
             try:
-                raw = self.ws.recv()  # raw is JSON string (type: str)
+                raw = self.ws.get_message_details()  # raw is JSON string (type: str)
                 return raw
             except Exception as e:
                 print(f"Receive error: {e}")
@@ -72,7 +66,7 @@ class WebSocketManager:
         return []
 
     def close(self):
-        if self.ws and self.ws.connected:
+        if self.ws and self.ws.is_connected:
             try:
                 self.ws.close()
                 print("[WebSocket] Closed")
