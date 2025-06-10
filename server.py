@@ -29,50 +29,22 @@ def get_topics():
     else:
         return "No topics found"
 
-@mcp.tool(description="This tool make a robot move by one step for any direction")
-def make_step(direction: str):
-
-    # default params
-    message = ({
-        'axes': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+@mcp.tool(description="This tool makes a robot move by one step in any direction. Tool uses joystick emulate [z][x] -1.0 for right, 1.0 for left, -1.0 for backward, 1.0 for forward")
+def make_step(direction: dict[str, float]):
+    # Validate input
+    right_left = direction.get('x', 0.0)
+    forward_backward = direction.get('z', 0.0)
+    
+    # Clamp values between -1.0 and 1.0
+    right_left = max(-1.0, min(1.0, right_left))
+    forward_backward = max(-1.0, min(1.0, forward_backward))
+    
+    message = {
+        'axes': [right_left, forward_backward, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-    })
+    }
 
-    # string to lower
-    direction.lower()
-
-    if direction == "forward" or direction == "вперед" or direction == "прямо":
-        message = ({
-                'axes': [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            })
-
-    elif direction == "backward" or direction == "back" or direction == "назад":
-        message = ({
-                'axes': [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            })
-
-    elif direction == "right" or direction == "направо" or direction == "вправо":
-        message = ({
-                'axes': [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            })
-
-    elif direction == "left" or direction == "налево" or direction == "влево":
-        message = ({
-                'axes': [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-            })        
-
-    # joy 
-    # [left-right, forward-backward]
-    # -1.0 right
-    #  1.0 left
-    # -1.0 back
-    #  1.0 forward
     ws_manager.send('/joy', 'sensor_msgs/Joy', message)
-
     return "one step!"
 
 
