@@ -19,7 +19,7 @@ class WebSocketManager:
             try:
                 topic = roslibpy.Topic( self.ws, topic, topic_data_type )
                 topic.publish( message )
-
+                self.close()
             except TypeError as e:
                 print(f"[roslibpy] JSON serialization error: {e}")
                 self.close()

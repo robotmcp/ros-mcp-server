@@ -19,9 +19,8 @@ ws_manager = WebSocketManager(ROSBRIDGE_IP, ROSBRIDGE_PORT)
 
 @mcp.tool()
 def get_topics():
-    # getto method to connect
+    
     ws_manager.connect()
-
     topic_info = ws_manager.ws.get_topics()
     ws_manager.close()
 
@@ -30,54 +29,65 @@ def get_topics():
     else:
         return "No topics found"
 
-@mcp.tool()
-def make_one_step():
-    ws_manager.connect()
+@mcp.tool(description="This tool make a robot move by one step for any direction")
+def make_step(direction: str):
 
+    # default params
     message = ({
-        'axes': [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        'axes': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
         'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
     })
 
-    ws_manager.send('/joy', 'sensor_msgs/Joy', message)
+    # string to lower
+    direction.lower()
 
-    ws_manager.close()
+    if direction == "forward" or direction == "вперед" or direction == "прямо":
+        message = ({
+                'axes': [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            })
+
+    elif direction == "backward" or direction == "back" or direction == "назад":
+        message = ({
+                'axes': [0.0, -1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            })
+
+    elif direction == "right" or direction == "направо" or direction == "вправо":
+        message = ({
+                'axes': [-1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            })
+
+    elif direction == "left" or direction == "налево" or direction == "влево":
+        message = ({
+                'axes': [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+            })        
+
+    # joy 
+    # [left-right, forward-backward]
+    # -1.0 right
+    #  1.0 left
+    # -1.0 back
+    #  1.0 forward
+    ws_manager.send('/joy', 'sensor_msgs/Joy', message)
 
     return "one step!"
 
 
-# @mcp.tool()
-# def make_walk():
-#     ws_manager.connect()
+@mcp.tool(description="This tool run action greet")
+def action_greet():
 
-#     for i in range(10):
-#         message = ({
-#             'axes': [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-#             'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-#         })
+    message = ({
+        'data': "greet"
+    })
 
-#         ws_manager.send('/joy', 'sensor_msgs/Joy', message)
-        
+    ws_manager.send('app/set_action', 'std_msgs/String', message)
 
-#     ws_manager.close()
+    return "Hello!"
 
-#     return "prompt"
-
-# @mcp.tool()
-# def pub_twist(linear: List[Any], angular: List[Any]):
-#     msg = twist.publish(linear, angular)
-#     ws_manager.close()
-    
-#     if msg is not None:
-#         return "Twist message published successfully"
-#     else:
-#         return "No message published"
-
-#@mcp.tool()
-#def pub_twist_seq(linear: List[Any], angular: List[Any], duration: List[Any]):
-#    twist.publish_sequence(linear, angular, duration)
-
-@mcp.tool()
+@mcp.tool(description="This tool used to get raw image from robot and save on user pc on directory like downloads")
 def get_image(save_path=None):
     ws_manager.connect()
 
@@ -146,24 +156,6 @@ def get_image(save_path=None):
         if 'image_topic' in locals():
             image_topic.unsubscribe()
         return None
-
-# @mcp.tool()
-# def pub_jointstate(name: list[str], position: list[float], velocity: list[float], effort: list[float]):
-#     msg = jointstate.publish(name, position, velocity, effort)
-#     ws_manager.close()
-#     if msg is not None:
-#         return "JointState message published successfully"
-#     else:
-#         return "No message published"
-
-# @mcp.tool()
-# def sub_jointstate():
-#     msg = jointstate.subscribe()
-#     ws_manager.close()
-#     if msg is not None:
-#         return msg
-#     else:
-#         return "No JointState data received"
 
 if __name__ == "__main__":
     mcp.run(transport="stdio")
