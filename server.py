@@ -29,7 +29,8 @@ def get_topics():
     else:
         return "No topics found"
 
-@mcp.tool(description="This tool makes a robot move by one step in any direction. Tool uses joystick emulate [z][x] -1.0 for right, 1.0 for left, -1.0 for backward, 1.0 for forward")
+@mcp.tool(description="This tool makes a robot move by one step in any direction." \
+"Tool uses joystick emulate [z][x] -1.0 for right, 1.0 for left, -1.0 for backward, 1.0 for forward")
 def make_step(direction: dict[str, float]):
     # Validate input
     right_left = direction.get('x', 0.0)
