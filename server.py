@@ -17,6 +17,8 @@ ROSBRIDGE_PORT = 9090
 mcp = FastMCP("ros-mcp-server")
 ws_manager = WebSocketManager(ROSBRIDGE_IP, ROSBRIDGE_PORT)
 
+actions_groups_data: dict[str, str] = None
+
 @mcp.tool()
 def get_topics():
     
@@ -48,17 +50,46 @@ def make_step(direction: dict[str, float]):
     ws_manager.send('/joy', 'sensor_msgs/Joy', message)
     return "one step!"
 
+@mcp.tool(description='This tool getting action from topic on robot and write on python dict[file_name, description]')
+def get_available_actions():
+    global actions_groups_data  # Needed to modify the global variable
+    actions_groups_data = None  # Reset before use
+    
+    ws_manager.connect()
 
-@mcp.tool(description="This tool run action greet")
-def action_greet():
+    # topic for read
+    topic = roslibpy.Topic(
+        ws_manager.ws,
+        "/action_groups_data",
+        "std_msgs/String"
+    )
+
+    def on_action_received(msg):
+        global actions_groups_data
+        actions_groups_data = msg
+
+    topic.subscribe(on_action_received)
+
+    start_time = time.time()
+    while actions_groups_data is None and (time.time() - start_time) < 5:
+        time.sleep(0.1)
+
+    topic.unsubscribe()
+    ws_manager.close()
+
+    if actions_groups_data:
+        return list(actions_groups_data.items())  # Convert dict to list of tuples
+    else:
+        return []
+
+@mcp.tool(description="This tool run action")
+def run_action(action_name: str):
 
     message = ({
-        'data': "greet"
+        'data': action_name
     })
 
-    ws_manager.send('app/set_action', 'std_msgs/String', message)
-
-    return "Hello!"
+    return ws_manager.send('app/set_action', 'std_msgs/String', message)
 
 @mcp.tool(description="This tool used to get raw image from robot and save on user pc on directory like downloads")
 def get_image(save_path=None):
