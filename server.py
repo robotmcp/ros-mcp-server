@@ -48,6 +48,14 @@ def make_step(direction: dict[str, float]):
     }
 
     ws_manager.send('/joy', 'sensor_msgs/Joy', message)
+
+    message_to_stop = {
+        'axes': [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        'buttons': [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    }
+
+    ws_manager.send('/joy', 'sensor_msgs/Joy', message_to_stop)
+
     return "one step!"
 
 @mcp.tool(description='This tool getting action from topic on robot and write on python dict[file_name, description]')
