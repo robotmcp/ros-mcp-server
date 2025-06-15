@@ -1,12 +1,14 @@
 import asyncio
-from mcp.client.stdio import stdio_client
-from together import Together
+import os
+import sys
+import json
+import tempfile
+import time
+import speech_recognition as sr
 from gtts import gTTS
 import pygame
-import speech_recognition as sr
-import tempfile
-import os
-import time
+from fastmcp import Client
+from together import Together
 
 
 # ==============================
@@ -22,7 +24,9 @@ MODEL_NAME = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 # ==============================
 
 def speak_with_gtts(text: str):
+    """Озвучивает текст с помощью gTTS и pygame"""
     print(f"[TTS] Говорю: {text}")
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
         tts = gTTS(text=text, lang="en", slow=False)
         tts.save(tmpfile.name)
@@ -36,10 +40,16 @@ def speak_with_gtts(text: str):
         while pygame.mixer.music.get_busy():
             time.sleep(0.1)
 
-        pygame.mixer.quit()
+    except Exception as e:
+        print(f"[TTS] Ошибка воспроизведения: {e}")
     finally:
-        if os.path.exists(tmpfile_name):
-            os.unlink(tmpfile_name)
+        try:
+            pygame.mixer.quit()
+            time.sleep(0.2)
+            if os.path.exists(tmpfile_name):
+                os.remove(tmpfile_name)
+        except Exception as e:
+            print(f"[TTS] Не могу удалить файл: {e}")
 
 
 # ==============================
@@ -63,12 +73,12 @@ def recognize_speech_from_mic(recognizer, microphone):
 # ==============================
 
 async def call_mcp_tool(tool_name: str, parameters: dict):
-    """Вызывает инструмент MCP-сервера"""
+    """Вызывает инструмент MCP-сервера через FastMCP"""
     try:
-         async with stdio_client("server.py") as mcpclient:
-            result = await mcpclient.call_tool(tool_name, parameters)
-            print(f"[MCP] Результат вызова {tool_name}: {result}")
-            speak_with_gtts(f"Выполняю: {tool_name}")
+        async with Client("server.py") as client:
+            result = await client.call_tool(tool_name, parameters)
+            print(f"[MCP] Результат вызова {tool_name}: {result.text}")
+            speak_with_gtts(f"Выполняю команду: {tool_name}")
     except Exception as e:
         print(f"[MCP] Ошибка вызова {tool_name}: {e}")
         speak_with_gtts("Не могу выполнить команду. Сервер MCP недоступен.")
@@ -83,42 +93,74 @@ client = Together()
 async def handle_conversation(user_input: str):
     user_input = user_input.lower()
     print(f"[Пользователь]: {user_input}")
-    await call_mcp_tool("make_step", {"direction": {"x": 0.0, "z": 1.0}})
-    # Анализируем команды
-    if "move forward" in user_input:
-        await call_mcp_tool("make_step", {"direction": {"x": 0.0, "z": 1.0}})
-    elif "move backward" in user_input:
-        await call_mcp_tool("make_step", {"direction": {"x": 0.0, "z": -1.0}})
-    elif "turn left" in user_input:
-        await call_mcp_tool("make_step", {"direction": {"x": 1.0, "z": 0.0}})
-    elif "turn right" in user_input:
-        await call_mcp_tool("make_step", {"direction": {"x": -1.0, "z": 0.0}})
-    elif "run action" in user_input:
-        action_name = user_input.replace("run action", "").strip()
-        if action_name:
-            await call_mcp_tool("run_action", {"action_name": action_name})
-        else:
-            speak_with_gtts("Please specify an action name.")
-    elif "take picture" in user_input or "get image" in user_input:
-        await call_mcp_tool("get_image", {})
-    else:
-        # Отправляем запрос в LLM
+
+    # Получаем список доступных инструментов
+    tools = []
+    try:
+        async with Client("server.py") as client_mcp:
+            tools = await client_mcp.list_tools()
+    except Exception as e:
+        speak_with_gtts("Не могу получить список действий.")
+        return
+
+    print(f"[LLM] Доступные инструменты: {tools}")
+
+    system_prompt = (
+        "You are a voice assistant controlling a robot through an MCP server.\n"
+        "Available tools:\n"
+    )
+    for tool in tools:
+        tool_info = f"- {tool}"
         try:
-            response = client.chat.completions.create(
-                model=MODEL_NAME,
-                messages=[
-                    {"role": "user", "content": user_input},
-                ],
-                max_tokens=300,
-                temperature=0.2,
-                stop=["</s>"],
-            )
-            answer = response.choices[0].message.content.strip()
-            print(f"[LLM] Ответ: {answer}")
-            speak_with_gtts(answer)
-        except Exception as e:
-            print(f"[LLM] Ошибка: {e}")
-            speak_with_gtts("I couldn't understand your request.")
+            tool_info += f": {getattr(client_mcp, tool).description or ''}"
+        except:
+            pass
+        system_prompt += tool_info + "\n"
+
+    system_prompt += (
+        "When the user gives a command like 'move forward', respond ONLY in this format:\n"
+        "{\n"
+        "  \"tool_call\": \"tool_name\",\n"
+        "  \"arguments\": {\"param1\": value1, \"param2\": value2}\n"
+        "}\n"
+        "If it's not a command, just answer naturally."
+    )
+
+    print("[LLM] Системный промпт:")
+    print(system_prompt)
+
+    try:
+        response = client.chat.completions.create(
+            model=MODEL_NAME,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_input}
+            ],
+            max_tokens=500,
+            temperature=0.2,
+            stop=["</s>"],
+        )
+
+        answer = response.choices[0].message.content.strip()
+        print(f"[LLM] Ответ от модели:\n{answer}")
+
+        # Пробуем распарсить как JSON
+        try:
+            tool_data = json.loads(answer)
+            if "tool_call" in tool_data:
+                tool_name = tool_data["tool_call"]
+                args = tool_data.get("arguments", {})
+                await call_mcp_tool(tool_name, args)
+                return
+        except json.JSONDecodeError:
+            pass  # Это не JSON → просто текст
+
+        # Иначе просто говорим
+        speak_with_gtts(answer)
+
+    except Exception as e:
+        print(f"[LLM] Ошибка: {e}")
+        speak_with_gtts("I couldn't understand your request.")
 
 
 # ==============================
@@ -126,15 +168,13 @@ async def handle_conversation(user_input: str):
 # ==============================
 
 async def main():
-
-
     # Приветствие
     speak_with_gtts("Ainex Ready")
 
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
 
-    print("Голосовой агент запущен. Скажите 'Robot' чтобы начать...")
+    print("Голосовой агент запущен. Скажите 'robot' чтобы начать...")
 
     while True:
         print("[Ожидание ключевой фразы...]")
@@ -150,7 +190,7 @@ async def main():
             else:
                 speak_with_gtts("I didn't understand you.")
 
-        time.sleep(0.1)
+        time.sleep(0.5)
 
 
 if __name__ == "__main__":
