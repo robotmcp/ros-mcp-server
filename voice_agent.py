@@ -65,8 +65,8 @@ def recognize_speech_from_mic(recognizer, microphone):
 async def call_mcp_tool(tool_name: str, parameters: dict):
     """Вызывает инструмент MCP-сервера"""
     try:
-         async with stdio_client("server.py") as client:
-            result = await client.call_tool(tool_name, parameters)
+         async with stdio_client("server.py") as mcpclient:
+            result = await mcpclient.call_tool(tool_name, parameters)
             print(f"[MCP] Результат вызова {tool_name}: {result}")
             speak_with_gtts(f"Выполняю: {tool_name}")
     except Exception as e:
@@ -83,7 +83,7 @@ client = Together()
 async def handle_conversation(user_input: str):
     user_input = user_input.lower()
     print(f"[Пользователь]: {user_input}")
-
+    await call_mcp_tool("make_step", {"direction": {"x": 0.0, "z": 1.0}})
     # Анализируем команды
     if "move forward" in user_input:
         await call_mcp_tool("make_step", {"direction": {"x": 0.0, "z": 1.0}})
@@ -126,13 +126,15 @@ async def handle_conversation(user_input: str):
 # ==============================
 
 async def main():
+
+
     # Приветствие
     speak_with_gtts("Ainex Ready")
 
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
 
-    print("Голосовой агент запущен. Скажите 'hey robot' чтобы начать...")
+    print("Голосовой агент запущен. Скажите 'Robot' чтобы начать...")
 
     while True:
         print("[Ожидание ключевой фразы...]")
@@ -148,7 +150,7 @@ async def main():
             else:
                 speak_with_gtts("I didn't understand you.")
 
-        time.sleep(0.5)
+        time.sleep(0.1)
 
 
 if __name__ == "__main__":
