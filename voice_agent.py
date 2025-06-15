@@ -17,7 +17,7 @@ from together import Together
 # Конфигурация
 # ==============================
 
-WAKE_WORD = "robot"
+WAKE_WORD = "nex"
 MODEL_NAME = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 
@@ -27,7 +27,7 @@ MODEL_NAME = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
 def speak_with_gtts(text: str):
     """Озвучивает текст с помощью gTTS и pygame"""
-    print(f"[TTS] Говорю: {text}")
+    print(f"[TTS] Spech")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
         tts = gTTS(text=text, lang="en", slow=False)
@@ -43,7 +43,7 @@ def speak_with_gtts(text: str):
             time.sleep(0.1)
 
     except Exception as e:
-        print(f"[TTS] Ошибка воспроизведения: {e}")
+        print(f"[TTS] Play error: {e}")
     finally:
         try:
             pygame.mixer.quit()
@@ -51,7 +51,7 @@ def speak_with_gtts(text: str):
             if os.path.exists(tmpfile_name):
                 os.remove(tmpfile_name)
         except Exception as e:
-            print(f"[TTS] Не могу удалить файл: {e}")
+            print(f"[TTS] File Error: {e}")
 
 
 # ==============================
@@ -61,7 +61,7 @@ def speak_with_gtts(text: str):
 def recognize_speech_from_mic(recognizer, microphone):
     with microphone as source:
         recognizer.adjust_for_ambient_noise(source)
-        print("Слушаю...")
+        print("I'm listening...")
         audio = recognizer.listen(source)
 
     try:
@@ -79,11 +79,11 @@ async def call_mcp_tool(tool_name: str, parameters: dict):
     try:
         async with Client("server.py") as client:
             result = await client.call_tool(tool_name, parameters)
-            print(f"[MCP] Результат вызова {tool_name}: {result}")
-            speak_with_gtts(f"Выполняю команду: {tool_name}")
+            print(f"[MCP] Res {tool_name}: {result}")
+            speak_with_gtts(f"Start skill: {tool_name}")
     except Exception as e:
-        print(f"[MCP] Ошибка вызова {tool_name}: {e}")
-        speak_with_gtts("Не могу выполнить команду. Сервер MCP недоступен.")
+        print(f"[MCP] ОError call {tool_name}: {e}")
+        speak_with_gtts("MCP probl...")
 
 
 # ==============================
@@ -133,7 +133,7 @@ async def init_system_prompt():
 
 async def handle_conversation(user_input: str):
     user_input = user_input.lower()
-    print(f"[Пользователь]: {user_input}")
+    print(f"User]: {user_input}")
 
     system_prompt = await init_system_prompt()
 
@@ -150,7 +150,7 @@ async def handle_conversation(user_input: str):
         )
 
         answer = response.choices[0].message.content.strip()
-        print(f"[LLM] Ответ от модели:\n{answer}")
+        print(f"[LLM] Ans:\n{answer}")
 
         # Пробуем найти JSON в ответе
         try:
@@ -184,7 +184,7 @@ async def handle_conversation(user_input: str):
                 else:
                     print("NoDATA")
         except json.JSONDecodeError as e:
-            print(f"[LLM] Ошибка парсинга JSON: {e}")
+            print(f"[LLM] Error JSON: {e}")
             print("NoDATA")
 
         # Если не нашли JSON — говорим обычный ответ
@@ -206,14 +206,13 @@ async def main():
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
 
-    print("Голосовой агент запущен. Скажите 'robot' чтобы начать...")
+    print("I'm  ready. Say 'Ainex' for start...")
 
     while True:
-        print("[Ожидание ключевой фразы...]")
+        print("[Waitng...]")
         command = recognize_speech_from_mic(recognizer, mic)
-
         if command and WAKE_WORD in command:
-            print("Ключевая фраза распознана!")
+            print("Detect!")
             speak_with_gtts("Yes?")
 
             user_query = recognize_speech_from_mic(recognizer, mic)
