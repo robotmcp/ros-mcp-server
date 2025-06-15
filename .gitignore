@@ -180,3 +180,6 @@ pyrightconfig.json
 .vscode/
 
 # End of https://www.toptal.com/developers/gitignore/api/python
+SART.bat
+uv.lock
+uv.lock

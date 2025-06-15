@@ -10,4 +10,9 @@ dependencies = [
     "websocket>=0.2.1",
     "websocket-client>=1.8.0",
     "roslibpy",
+    "together>=1.5.13",
+    "gtts>=2.5.4",
+    "pygame>=2.6.1",
+    "pyaudio>=0.2.14",
+    "speechrecognition>=3.14.3",
 ]
