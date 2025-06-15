@@ -4,6 +4,8 @@ import sys
 import json
 import tempfile
 import time
+import re
+
 import speech_recognition as sr
 from gtts import gTTS
 import pygame
@@ -77,7 +79,7 @@ async def call_mcp_tool(tool_name: str, parameters: dict):
     try:
         async with Client("server.py") as client:
             result = await client.call_tool(tool_name, parameters)
-            print(f"[MCP] Результат вызова {tool_name}: {result.text}")
+            print(f"[MCP] Результат вызова {tool_name}: {result}")
             speak_with_gtts(f"Выполняю команду: {tool_name}")
     except Exception as e:
         print(f"[MCP] Ошибка вызова {tool_name}: {e}")
@@ -90,44 +92,50 @@ async def call_mcp_tool(tool_name: str, parameters: dict):
 
 client = Together()
 
-async def handle_conversation(user_input: str):
-    user_input = user_input.lower()
-    print(f"[Пользователь]: {user_input}")
+SYSTEM_PROMPT = None  # Системный промпт будет загружен один раз
 
-    # Получаем список доступных инструментов
+async def init_system_prompt():
+    """Формируем системный промпт один раз"""
+    global SYSTEM_PROMPT
+    if SYSTEM_PROMPT is not None:
+        return SYSTEM_PROMPT
+
     tools = []
     try:
-        async with Client("server.py") as client_mcp:
-            tools = await client_mcp.list_tools()
+        async with Client("server.py") as mcp_client:
+            tools = await mcp_client.list_tools()
     except Exception as e:
-        speak_with_gtts("Не могу получить список действий.")
-        return
-
-    print(f"[LLM] Доступные инструменты: {tools}")
+        print(f"[LLM] Не могу получить список инструментов: {e}")
+        tools = []
 
     system_prompt = (
         "You are a voice assistant controlling a robot through an MCP server.\n"
         "Available tools:\n"
     )
     for tool in tools:
-        tool_info = f"- {tool}"
-        try:
-            tool_info += f": {getattr(client_mcp, tool).description or ''}"
-        except:
-            pass
-        system_prompt += tool_info + "\n"
+        system_prompt += f"- {tool}\n"
 
     system_prompt += (
         "When the user gives a command like 'move forward', respond ONLY in this format:\n"
         "{\n"
-        "  \"tool_call\": \"tool_name\",\n"
-        "  \"arguments\": {\"param1\": value1, \"param2\": value2}\n"
+        "  \"tool_call\": \"make_step\",\n"
+        "  \"arguments\": {\"direction\": {\"x\": 0.0, \"z\": 1.0}}\n"
         "}\n"
+        "Use only x and z axes:\n"
+        "- x: -1.0 → turn left, 1.0 → turn right\n"
+        "- z: -1.0 → move backward, 1.0 → move forward\n"
         "If it's not a command, just answer naturally."
     )
 
-    print("[LLM] Системный промпт:")
-    print(system_prompt)
+    SYSTEM_PROMPT = system_prompt
+    return SYSTEM_PROMPT
+
+
+async def handle_conversation(user_input: str):
+    user_input = user_input.lower()
+    print(f"[Пользователь]: {user_input}")
+
+    system_prompt = await init_system_prompt()
 
     try:
         response = client.chat.completions.create(
@@ -144,18 +152,42 @@ async def handle_conversation(user_input: str):
         answer = response.choices[0].message.content.strip()
         print(f"[LLM] Ответ от модели:\n{answer}")
 
-        # Пробуем распарсить как JSON
+        # Пробуем найти JSON в ответе
         try:
+            # Сначала пытаемся найти JSON внутри ```
+            json_start = answer.find("```json")
+            if json_start != -1:
+                answer = answer[json_start + 6:]
+            json_end = answer.find("```")
+            if json_end != -1:
+                answer = answer[:json_end]
+
+            # Теперь пробуем просто извлечь JSON
             tool_data = json.loads(answer)
             if "tool_call" in tool_data:
+                print("FindData")
                 tool_name = tool_data["tool_call"]
                 args = tool_data.get("arguments", {})
                 await call_mcp_tool(tool_name, args)
                 return
-        except json.JSONDecodeError:
-            pass  # Это не JSON → просто текст
+            else:
+                # Проверяем, есть ли JSON внутри текста
+                json_match = re.search(r'\{.*\}|\$.*\$', answer, re.DOTALL)
+                if json_match:
+                    tool_data = json.loads(json_match.group(0))
+                    if "tool_call" in tool_data:
+                        print("FindData")
+                        tool_name = tool_data["tool_call"]
+                        args = tool_data.get("arguments", {})
+                        await call_mcp_tool(tool_name, args)
+                        return
+                else:
+                    print("NoDATA")
+        except json.JSONDecodeError as e:
+            print(f"[LLM] Ошибка парсинга JSON: {e}")
+            print("NoDATA")
 
-        # Иначе просто говорим
+        # Если не нашли JSON — говорим обычный ответ
         speak_with_gtts(answer)
 
     except Exception as e:
