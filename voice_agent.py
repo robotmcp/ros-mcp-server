@@ -11,7 +11,24 @@ from gtts import gTTS
 import pygame
 from fastmcp import Client
 from together import Together
+import pyaudio
+import struct
 
+# ==============================
+# Проба замены метода активации
+# ==============================
+import pvporcupine
+
+# Твой API ключ от Picovoice
+
+# RASP ACCESS_KEY = '+cs716sY8uf8TNQLnIRV4oh58560fYNC1pOFgcf8rbP0FpVYGg4lEw==' 'Ai-Nex_en_raspberry-pi_v3_0_0.ppn'
+# Windows
+ACCESSW_KEY = 'I1IKvHNkLoisoo2Pb2CLMMkG7JEV5T9CZxS2uYvG1wVj7LqmoetQwA=='
+
+# Пути к твоим .ppn файлам (ключи-слова)
+KEYWORD_PATHS = [
+    'Ai-Nex_en_windows_v3_0_0.ppn'
+]
 # ==============================
 # Конфигурация
 # ==============================
@@ -59,13 +76,11 @@ def recognize_speech_from_mic(recognizer, microphone):
     with microphone as source:
         recognizer.adjust_for_ambient_noise(source)
         print("I'm listening...")
-        audio = recognizer.listen(source, timeout=5)
+        audio = recognizer.listen(source)
 
     try:
         return recognizer.recognize_google(audio, language="en-US").lower()
     except sr.UnknownValueError:
-        return None
-    except sr.WaitTimeoutError:
         return None
 
 # ==============================
@@ -153,7 +168,7 @@ async def handle_conversation(user_input: str):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_input}
             ],
-            max_tokens=500,
+            max_tokens=800,
             temperature=0.2,
             stop=["</s>"],
         )
@@ -171,9 +186,7 @@ async def handle_conversation(user_input: str):
         try:
             response_data = json.loads(json_str)
             
-            # Озвучиваем ответ
-            verbal_response = response_data.get("answer", "I'll execute your request")
-            speak_with_gtts(verbal_response)
+            
             
             # Обрабатываем команды
             commands = response_data.get("commands", [])
@@ -194,6 +207,11 @@ async def handle_conversation(user_input: str):
                 else:
                     print("[LLM] Missing tool name in command")
                     
+            # Озвучиваем ответ
+            verbal_response = response_data.get("answer", "I'll execute your request")
+            speak_with_gtts(verbal_response)
+
+
         except json.JSONDecodeError as e:
             print(f"[LLM] JSON decode error: {e}")
             speak_with_gtts("I had trouble processing your request")
@@ -210,37 +228,54 @@ async def handle_conversation(user_input: str):
 # ==============================
 
 async def main():
-    speak_with_gtts("Assistant ready")
+
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
+    speak_with_gtts("Assistant ready")
+    
 
-    print(f"Say '{WAKE_WORD}' to start...")
+        # Создаем экземпляр Porcupine
+    porcupine = pvporcupine.create(
+        access_key=ACCESSW_KEY,
+        keyword_paths=KEYWORD_PATHS
+    )
+
+    # Настройка аудио потока
+    pa = pyaudio.PyAudio()
+    audio_stream = pa.open(
+        rate=porcupine.sample_rate,
+        format=pyaudio.paInt16,
+        channels=1,
+        input=True,
+        frames_per_buffer=porcupine.frame_length
+    )
+
+    print(f"Say AiNex to start...")
     wake_word_detected = False
 
     while True:
 
-        user_query = input(str(""))
-        if user_query:
-            await handle_conversation(user_query)
+        # user_query = input(str(""))
+        # if user_query:
+        #     await handle_conversation(user_query)
+        pcm = audio_stream.read(porcupine.frame_length)
+        pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
 
-        # if wake_word_detected:
-        #     print("Listening for command...")
-        #     user_query = recognize_speech_from_mic(recognizer, mic)
-        #     if user_query:
-        #         await handle_conversation(user_query)
-        #         wake_word_detected = False
-        #         print(f"Say '{WAKE_WORD}' to activate again")
-        #     else:
-        #         speak_with_gtts("I didn't catch that")
-        #         wake_word_detected = False
-        # else:
-        #     print("Waiting for wake word...")
-        #     command = recognize_speech_from_mic(recognizer, mic)
-        #     if command and WAKE_WORD in command:
-        #         wake_word_detected = True
-        #         print("Wake word detected!")
-        #         speak_with_gtts("Yes?")
-        #     time.sleep(0.5)
+        keyword_index = porcupine.process(pcm)
+
+        if keyword_index >= 0:
+            print("Wake word detected!")
+            speak_with_gtts("Yes?")
+            print("Listening for command...")
+            user_query = recognize_speech_from_mic(recognizer, mic)
+            if user_query:
+                await handle_conversation(user_query)
+                wake_word_detected = False
+                print(f"Say '{WAKE_WORD}' to activate again")
+            else:
+                speak_with_gtts("I didn't catch that")
+                wake_word_detected = False
+
 
 if __name__ == "__main__":
     asyncio.run(main())

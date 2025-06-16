@@ -1178,6 +1178,15 @@ wheels = [
 ]
 
 [[package]]
+name = "pvporcupine"
+version = "3.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/ac/14c64255c08db0b80315ccc940943fad5fea03f0006b09b45f0b83ced08d/pvporcupine-3.0.5.tar.gz", hash = "sha256:48f92ab10a904b811e69afb18175d2bd4857ccec8be094f42449961a80fa2af1", size = 2535302, upload-time = "2025-02-05T18:37:33.808Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c4/9e/4716d4737a4a6a3de306c97f3cd6040e66ef23ad8b6b8fca80190dbcc3ad/pvporcupine-3.0.5-py3-none-any.whl", hash = "sha256:b80b31a38b1a622e492e19683f60efdcddd1662204830fcad50df90f01723356", size = 2544202, upload-time = "2025-02-05T18:37:30.898Z" },
+]
+
+[[package]]
 name = "pyasn1"
 version = "0.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1452,6 +1461,7 @@ dependencies = [
     { name = "gtts" },
     { name = "mcp", extra = ["cli"] },
     { name = "opencv-python" },
+    { name = "pvporcupine" },
     { name = "pyaudio" },
     { name = "pygame" },
     { name = "roslibpy" },
@@ -1467,6 +1477,7 @@ requires-dist = [
     { name = "gtts", specifier = ">=2.5.4" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.6.0" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
+    { name = "pvporcupine", specifier = ">=3.0.5" },
     { name = "pyaudio", specifier = ">=0.2.14" },
     { name = "pygame", specifier = ">=2.6.1" },
     { name = "roslibpy" },
