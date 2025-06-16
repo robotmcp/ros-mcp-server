@@ -15,4 +15,5 @@ dependencies = [
     "pygame>=2.6.1",
     "speechrecognition>=3.14.3",
     "fastmcp>=2.8.1",
+    "pyaudio>=0.2.14",
 ]

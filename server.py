@@ -33,10 +33,10 @@ def get_topics():
 
 @mcp.tool(description="This tool makes a robot move by one step in any direction." \
 "Tool uses joystick emulate [z][x] -1.0 for right, 1.0 for left, -1.0 for backward, 1.0 for forward")
-def make_step(direction: dict[str, float]):
+def make_step(x: float, z: float):
     # Validate input
-    right_left = direction.get('x', 0.0)
-    forward_backward = direction.get('z', 0.0)
+    right_left = x
+    forward_backward = z
     
     # Clamp values between -1.0 and 1.0
     right_left = max(-1.0, min(1.0, right_left))

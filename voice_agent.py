@@ -12,7 +12,6 @@ import pygame
 from fastmcp import Client
 from together import Together
 
-
 # ==============================
 # Конфигурация
 # ==============================
@@ -20,14 +19,13 @@ from together import Together
 WAKE_WORD = "nex"
 MODEL_NAME = "mistralai/Mixtral-8x7B-Instruct-v0.1"
 
-
 # ==============================
 # TTS функция
 # ==============================
 
 def speak_with_gtts(text: str):
     """Озвучивает текст с помощью gTTS и pygame"""
-    print(f"[TTS] Spech")
+    print(f"[TTS] Speech: {text}")
 
     with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmpfile:
         tts = gTTS(text=text, lang="en", slow=False)
@@ -53,7 +51,6 @@ def speak_with_gtts(text: str):
         except Exception as e:
             print(f"[TTS] File Error: {e}")
 
-
 # ==============================
 # Распознавание речи
 # ==============================
@@ -62,13 +59,14 @@ def recognize_speech_from_mic(recognizer, microphone):
     with microphone as source:
         recognizer.adjust_for_ambient_noise(source)
         print("I'm listening...")
-        audio = recognizer.listen(source)
+        audio = recognizer.listen(source, timeout=5)
 
     try:
         return recognizer.recognize_google(audio, language="en-US").lower()
     except sr.UnknownValueError:
         return None
-
+    except sr.WaitTimeoutError:
+        return None
 
 # ==============================
 # Клиент FastMCP
@@ -79,20 +77,18 @@ async def call_mcp_tool(tool_name: str, parameters: dict):
     try:
         async with Client("server.py") as client:
             result = await client.call_tool(tool_name, parameters)
-            print(f"[MCP] Res {tool_name}: {result}")
-            speak_with_gtts(f"Start skill: {tool_name}")
+            print(f"[MCP] Result for {tool_name}: {result}")
+            return True, result
     except Exception as e:
-        print(f"[MCP] ОError call {tool_name}: {e}")
-        speak_with_gtts("MCP probl...")
-
+        print(f"[MCP] Error calling {tool_name}: {e}")
+        return False, str(e)
 
 # ==============================
 # LLM + обработка команд
 # ==============================
 
 client = Together()
-
-SYSTEM_PROMPT = None  # Системный промпт будет загружен один раз
+SYSTEM_PROMPT = None
 
 async def init_system_prompt():
     """Формируем системный промпт один раз"""
@@ -108,32 +104,45 @@ async def init_system_prompt():
         print(f"[LLM] Не могу получить список инструментов: {e}")
         tools = []
 
-    system_prompt = (
+    # Упрощенный и более понятный системный промпт
+    SYSTEM_PROMPT = (
         "You are a voice assistant controlling a robot through an MCP server.\n"
-        "Available tools:\n"
-    )
-    for tool in tools:
-        system_prompt += f"- {tool}\n"
-
-    system_prompt += (
-        "When the user gives a command like 'move forward', respond ONLY in this format:\n"
+        "Available tools:\n" + 
+        "\n".join([f"- {tool}" for tool in tools]) +
+        "\n\nRespond ONLY in this JSON format:\n"
         "{\n"
-        "  \"tool_call\": \"make_step\",\n"
-        "  \"arguments\": {\"direction\": {\"x\": 0.0, \"z\": 1.0}}\n"
+        '  "answer": "Your response to the user",\n'
+        '  "commands": [\n'
+        '    {\n'
+        '      "tool": "tool_name",\n'
+        '      "params": {"param1": "value1"}\n'
+        '    },\n'
+        '    ...\n'
+        '  ]\n'
         "}\n"
-        "Use only x and z axes:\n"
-        "- x: -1.0 → turn left, 1.0 → turn right\n"
-        "- z: -1.0 → move backward, 1.0 → move forward\n"
-        "If it's not a command, just answer naturally."
+        "Rules:\n"
+        "1. 'commands' must be a list (can be empty)\n"
+        "2. Only include parameters if the tool requires them\n"
+        "3. Keep your verbal response (answer) concise\n"
+        "4. If user asks to perform actions, include them in commands\n"
+        "5. make_step use (x: float, z: float):\n"
+        "   x: Left(1.0) to Right(-1.0)\n"
+        "   z: Forward(1.0) to Backward(-1.0)\n"
+        "Example for 'turn on the light':\n"
+        "{\n"
+        '  "answer": "Turning on the light",\n'
+        '  "commands": [\n'
+        '    {"tool": "light_on", "params": {}}\n'
+        '  ]\n'
+        "}\n"
     )
-
-    SYSTEM_PROMPT = system_prompt
+    
+    print(f"[SYSTEM PROMPT]\n{SYSTEM_PROMPT}")
     return SYSTEM_PROMPT
-
 
 async def handle_conversation(user_input: str):
     user_input = user_input.lower()
-    print(f"User]: {user_input}")
+    print(f"[User]: {user_input}")
 
     system_prompt = await init_system_prompt()
 
@@ -150,79 +159,88 @@ async def handle_conversation(user_input: str):
         )
 
         answer = response.choices[0].message.content.strip()
-        print(f"[LLM] Ans:\n{answer}")
+        print(f"[LLM] Raw response:\n{answer}")
 
-        # Пробуем найти JSON в ответе
+        # Улучшенная обработка JSON
+        json_str = answer
+        if "```json" in answer:
+            json_str = answer.split("```json")[1].split("```")[0].strip()
+        elif "```" in answer:
+            json_str = answer.split("```")[1].strip()
+        
         try:
-            # Сначала пытаемся найти JSON внутри ```
-            json_start = answer.find("```json")
-            if json_start != -1:
-                answer = answer[json_start + 6:]
-            json_end = answer.find("```")
-            if json_end != -1:
-                answer = answer[:json_end]
-
-            # Теперь пробуем просто извлечь JSON
-            tool_data = json.loads(answer)
-            if "tool_call" in tool_data:
-                print("FindData")
-                tool_name = tool_data["tool_call"]
-                args = tool_data.get("arguments", {})
-                await call_mcp_tool(tool_name, args)
-                return
-            else:
-                # Проверяем, есть ли JSON внутри текста
-                json_match = re.search(r'\{.*\}|\$.*\$', answer, re.DOTALL)
-                if json_match:
-                    tool_data = json.loads(json_match.group(0))
-                    if "tool_call" in tool_data:
-                        print("FindData")
-                        tool_name = tool_data["tool_call"]
-                        args = tool_data.get("arguments", {})
-                        await call_mcp_tool(tool_name, args)
-                        return
+            response_data = json.loads(json_str)
+            
+            # Озвучиваем ответ
+            verbal_response = response_data.get("answer", "I'll execute your request")
+            speak_with_gtts(verbal_response)
+            
+            # Обрабатываем команды
+            commands = response_data.get("commands", [])
+            if not isinstance(commands, list):
+                commands = [commands]
+                
+            for command in commands:
+                if not isinstance(command, dict):
+                    continue
+                    
+                tool_name = command.get("tool")
+                params = command.get("params", {})
+                
+                if tool_name:
+                    success, result = await call_mcp_tool(tool_name, params)
+                    if not success:
+                        speak_with_gtts(f"Failed to execute {tool_name}")
                 else:
-                    print("NoDATA")
+                    print("[LLM] Missing tool name in command")
+                    
         except json.JSONDecodeError as e:
-            print(f"[LLM] Error JSON: {e}")
-            print("NoDATA")
-
-        # Если не нашли JSON — говорим обычный ответ
-        speak_with_gtts(answer)
+            print(f"[LLM] JSON decode error: {e}")
+            speak_with_gtts("I had trouble processing your request")
+        except Exception as e:
+            print(f"[LLM] Response handling error: {e}")
+            speak_with_gtts("Something went wrong with my response")
 
     except Exception as e:
-        print(f"[LLM] Ошибка: {e}")
-        speak_with_gtts("I couldn't understand your request.")
-
+        print(f"[LLM] Request error: {e}")
+        speak_with_gtts("I couldn't process your request")
 
 # ==============================
 # Основной цикл
 # ==============================
 
 async def main():
-    # Приветствие
-    speak_with_gtts("Ainex Ready")
-
+    speak_with_gtts("Assistant ready")
     recognizer = sr.Recognizer()
     mic = sr.Microphone()
 
-    print("I'm  ready. Say 'Ainex' for start...")
+    print(f"Say '{WAKE_WORD}' to start...")
+    wake_word_detected = False
 
     while True:
-        print("[Waitng...]")
-        command = recognize_speech_from_mic(recognizer, mic)
-        if command and WAKE_WORD in command:
-            print("Detect!")
-            speak_with_gtts("Yes?")
 
-            user_query = recognize_speech_from_mic(recognizer, mic)
-            if user_query:
-                await handle_conversation(user_query)
-            else:
-                speak_with_gtts("I didn't understand you.")
+        user_query = input(str(""))
+        if user_query:
+            await handle_conversation(user_query)
 
-        time.sleep(0.5)
-
+        # if wake_word_detected:
+        #     print("Listening for command...")
+        #     user_query = recognize_speech_from_mic(recognizer, mic)
+        #     if user_query:
+        #         await handle_conversation(user_query)
+        #         wake_word_detected = False
+        #         print(f"Say '{WAKE_WORD}' to activate again")
+        #     else:
+        #         speak_with_gtts("I didn't catch that")
+        #         wake_word_detected = False
+        # else:
+        #     print("Waiting for wake word...")
+        #     command = recognize_speech_from_mic(recognizer, mic)
+        #     if command and WAKE_WORD in command:
+        #         wake_word_detected = True
+        #         print("Wake word detected!")
+        #         speak_with_gtts("Yes?")
+        #     time.sleep(0.5)
 
 if __name__ == "__main__":
     asyncio.run(main())
