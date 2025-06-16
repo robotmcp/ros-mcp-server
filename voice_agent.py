@@ -284,7 +284,6 @@ async def main():
     )
 
     print(f"Say AiNex to start...")
-    wake_word_detected = False
     try:
         while True:
 
@@ -303,11 +302,8 @@ async def main():
                 user_query = recognize_speech_from_mic(recognizer, mic)
                 if user_query:
                     await handle_conversation(user_query)
-                    wake_word_detected = False
-                    print(f"Say '{WAKE_WORD}' to activate again")
                 else:
                     speak_with_gtts("I didn't catch that")
-                    wake_word_detected = False
     except KeyboardInterrupt:
         print("\n User stop")
 
