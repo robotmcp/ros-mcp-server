@@ -1,134 +1,49 @@
-## Overview
-![Static Badge](https://img.shields.io/badge/ROS-Available-green)
-![Static Badge](https://img.shields.io/badge/ROS2-Available-green)
-[![smithery badge](https://smithery.ai/badge/@lpigeon/ros-mcp-server)](https://smithery.ai/server/@lpigeon/ros-mcp-server)
-![Static Badge](https://img.shields.io/badge/License-MIT-blue)
+Форк https://github.com/lpigeon/ros-mcp-server
 
-<center><img src="https://github.com/lpigeon/ros-mcp-server/blob/main/img/framework.png"/></center>
+Переработан функционал под специфику робота AiNex
 
-The ROS MCP Server is designed to support robots in performing complex tasks and adapting effectively to various environments by providing a set of functions that transform natural language commands, entered by a user through an LLM, into ROS commands for robot control. Furthermore, by utilizing ``rosbridge``, it is configured to operate with both ``ROS`` and ``ROS2`` systems, and its WebSocket-based communication enables broad applicability across diverse platforms.
+# AiNex под управлением LLM
 
-Research based on this project can be found in the video linked below.  
-- [An Efficient Robot Control Framework Using the Model Context Protocol](https://www.youtube.com/watch?v=7ut4eqTxwHA)
+Превращаем робота в понятный и доступный инструмент с помощью MCP  сервера!
 
-## Supported Types
+Ключевые обновлений
 
-- geometry_msgs/Twist
-- sensor_msgs/Image
-- sensor_msgs/JointState
+* Обновлен способ подключения к ROS.
 
-## Features
+* Добавлен голосовой агент для бесшовного управления.
 
-- **WebSocket-based universal compatibility**: Communicates with both ROS and ROS2 systems using rosbridge, enabling seamless integration regardless of ROS version.
-- **Cross-platform support**: Works on Linux, Windows, and MacOS, making it suitable for diverse development and deployment environments.
-- **Easy integration with LLMs and AI systems**: Natural language commands can be directly translated into robot actions via MCP functions.
-- **Extensible function set**: Easily add new robot control or sensor functions by extending the MCP tool interface.
-- **No ROS node modification required**: Interacts with existing ROS/ROS2 topics and services without changing your robot's core code.
-- **Native ROS/ROS2 command compatibility**: Optionally supports using local ROS/ROS2 libraries, so you can run native ROS commands and tools alongside WebSocket-based control. 
+* Добавлена возможность подключения любой LLM из https://together.ai/ (через voice\_agent, для тех кто не хочет общаться голосом - так же внедрили текстовую переписку и хранение истории чата через конфиг в агенте)
 
-## Contributing
-Contributions are welcome!  
-Whether you're fixing a typo, adding a new function, or suggesting improvements, your help is appreciated.  
-Please follow the [contributing guidelines](CONTRIBUTING.md) for more details on how to contribute to this project.
+* MCP передает в контекст LLM созданные в родном приложении AiNex Action group файлы.
 
-## Installation
+## Вам понадобятся API ключи!
 
-### Installing via Smithery
+Для https://together.ai/ и https://console.picovoice.ai/ (быстрая активация голосом). К счастью их можно получить бесплатно зарегистрировавшись на сайтах.
 
-To install ``ros-mcp-server`` for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@lpigeon/ros-mcp-server):
+Ключи передаются через переменные окружения во время запуска.
+
+## Быстрый старт
+
+Запустите на роботе файл ROS/action\_groups.py для публикации актуальных действий, сначала на робота потом в docker
 
 ```bash
-npx -y @smithery/cli install @lpigeon/ros-mcp-server --client claude
+docker cp action_groups.py ainex:/home/ubuntu/ros_ws/src
 ```
 
-### Installing Locally
+Теперь на роботе или ПК разверните MCP сервер (ПК должен находиться в 1 сети с роботом или придется подключить к роботу микрофон, для этого рекомендуем ознакомиться с нашими доработками AiNex https://wiki.yandex.ru/ainex/hardware/addons/usb-fix/ https://wiki.yandex.ru/ainex/hardware/addons/mic-addon/ При необходимости поправьте ROS IP для работы по сети.
 
-### `uv` Installation
-- To install `uv`, you can use the following command:
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-```
-or
-```bash
-pip install uv
-```
+MCP общается с агентом через STDIO, поэтому достаточно вызвать голосового агента, он сам запустит сервер.
 
-- Create virtual environment and activate it (Optional)
-```bash
-uv venv
-source .venv/bin/activate
-```
+Для удобства установки пакетов используется UV
 
-### MCP Server Configuration
-Set MCP setting to mcp.json.
+Чтобы запустить все используйте шаблоный bat fileдобавив в него ваши API ключи
 
 ```bash
-{
-  "mcpServers": {
-    "ros-mcp-server": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/ABSOLUTE/PATH/TO/PARENT/FOLDER/ros-mcp-server",,
-        "run",
-        "server.py"
-      ]
-    }
-  }
-}
+set TOGETHER_API_KEY=Ваш ключ
+set WAKEUP_API_KEY=Ваш ключ
+uv run voice_agent.py
 ```
 
-If you use Claude Desktop, you can find mcp.json using the following command:
+При 1 запуске установятся необходимые пакеты
 
-- MacOS
-```bash
-code ~/Library/Application\ Support/Claude/claude_desktop_config.json
-```
-
-- Linux(Ubuntu)
-  
-You can install Claude Desktop to use [claude-desktop-debian](https://github.com/aaddrick/claude-desktop-debian).
-
-```bash
-code ~/.config/Claude/claude_desktop_config.json
-```
-
-- Windows
-```bash
-code $env:AppData\Claude\claude_desktop_config.json
-```
-
-## MCP Functions
-
-You can find the list of functions in the [MCPFUNCTIONS.md](MCPFUNCTIONS.md).
-
-## How To Use
-### 1. Set IP and Port to connect rosbridge.
-- Open `server.py` and change your `LOCAL_IP`, `ROSBRIDGE_IP` and `ROSBRIDGE_PORT`. (`ROSBRIDGE_PORT`'s default value is `9090`)
-
-### 2. Run rosbridge server.
-ROS 1
-```bash
-roslaunch rosbridge_server rosbridge_websocket.launch
-```
-ROS 2
-```bash
-ros2 launch rosbridge_server rosbridge_websocket_launch.xml
-```
-
-### 3. Run any AI system that has imported ``ros-mcp-server``.
-
-### 4. Type "Make the robot move forward.".
-<center><img src="https://github.com/lpigeon/ros-mcp-server/blob/main/img/how_to_use_1.png" width="500"/></center>
-
-### 5. Check `rosbridge_server` and `ros topic`.
-- `rosbridge_server`
-<center><img src="https://github.com/lpigeon/ros-mcp-server/blob/main/img/how_to_use_2.png" /></center>
-
-- `ros topic`
-<center><img src="https://github.com/lpigeon/ros-mcp-server/blob/main/img/how_to_use_3.png" /></center>
-
-## Simulation Test
-MCP-based control using the MOCA mobile manipulator within the NVIDIA Isaac Sim simulation environment. 
-
-<center><img src="https://github.com/lpigeon/ros-mcp-server/blob/main/img/result.gif" /></center>
+Nеперь вы готовы открыть вашего робота по новому с LLM!
