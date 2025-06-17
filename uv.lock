@@ -1012,6 +1012,19 @@ wheels = [
 ]
 
 [[package]]
+name = "picovoice"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pvporcupine" },
+    { name = "pvrhino" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/56/cd/bb9bf388e886b90183ce476b656bbd39340f4d8c2125575a70e7aee99e31/picovoice-0.8.0.tar.gz", hash = "sha256:59f93cd8859137a08037c0bc93d5286e52885035e31876a1c4e1622b93b4fbbc", size = 6477, upload-time = "2020-09-29T00:55:36.383Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/f2/dbbeebfb55b4f9111bdd1ffa0f1984b970a09fcbe7860666c220251f7a56/picovoice-0.8.0-py3-none-any.whl", hash = "sha256:fc8ed8096fb4ff83de08712085d5c7aa58c0a6a3c4c51b6f6540aa7886abc544", size = 6944, upload-time = "2020-09-29T00:55:35.172Z" },
+]
+
+[[package]]
 name = "pillow"
 version = "11.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1184,6 +1197,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f8/ac/14c64255c08db0b80315ccc940943fad5fea03f0006b09b45f0b83ced08d/pvporcupine-3.0.5.tar.gz", hash = "sha256:48f92ab10a904b811e69afb18175d2bd4857ccec8be094f42449961a80fa2af1", size = 2535302, upload-time = "2025-02-05T18:37:33.808Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c4/9e/4716d4737a4a6a3de306c97f3cd6040e66ef23ad8b6b8fca80190dbcc3ad/pvporcupine-3.0.5-py3-none-any.whl", hash = "sha256:b80b31a38b1a622e492e19683f60efdcddd1662204830fcad50df90f01723356", size = 2544202, upload-time = "2025-02-05T18:37:30.898Z" },
+]
+
+[[package]]
+name = "pvrhino"
+version = "3.0.5"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/2d/13/b5cee1a632af10a6cbee5313969cd4d8619c41f121896f69f6a755066de3/pvrhino-3.0.5.tar.gz", hash = "sha256:01698dd6320427168f3a7c4b4376a08c75a6b03a76a0a1cacb96a5114b64faed", size = 3186205, upload-time = "2025-02-06T00:31:12.537Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/25/cc/9e19f6363661f5ca24fa707168d25f6feeb0cd6b389781c5c78fac364097/pvrhino-3.0.5-py3-none-any.whl", hash = "sha256:bbb4cac565d114aff710b5fcc0fb85a712c706c68bf03912935e59ea1c88e8a3", size = 3185339, upload-time = "2025-02-06T00:31:10.051Z" },
 ]
 
 [[package]]
@@ -1461,6 +1483,7 @@ dependencies = [
     { name = "gtts" },
     { name = "mcp", extra = ["cli"] },
     { name = "opencv-python" },
+    { name = "picovoice" },
     { name = "pvporcupine" },
     { name = "pyaudio" },
     { name = "pygame" },
@@ -1477,6 +1500,7 @@ requires-dist = [
     { name = "gtts", specifier = ">=2.5.4" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.6.0" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
+    { name = "picovoice", specifier = ">=0.8.0" },
     { name = "pvporcupine", specifier = ">=3.0.5" },
     { name = "pyaudio", specifier = ">=0.2.14" },
     { name = "pygame", specifier = ">=2.6.1" },

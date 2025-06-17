@@ -17,4 +17,5 @@ dependencies = [
     "fastmcp>=2.8.1",
     "pyaudio>=0.2.14",
     "pvporcupine>=3.0.5",
+    "picovoice>=0.8.0",
 ]

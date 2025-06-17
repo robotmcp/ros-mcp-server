@@ -24,7 +24,7 @@ import pvporcupine
 
 # RASP ACCESS_KEY = '+cs716sY8uf8TNQLnIRV4oh58560fYNC1pOFgcf8rbP0FpVYGg4lEw==' 'Ai-Nex_en_raspberry-pi_v3_0_0.ppn'
 # Windows
-ACCESSW_KEY = 'I1IKvHNkLoisoo2Pb2CLMMkG7JEV5T9CZxS2uYvG1wVj7LqmoetQwA=='
+ACCESSW_KEY = os.getenv("WAKEUP_API_KEY")
 
 # Пути к твоим .ppn файлам (ключи-слова)
 KEYWORD_PATHS = [
@@ -48,6 +48,10 @@ cache_lock = threading.Lock()
 
 # Флаг для завершения работы
 tts_active = True
+
+message_history = []
+history_active = True
+text_input = False
 
 def speak_with_gtts(text: str):
     """Озвучивает текст с помощью gTTS и pygame. Поддерживает кеширование."""
@@ -155,11 +159,15 @@ async def init_system_prompt():
         print(f"[LLM] Не могу получить список инструментов: {e}")
         tools = []
 
+    result = await call_mcp_tool("get_available_actions", {})
+
     # Упрощенный и более понятный системный промпт
     SYSTEM_PROMPT = (
         "You are a voice assistant controlling a robot through an MCP server.\n"
         "Available tools:\n" + 
         "\n".join([f"- {tool}" for tool in tools]) +
+        "Available actions for tool 'run_action', for 'run_action': Use ONLY action names WITHOUT .d6a extension\n" +
+        "\n".join([f"- {result}"]) + 
         "\n\nRespond ONLY in this JSON format:\n"
         "{\n"
         '  "answer": "Your response to the user",\n'
@@ -176,7 +184,7 @@ async def init_system_prompt():
         "2. Only include parameters if the tool requires them\n"
         "3. Keep your verbal response (answer) concise\n"
         "4. If user asks to perform actions, include them in commands\n"
-        "5. For make_step use parametr x and z. x move robot left (1.0) and right (-1.0), z move robot forward(1.0) and back(-1.0) if you just move forvar set z 1.0 anx x 0 :\n"
+        "5. For make_step use parametr x and z. x move robot left (1.0) and right (-1.0), z move robot forward(1.0) and back(-1.0) if you just move forward set z 1.0 and x 0 :\n"
         "Example for 'turn on the light':\n"
         "{\n"
         '  "answer": "Turning on the light",\n'
@@ -189,22 +197,40 @@ async def init_system_prompt():
     return SYSTEM_PROMPT
 
 async def handle_conversation(user_input: str):
+    global message_history
+
     user_input = user_input.lower()
     print(f"[User]: {user_input}")
 
     system_prompt = await init_system_prompt()
+    message_history = [
+        {"role": "system", "content": system_prompt},
+    ]
+
+    message_history.append({"role": "user", "content": user_input})
+
     print(f"Waiting LLM...")
     try:
-        response = client.chat.completions.create(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_input}
-            ],
-            max_tokens=800,
-            temperature=0.2,
-            stop=["</s>"],
-        )
+        response = None
+        if history_active: 
+            response = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=message_history,
+                    max_tokens=800,
+                    temperature=0.2,
+                    stop=["</s>"],
+            )
+        else:
+            response = client.chat.completions.create(
+                    model=MODEL_NAME,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_input}
+                    ],
+                    max_tokens=800,
+                    temperature=0.2,
+                    stop=["</s>"],
+            )
 
         answer = response.choices[0].message.content.strip()
         print(f"[LLM] Raw response:\n{answer}")
@@ -218,9 +244,7 @@ async def handle_conversation(user_input: str):
         
         try:
             response_data = json.loads(json_str)
-            
-            
-            
+             
             # Обрабатываем команды
             commands = response_data.get("commands", [])
             if not isinstance(commands, list):
@@ -240,6 +264,10 @@ async def handle_conversation(user_input: str):
                 else:
                     print("[LLM] Missing tool name in command")
                     
+
+            # Добавляем ответ ассистента в историю
+            message_history.append({"role": "assistant", "content": answer})
+
             # Озвучиваем ответ
             verbal_response = response_data.get("answer", "I'll execute your request")
             speak_with_gtts(verbal_response)
@@ -266,8 +294,7 @@ async def main():
     mic = sr.Microphone()
     speak_with_gtts("AiNex ready")
     
-
-        # Создаем экземпляр Porcupine
+    # Создаем экземпляр Porcupine
     porcupine = pvporcupine.create(
         access_key=ACCESSW_KEY,
         keyword_paths=KEYWORD_PATHS
@@ -287,9 +314,11 @@ async def main():
     try:
         while True:
 
-            # user_query = input(str(""))
-            # if user_query:
-            #     await handle_conversation(user_query)
+            if text_input:
+                user_query = input(str(""))
+                if user_query:
+                    await handle_conversation(user_query)
+            
             pcm = audio_stream.read(porcupine.frame_length)
             pcm = struct.unpack_from("h" * porcupine.frame_length, pcm)
 
