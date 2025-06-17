@@ -35,7 +35,7 @@ KEYWORD_PATHS = [
 # ==============================
 
 WAKE_WORD = "nex"
-MODEL_NAME = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+MODEL_NAME = "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free"
 
 # ==============================
 # TTS функция
@@ -50,7 +50,7 @@ cache_lock = threading.Lock()
 tts_active = True
 
 message_history = []
-history_active = True
+history_active = False
 text_input = False
 
 def speak_with_gtts(text: str):

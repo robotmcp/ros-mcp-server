@@ -100,7 +100,7 @@ def run_action(action_name: str):
     return ws_manager.send('app/set_action', 'std_msgs/String', message)
 
 @mcp.tool(description="This tool used to get raw image from robot and save on user pc on directory like downloads")
-def get_image(save_path=None):
+def get_image():
     ws_manager.connect()
 
     image_topic = roslibpy.Topic(
