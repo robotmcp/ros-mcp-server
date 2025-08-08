@@ -1,0 +1,5 @@
+mcp[cli]>=1.6.0
+numpy==2.3.2
+opencv-python
+websocket>=0.2.1
+websocket-client>=1.8.0
