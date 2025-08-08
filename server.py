@@ -7,13 +7,13 @@ from msgs.geometry_msgs import Twist
 from msgs.sensor_msgs import Image, JointState
 
 LOCAL_IP = "127.0.0.1"  # Replace with your local IP address
-ROSBRIDGE_IP = "127.0.0.1"  # Replace with your rosbridge server IP address
-ROSBRIDGE_PORT = 9090
+ROBOT_ID = "14"  # Replace with your robot ID
+URL = "wss://robohub.eng.uwaterloo.ca/uwbot-" + ROBOT_ID + "-rosbridge/"  # Replace with your rosbridge server IP address
 
 mcp = FastMCP("ros-mcp-server")
-ws_manager = WebSocketManager(ROSBRIDGE_IP, ROSBRIDGE_PORT, LOCAL_IP)
+ws_manager = WebSocketManager(URL, LOCAL_IP)
 twist = Twist(ws_manager, topic="/cmd_vel")
-image = Image(ws_manager, topic="/camera/image_raw")
+image = Image(ws_manager, topic="/oakd/rgb/image_raw")
 jointstate = JointState(ws_manager, topic="/joint_states")
 
 @mcp.tool()
@@ -74,4 +74,4 @@ def sub_jointstate():
         return "No JointState data received"
 
 if __name__ == "__main__":
-    mcp.run(transport="stdio")
+    mcp.run(transport="streamable-http")

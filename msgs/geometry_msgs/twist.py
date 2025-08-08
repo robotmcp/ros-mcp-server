@@ -43,5 +43,10 @@ class Twist:
         for i in range(len(duration_f)):
             l = linear_flat[i*3:(i+1)*3]
             a = angular_flat[i*3:(i+1)*3]
-            self.publish(l, a)
-            time.sleep(duration_f[i])
+
+            cur_time = time.time()
+            end_time = cur_time + duration_f[i]
+            while cur_time < end_time:
+                self.publish(l, a)
+                time.sleep(0.1)
+                cur_time = time.time()

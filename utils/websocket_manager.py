@@ -4,9 +4,8 @@ import websocket._core as websocket
 import base64
 
 class WebSocketManager:
-    def __init__(self, ip: str, port: int, local_ip: str):
-        self.ip = ip
-        self.port = port
+    def __init__(self, url: str, local_ip: str):
+        self.url = url
         self.local_ip = local_ip
         self.ws = None
 
@@ -14,8 +13,7 @@ class WebSocketManager:
         if self.ws is None or not self.ws.connected:
             try:
                 # Use websocket.create_connection instead of manual socket management
-                url = f"ws://{self.ip}:{self.port}"
-                self.ws = websocket.create_connection(url)
+                self.ws = websocket.create_connection(self.url)
                 print("[WebSocket] Connected")
             except Exception as e:
                 print(f"[WebSocket] Connection error: {e}")
