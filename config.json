@@ -1,0 +1,6 @@
+{
+  "LOCAL_IP": "127.0.0.1",
+  "ROBOT_ID": "12",
+  "ROSBRIDGE_URL_BASE": "wss://robohub.eng.uwaterloo.ca/uwbot-",
+  "ROSBRIDGE_URL_SUFFIX": "-rosbridge/"
+}
