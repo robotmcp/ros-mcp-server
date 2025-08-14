@@ -730,12 +730,12 @@ def inspect_all_services() -> dict:
 
 @mcp.tool(
     description=(
-        "Call a ROS service with specified request data.\n"
+        "Call a ROS service with specified request data. Recommend using the default timeout unless you know the service will take longer.\n"
         "Example:\n"
-        "call_service('/rosapi/topics', 'rosapi/Topics', {})"
+        "call_service('/rosapi/topics', 'rosapi/Topics', {}, timeout=10.0)"
     )
 )
-def call_service(service_name: str, service_type: str, request: dict) -> dict:
+def call_service(service_name: str, service_type: str, request: dict, timeout: float = 2.0) -> dict:
     """
     Call a ROS service with specified request data.
 
@@ -743,6 +743,7 @@ def call_service(service_name: str, service_type: str, request: dict) -> dict:
         service_name (str): The service name (e.g., '/rosapi/topics')
         service_type (str): The service type (e.g., 'rosapi/Topics')
         request (dict): Service request data as a dictionary
+        timeout (float): Timeout in seconds for the service call. Default = 2.0.
 
     Returns:
         dict: Contains the service response or error information.
@@ -757,7 +758,7 @@ def call_service(service_name: str, service_type: str, request: dict) -> dict:
     }
 
     # Call the service through rosbridge
-    response = ws_manager.request(message)
+    response = ws_manager.request(message, timeout=timeout)
     ws_manager.close()
 
     # Return service response if present
