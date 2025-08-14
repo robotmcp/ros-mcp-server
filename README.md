@@ -1,3 +1,5 @@
+[![MSeeP.ai Security Assessment Badge](https://mseep.net/pr/robotmcp-ros-mcp-server-badge.png)](https://mseep.ai/app/robotmcp-ros-mcp-server)
+
 ## Overview
 ![Static Badge](https://img.shields.io/badge/ROS-Available-green)
 ![Static Badge](https://img.shields.io/badge/ROS2-Available-green)
