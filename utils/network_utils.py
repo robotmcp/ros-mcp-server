@@ -91,12 +91,12 @@ def ping_ip_and_port(
     port_open = result["port"]["open"]
 
     if ping_success and port_open:
-        result["overall_status"] = "fully_accessible"
+        result["overall_status"] = "Fully_accessible. The robot is reachable and the port is open, indicating that we are likely able to connect to ROS"
     elif ping_success and not port_open:
-        result["overall_status"] = "ip_reachable_port_closed"
+        result["overall_status"] = "IP_reachable_port_closed. The robot is reachable but ROS_bridge is unreachable. Check if ROS_bridge is running as well as firewall settings."
     elif not ping_success and port_open:
-        result["overall_status"] = "ip_unreachable_port_open"  # Unusual but possible
+        result["overall_status"] = "IP_unreachable_port_open. This is unusual."  # Unusual but possible
     else:
-        result["overall_status"] = "unreachable"
+        result["overall_status"] = "IP_unreachable. Check if the IP address is correct, the robot is powered on & connected to the network. Also check network and firewall settings."
 
     return result
