@@ -262,11 +262,15 @@ ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 # 4. You're ready to go!
 You can test out your server with any robot that you have running. Just tell your AI to connect to the robot on its target IP. (Default is localhost, so you don't need to tell it to connect if the MCP server is installed on the same machine as your ROS)
 
-✅ **Tip:** If you don't currently have any robots running, turtlesim is the easiest ROS robot to experiment. It does not have any simulation depenencies such as Gazebo or IsaacSim. You can launch turtlesim in ROS with the below command
+✅ **Tip:** If you don't currently have any robots running, turtlesim is considered the hello-ROS robot to experiment with. It does not have any simulation depenencies such as Gazebo or IsaacSim. You can launch turtlesim in ROS with the below command
 ```
 rosrun turtlesim turtlesim_node
 
 ```
+
+More information on turtlesim [can be found here for ROS2 humble](https://docs.ros.org/en/humble/Tutorials/Beginner-CLI-Tools/Introducing-Turtlesim/Introducing-Turtlesim.html#install-turtlesim). which is typically installed on Ubuntu 22.04. Newer versions of Ubuntu correspondingly use newer releases of ROS2. 
+
+To experiment with turtlesim in a dockerized container without the dependencies of installing ROS, take a look at our [turtlesim docker example](../examples/turtlesim/).
 
 <details>
 <summary><strong>Example Commands</strong></summary>
