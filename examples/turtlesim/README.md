@@ -3,9 +3,11 @@ This is an example using the simplest possible 'robot' in the ROS ecosystem: Tur
 
 Turtlesim is a lightweight simulator for learning ROS / ROS 2. It illustrates what ROS does at the most basic level to give you an idea of what you will do with a real robot or a robot simulation later on.
 
-To make things simple, this example includes a docker container with ROS 2 and turtlesim preinstalled to enable you to jump straight into testing the MCP server without needing to learn the dependencies of ROS.
+This example includes a docker container (preinstalled with turtlesim on ROS2) to enable users who haven't used ROS to jump straight into testing the MCP server. 
 
 ## Prerequisites
+
+✅ **Note:** This tutorial is designed to be run on linux and has been tested with Ubuntu as well as [Ubuntu running on WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US). Being a dockerized container, it is likely to work on other OS versions as well with the correct X11 forwarding settings. 
 
 Before starting this tutorial, make sure you have the following installed:
 
@@ -58,7 +60,8 @@ This will allow you to use arrow keys or WASD to manually move the turtle around
 
 ## Integration with MCP Server
 
-Once turtlesim and rosbridge are running, you can connect the MCP server to control the turtle programmatically
+Once turtlesim and rosbridge are running, you can connect the MCP server to control the turtle programmatically.
+Follow the [installation guide](../../docs/installation.md) for full setup instructions if you haven't already set up the MCP server. 
 
 Since it is running on the same machine, you can tell the LLM to connect to the robot on localhost. 
 
