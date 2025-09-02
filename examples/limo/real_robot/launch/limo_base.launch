@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<launch>
+    <arg name="port_name" default="ttyTHS1" />
+    <arg name="odom_frame" default="odom" />
+    <arg name="base_frame" default="base_link" />
+    <arg name="use_mcnamu" default="false" />
+    <arg name="pub_odom_tf" default="" />
+
+    <node name="limo_base_node" pkg="limo_base" type="limo_base_node" output="screen" >
+        <param name="port_name" value="$(arg port_name)" />
+        <param name="odom_frame" value="$(arg odom_frame)" />
+        <param name="base_frame" value="$(arg base_frame)" />
+        <param name="use_mcnamu" value="$(arg use_mcnamu)" />
+        <param name="pub_odom_tf" value="$(arg pub_odom_tf)" />
+	    <remap from="/cmd_vel" to="/cmd_vel_to_motor" />
+    </node>
+</launch>
