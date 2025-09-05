@@ -12,9 +12,11 @@
   <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/framework.png"/>
 </p>
 
-The **ROS MCP Server** creates a **two-way bridge** between large language models (LLMs) and robots running **ROS1 or ROS2**.  With no changes to existing robot source code, this enables:
+ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) with robots using ROS (the largest knowledge base for robotics hardware and software) enabling bidirectional AI integration on existing robots! 
+
+With no changes to existing robot source code, this enables:
 - 🗣 **Commanding the robot in natural language** → instructions are translated into ROS/ROS2 commands.  
-- 👀 **Give AI full visibility** → subscribe to topics, call services, read sensor data, and monitor robot state in real time.  
+- 👀 **Giving AI full visibility** → subscribe to topics, call services, read sensor data, and monitor robot state in real time.  
 
 
 ### ✅ Key Benefits  
