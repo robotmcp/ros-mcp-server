@@ -12,7 +12,7 @@
   <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/framework.png"/>
 </p>
 
-ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) with robots using ROS (the largest knowledge base for robotics hardware and software) enabling bidirectional AI integration on existing robots! 
+ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) with existing robots giving them bidirectional AI integration.  
 
 With no changes to existing robot source code, this enables:
 - 🗣 **Commanding the robot in natural language** → instructions are translated into ROS/ROS2 commands.  
@@ -47,7 +47,9 @@ The MCP server enables the Claude to interpret images from the robot's cameras, 
 
 ---
 🏭 **Testing and debugging an industrial robot** ([Video](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EVh2t2_YG9BEl-Bw-8k6xucBcEv7XebJv1MtqLTIfrQpig?e=deu3YO))  
-Connecting to an industrial robot enables the LLM to browse all ROS topics and services to assess the robot state. With no predefined context, the MCP server enables the LLM to query details about custom topic and service types and their syntax (00:28). Using only natural language, the operator calls the custom services to test and debug the robot(01:42). 
+- Connecting to an industrial robot enables the LLM to browse all ROS topics and services to assess the robot state. 
+- With no predefined context, the MCP server enables the LLM to query details about custom topic and service types and their syntax (00:28). 
+- Using only natural language, the operator calls the custom services to test and debug the robot(01:42). 
 
 <p align="center">
   <a href="https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EVh2t2_YG9BEl-Bw-8k6xucBcEv7XebJv1MtqLTIfrQpig?e=deu3YO">
