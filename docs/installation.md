@@ -56,7 +56,7 @@ Any LLM client that supports MCP can be used. We use **Claude Desktop** for test
 <summary><strong>Linux (Ubuntu)</strong></summary>
 
 ## 2.1. Download Claude Desktop 
-- Download from the community-supported [claude-desktop-debian](https://github.com/aaddrick/claude-desktop-debian)
+- Follow the installation instruction from the community-supported [claude-desktop-debian](https://github.com/aaddrick/claude-desktop-debian)
 
 ## 2.2. Configure Claude Desktop to launch the MCP server
 - Locate and edit the `claude_desktop_config.json` file:

@@ -1,6 +1,10 @@
 import json
 import threading
 from typing import Optional, Union
+import base64
+import numpy as np
+import cv2
+import os
 
 import websocket
 
@@ -25,6 +29,63 @@ def parse_json(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
     except (json.JSONDecodeError, TypeError):
         return None
 
+
+def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
+    """
+    Decode a image message (json with base64 data) and save as PNG.
+
+    Args:
+        raw: JSON string, bytes, or None
+
+    Returns:
+        Parsed dict if successful, None if raw is None, parsing fails, or result is not a dict
+    """
+
+    if raw is None:
+        return None
+
+    try:
+        result = json.loads(raw)
+        msg = result["msg"]
+    except (json.JSONDecodeError, KeyError):
+        print("[Image] Invalid JSON or missing 'msg' field.")
+        return None
+
+    height, width, encoding = msg.get("height"), msg.get("width"), msg.get("encoding")
+    data_b64 = msg.get("data")
+
+    if not all([height, width, encoding, data_b64]):
+        print("[Image] Missing required fields in message.")
+        return None
+
+    # Decode base64 to numpy array
+    image_bytes = base64.b64decode(data_b64)
+    img_np = np.frombuffer(image_bytes, dtype=np.uint8)
+
+    # Encoding handlers
+    try:
+        if encoding == "rgb8":
+            img_cv = img_np.reshape((height, width, 3))
+            img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
+        elif encoding == "bgr8":
+            img_cv = img_np.reshape((height, width, 3))
+        elif encoding == "mono8":
+            img_cv = img_np.reshape((height, width))
+        else:
+            print(f"[Image] Unsupported encoding: {encoding}")
+            return None
+    except ValueError as e:
+        print(f"[Image] Reshape error: {e}")
+        return None
+    
+    if not os.path.exists("./camera"):
+        os.makedirs("./camera")
+
+    success = cv2.imwrite("./camera/received_image.png", img_cv)
+    if success:
+        return result if isinstance(result, dict) else None
+    else:
+        return None
 
 class WebSocketManager:
     def __init__(self, ip: str, port: int, default_timeout: float = 2.0):

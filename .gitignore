@@ -175,3 +175,6 @@ pyrightconfig.json
 
 # .vscode
 .vscode/
+
+# camera
+.camera/
