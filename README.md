@@ -38,12 +38,12 @@ Commands are entered into Claude Desktop, which uses the MCP server to directly 
 **Controlling Unitree Go with natural language**  
 The MCP server enables the Claude to interpret images from the robot's cameras, and then command the robot based on human natural language commands. 
 
-[![Camera interpretation and reasoning with Unitree Go](./image/Unitree_go.png)](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EY1sQlnMV1pPgMFtOfS1-fIBZmt6BN4m1kPRUm9YX8ExXQ?e=9najbm)
+[![Camera interpretation and reasoning with Unitree Go](image/Unitree_go.png)](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EY1sQlnMV1pPgMFtOfS1-fIBZmt6BN4m1kPRUm9YX8ExXQ?e=9najbm)
 
 **Testing and debugging an industrial robot**  
 Connecting to an industrial robot enables the LLM to browse all ROS topics and services to assess the robot state. With no predefined context, the MCP server enables the LLM to query details about custom topic and service types and their syntax (00:28). Using only natural language, the operator calls the custom services to test and debug the robot(01:42). 
 
-[![Testing and debugging an industrial robot](./image/Contoro_robot.png)](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EVh2t2_YG9BEl-Bw-8k6xucBcEv7XebJv1MtqLTIfrQpig?e=deu3YO)
+[![Testing and debugging an industrial robot](image/Contoro_robot.png)](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EVh2t2_YG9BEl-Bw-8k6xucBcEv7XebJv1MtqLTIfrQpig?e=deu3YO)
 
 More examples and tutorial videos are available in the [examples index](examples/examples-index.md).  
 
