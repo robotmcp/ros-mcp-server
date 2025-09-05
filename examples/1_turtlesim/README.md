@@ -1,9 +1,7 @@
 # Example - TurtleSim
-This is an example using the simplest possible 'robot' in the ROS ecosystem: TurtleSim! 
+For users who want to test the MCP server without needing to install ROS, this is an example that provides a dockerized ROS2  container preinstalled with the simplest possible 'robot' in the ROS ecosystem - TurtleSim. 
 
 Turtlesim is a lightweight simulator for learning ROS / ROS 2. It illustrates what ROS does at the most basic level to give you an idea of what you will do with a real robot or a robot simulation later on.
-
-This example includes a docker container (preinstalled with turtlesim on ROS2) to enable users who haven't used ROS to jump straight into testing the MCP server. 
 
 ## Prerequisites
 
