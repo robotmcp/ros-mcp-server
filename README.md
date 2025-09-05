@@ -57,9 +57,6 @@ The MCP server enables the Claude to interpret images from the robot's cameras, 
   </a>
 </p>
 
-More examples and tutorial videos are available in the [examples index](examples/examples-index.md).  
-
-
 ---
 
 ## ⚙️ Features  
