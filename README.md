@@ -35,7 +35,8 @@ Commands are entered into Claude Desktop, which uses the MCP server to directly 
   <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/result.gif" />
 </p>  
 
-🐕 **Controlling Unitree Go with natural language**  (video)
+---
+🐕 **Controlling Unitree Go with natural language**  ([video](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EY1sQlnMV1pPgMFtOfS1-fIBZmt6BN4m1kPRUm9YX8ExXQ?e=9najbm))  
 The MCP server enables the Claude to interpret images from the robot's cameras, and then command the robot based on human natural language commands. 
 
 <p align="center">
@@ -44,7 +45,8 @@ The MCP server enables the Claude to interpret images from the robot's cameras, 
   </a>
 </p>
 
-🏭 **Testing and debugging an industrial robot**  (Video)
+---
+🏭 **Testing and debugging an industrial robot** ([Video](https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EVh2t2_YG9BEl-Bw-8k6xucBcEv7XebJv1MtqLTIfrQpig?e=deu3YO))  
 Connecting to an industrial robot enables the LLM to browse all ROS topics and services to assess the robot state. With no predefined context, the MCP server enables the LLM to query details about custom topic and service types and their syntax (00:28). Using only natural language, the operator calls the custom services to test and debug the robot(01:42). 
 
 <p align="center">
