@@ -40,7 +40,7 @@ Commands are entered into Claude Desktop, which uses the MCP server to directly 
 The MCP server enables the Claude to interpret images from the robot's cameras, and then command the robot based on human natural language commands. 
 
 <p align="left">
-  <img src="https://contoro.com/asset/media/i.gif" />
+  <img src="https://contoro.com/asset/media/demo_go2.gif" />
 </p>  
 
 ---
