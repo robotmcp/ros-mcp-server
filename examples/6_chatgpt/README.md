@@ -187,7 +187,7 @@ cd ros-mcp-server
 	$env:MCP_PORT=9000
 	$env:MCP_DOMAIN=<YOUR_DOMAIN>
 	```
-	Run `ngrok` to tunnel your ROS-MCP server
+	Run `ngrok` to tunnel your ROS-MCP server.
 	
 	```bash
 	ngrok http --url=$env:MCP_DOMAIN $env:MCP_PORT
@@ -202,7 +202,7 @@ cd ros-mcp-server
 	export MCP_PORT=9000
     export MCP_DOMAIN=<YOUR_DOMAIN>
 	```
- 	Run `ngrok` to tunnel your ROS-MCP server
+ 	Run `ngrok` to tunnel your ROS-MCP server.
 	```bash
 	ngrok http --url=${MCP_DOMAIN} ${MCP_PORT}
 	```
@@ -212,11 +212,11 @@ cd ros-mcp-server
 	```
  	</details>
 
-* Once you launch `ngrok`, verify your public url domain:
+* Once you launch `ngrok`, verify your public url domain, it should be the same as `MCP_DOMAIN`.
 
-```bash
-https://abc123xyz.ngrok-free.app -> http://localhost:9000
-```
+	```bash
+	https://abc123xyz.ngrok-free.app -> http://localhost:9000
+	```
 
 
 ## 1.4 Connect ROS-MCP to ChatGPT
@@ -226,7 +226,7 @@ https://abc123xyz.ngrok-free.app -> http://localhost:9000
 * Open Connectors
 * Create and fill the following:
 
-	- Name: *ROS-MCP Server**
+	- Name: *ROS-MCP Server*
 	- Description: *An MCP Server to connect with ROS/ROS2*
 	- MCP Server URL: `https://abc123-xyz789.ngrok-free.app/mcp` (don't forget to replace with your domain and add the `\mcp`)
 	- Authention: *No authentication*
@@ -243,7 +243,16 @@ source /opt/ros/jazzy/setup.bash
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml & ros2 run turtlesim turtlesim_node
 ```
 
-## Environment
+or
 
-* Ubuntu 22.04
+```bash
+launch_ros.sh
+```
+
+## Test Host Machine
+* Windows 11
+* WSL with Ubuntu 22.04
+ 
+## Test Target Machine
+* WSL with Ubuntu 22.04
 * ROS 2 Jazzy
