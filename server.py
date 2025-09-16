@@ -13,9 +13,14 @@ from PIL import Image as PILImage
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
-ROSBRIDGE_PORT = (
-    9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
-)
+ROSBRIDGE_PORT = 9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
+
+# MCP transport settings
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower() # Default is stdio. 
+
+# MCP connection settings (streamable-http)
+MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1") # Default is localhost. Replace with the address of your remote MCP server.
+MCP_PORT = int(os.getenv("MCP_PORT", "9000")) # Default is 9000. Replace with the port of your remote MCP server.
 
 # MCP transport settings
 MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()  # Default is stdio.
@@ -1149,6 +1154,7 @@ def _encode_image_to_imagecontent(image):
 
 
 if __name__ == "__main__":
+
     if MCP_TRANSPORT == "stdio":
         # stdio doesn't need host/port
         mcp.run(transport="stdio")
@@ -1160,9 +1166,10 @@ if __name__ == "__main__":
 
     elif MCP_TRANSPORT == "sse":
         print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}")
-        print("Currently unsupported. Use 'stdio', 'http', or 'streamable-http'.")
+        print("Currently unsupported. "
+              "Use 'stdio', 'http', or 'streamable-http'.")
         mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
-
+    
     else:
         raise ValueError(
             f"Unsupported MCP_TRANSPORT={MCP_TRANSPORT!r}. "
