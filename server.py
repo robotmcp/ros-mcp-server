@@ -13,14 +13,20 @@ from PIL import Image as PILImage
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
-ROSBRIDGE_PORT = 9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
+ROSBRIDGE_PORT = (
+    9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
+)
 
 # MCP transport settings
-MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower() # Default is stdio. 
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()  # Default is stdio.
 
 # MCP connection settings (streamable-http)
-MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1") # Default is localhost. Replace with the address of your remote MCP server.
-MCP_PORT = int(os.getenv("MCP_PORT", "9000")) # Default is 9000. Replace with the port of your remote MCP server.
+MCP_HOST = os.getenv(
+    "MCP_HOST", "127.0.0.1"
+)  # Default is localhost. Replace with the address of your remote MCP server.
+MCP_PORT = int(
+    os.getenv("MCP_PORT", "9000")
+)  # Default is 9000. Replace with the port of your remote MCP server.
 
 # Initialize MCP server and WebSocket manager
 mcp = FastMCP("ros-mcp-server")
@@ -403,7 +409,9 @@ def subscribe_once(
                 unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
                 ws_manager.send(unsubscribe_msg)
                 if "Image" in msg_type:
-                    return {"message": "Image received successfully and saved in the MCP server. Run the 'analyze_image' tool to analyze it"}
+                    return {
+                        "message": "Image received successfully and saved in the MCP server. Run the 'analyze_image' tool to analyze it"
+                    }
                 else:
                     return {"msg": msg_data.get("msg", {})}
 
@@ -599,7 +607,10 @@ def subscribe_for_duration(
     )
 )
 def publish_for_durations(
-    topic: str = "", msg_type: str = "", messages: List[Dict[str, Any]] = [], durations: List[float] = []
+    topic: str = "",
+    msg_type: str = "",
+    messages: List[Dict[str, Any]] = [],
+    durations: List[float] = [],
 ) -> dict:
     """
     Publish a sequence of messages to a given ROS topic with delays in between.
@@ -1129,14 +1140,15 @@ def _encode_image_to_imagecontent(image):
         ImageContent: PNG-encoded image wrapped in an ImageContent object.
     """
     import io
+
     buffer = io.BytesIO()
     image.save(buffer, format="PNG")
     img_bytes = buffer.getvalue()
     img_obj = Image(data=img_bytes, format="png")
     return img_obj.to_image_content()
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     if MCP_TRANSPORT == "stdio":
         # stdio doesn't need host/port
         mcp.run(transport="stdio")
@@ -1148,10 +1160,9 @@ if __name__ == "__main__":
 
     elif MCP_TRANSPORT == "sse":
         print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}")
-        print("Currently unsupported. "
-              "Use 'stdio', 'http', or 'streamable-http'.")
+        print("Currently unsupported. Use 'stdio', 'http', or 'streamable-http'.")
         mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
-    
+
     else:
         raise ValueError(
             f"Unsupported MCP_TRANSPORT={MCP_TRANSPORT!r}. "
