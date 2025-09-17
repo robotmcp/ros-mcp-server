@@ -19,9 +19,7 @@ ROSBRIDGE_PORT = (
 )
 
 # MCP transport settings
-MCP_TRANSPORT = os.getenv(
-    "MCP_TRANSPORT", "stdio"
-).lower()  # Default is stdio.
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()  # Default is stdio.
 
 # MCP connection settings (streamable-http)
 MCP_HOST = os.getenv(
