@@ -1,0 +1,83 @@
+name: unitree_go2
+alias: go2
+type: real
+prompts: |
+              The Unitree Go2 is a quadruped robot equipped with advanced sensors and mobility, designed for agile movement and versatile research or industrial applications.
+              The Unitree Go2 robot uses many custom messages. Therefore, you don't need to use functions to check the topics.
+
+              Unitree Go2 Robot Basic Control Information:
+              The Unitree Go2 robot is controlled via the /wirelesscontroller topic with the following parameters:
+              *  ly: controls forward/backward movement, forward is positive, backward is negative (range: -1.0 to 1.0)
+              *  lx: controls left/right movement, left is negative, right is positive (range: -1.0 to 1.0)
+              *  rx: controls left/right rotation, left is negative, right is positive (range: -1.0 to 1.0)
+              *  ry: controls forward/backward tilting, forward is positive, backward is negative (range: -1.0 to 1.0)
+              #  keys: used for special actions (default is 0)
+
+              Important: All movement commands max speed is 1.0 (full speed) equlals 1.0 m/s.
+
+              If the Unitree Go2 moves using publish_for_durations, always set the last message to all zeros to stop the robot.
+              -Example:
+              publish_for_durations(
+                  topic='/wirelesscontroller',
+                  msg_type='unitree_msgs/msg/WirelessController',
+                  messages=[{
+                      'lx': 0.0,
+                      'ly': 0.5,  # Move forward at half speed
+                      'rx': 0.0,
+                      'ry': 0.0,
+                      'keys': 0
+                  },
+                  {
+                      'lx': 0.0,
+                      'ly': 0.0, 
+                      'rx': 0.0,
+                      'ry': 0.0,
+                      'keys': 0
+                  }],
+                  durations=[2.0, 1.0]  # Move for 2 seconds, then stop for 1 second
+              )
+
+              Unitree Go2 Robot Special Actions Information:
+              For special actions, use the keys field in the /wirelesscontroller topic:
+              CRITICAL RULE: ALL special actions MUST be sent as a pair using publish_for_durations with keys=1056 first, followed by the special action code.
+              Important: Always send keys=1056 first before attempting any special action.
+              *  keys=1056: prerequisite command that MUST be sent once before any special action not just movement
+              *  keys=257  : `jump_forward`
+              *  keys=258  : `greet`
+              *  keys=528  : `shake_hands`
+              *  keys=1025 : `pounce`
+              *  keys=513  : `sit_down`
+              *  keys=514  : `dance`
+
+              - Example:
+              publish_for_durations(
+                  topic='/wirelesscontroller',
+                  msg_type='unitree_msgs/msg/WirelessController',
+                  messages=[{
+                      'ly': 0.0,
+                      'lx': 0.0,
+                      'rx': 0.0,
+                      'ry': 0.0,
+                      'keys': 1056  # Must send this first every time before any special action
+                  },
+                  {
+                      'ly': 0.0,
+                      'lx': 0.0,
+                      'rx': 0.0,
+                      'ry': 0.0,
+                      'keys': 257  # Then send the special action command
+                  }],
+                  durations=[1.0, 1.0]
+              )
+
+              Safety Guidelines:
+              - Always validate robot state before sending commands
+              - Use reasonable duration values (typically 0.1-2.0 seconds)
+              - Monitor for obstacles using sensor data when available
+              - If connection is lost, assume robot needs to be stopped
+
+              Unitree Go2 Robot Sensor Information:
+              The Unitree Go2 robot provides various sensor data. Here are some key topics:
+              *  /utlidar/cloud: Lidar point cloud data
+              *  /camera/rgb/image_raw: RGB camera images
+              Using these sensors, the robot can measure the distance to objects and perceive its environment.

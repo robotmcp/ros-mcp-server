@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -eo pipefail
 
 # Source ROS2 environment
 source /opt/ros/humble/setup.bash
@@ -21,14 +22,15 @@ echo "  - Ctrl+C to stop"
 # Launch turtlesim in the background
 ros2 run turtlesim turtlesim_node &
 
-# Wait a moment for turtlesim to start
-sleep 2
+# Trap signals to clean up processes
+cleanup() {
+    # Cleanup when teleop exits
+    echo "Stopping turtlesim and rosbridge..."
+    pkill -f turtlesim_node
+    pkill -f rosbridge_server
+    wait
+}
 
-# Launch turtle teleop for keyboard control
-echo "Starting turtle teleop..."
-ros2 run turtlesim turtle_teleop_key
+trap cleanup SIGINT SIGTERM
 
-# Cleanup when teleop exits
-echo "Stopping turtlesim and rosbridge..."
-pkill -f turtlesim_node
-pkill -f rosbridge_server
+wait

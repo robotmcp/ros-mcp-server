@@ -1,7 +1,7 @@
+import platform
 import socket
 import subprocess
-import platform
-from typing import Dict, Optional
+from typing import Dict
 
 
 def ping_ip_and_port(
@@ -23,7 +23,7 @@ def ping_ip_and_port(
         "ip": ip,
         "port": port,
         "ping": {"success": False, "error": None, "response_time_ms": None},
-        "port": {"open": False, "error": None},
+        "port_check": {"open": False, "error": None},
         "overall_status": "unknown",
     }
 
@@ -73,22 +73,24 @@ def ping_ip_and_port(
         sock.close()
 
         if port_result == 0:
-            result["port"]["open"] = True
+            result["port_check"]["open"] = True
         else:
-            result["port"]["error"] = (
+            result["port_check"]["error"] = (
                 f"Port {port} is closed or unreachable (error code: {port_result})"
             )
 
     except socket.timeout:
-        result["port"]["error"] = f"Port {port} connection timeout after {port_timeout} seconds"
+        result["port_check"]["error"] = (
+            f"Port {port} connection timeout after {port_timeout} seconds"
+        )
     except socket.gaierror as e:
-        result["port"]["error"] = f"DNS resolution error: {str(e)}"
+        result["port_check"]["error"] = f"DNS resolution error: {str(e)}"
     except Exception as e:
-        result["port"]["error"] = f"Port check error: {str(e)}"
+        result["port_check"]["error"] = f"Port check error: {str(e)}"
 
     # Step 3: Determine overall status
     ping_success = result["ping"]["success"]
-    port_open = result["port"]["open"]
+    port_open = result["port_check"]["open"]
 
     if ping_success and port_open:
         result["overall_status"] = (

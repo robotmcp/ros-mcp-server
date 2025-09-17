@@ -1,0 +1,20 @@
+# Robot configuration template
+# Replace this text with specific instructions and information about your robot.
+# Include details on how to control it, important topics, and any special commands.
+# For example:
+# - Control commands (e.g., movement, actions)
+# - Sensor topics (e.g., camera, lidar)
+# - Safety guidelines
+# - Any custom messages or services used by the robot
+
+name: YOUR_ROBOT_NAME
+alias: YOUR_ROBOT_ALIAS # Optional alias for easier reference
+type: real # or 'sim' for simulation
+prompts: |
+              Replace this text with specific instructions and information about your robot.
+              Include details on how to control it, important topics, and any special commands.
+              For example:
+              - Control commands (e.g., movement, actions)
+              - Sensor topics (e.g., camera, lidar)
+              - Safety guidelines
+              - Any custom messages or services used by the robot

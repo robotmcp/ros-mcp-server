@@ -1,4 +1,4 @@
-# Example - TurtleSim
+# Example - TurtleSim in Docker
 For users who want to test the MCP server without needing to install ROS, this is an example that provides a dockerized ROS2  container preinstalled with the simplest possible 'robot' in the ROS ecosystem - TurtleSim. 
 
 Turtlesim is a lightweight simulator for learning ROS / ROS 2. It illustrates what ROS does at the most basic level to give you an idea of what you will do with a real robot or a robot simulation later on.
@@ -11,26 +11,48 @@ Before starting this tutorial, make sure you have the following installed:
 
 - **Docker**: [Install Docker](https://docs.docker.com/get-docker/)
 - **Docker Compose**: Usually comes with Docker Desktop, or install separately
+- **X Server** (for Windows): Install [X410](https://x410.dev/) or another X Server from Microsoft Store
 - **X11 forwarding** (for Linux): `sudo apt-get install x11-apps`
 - **XQuartz** (for macOS): Install from [XQuartz website](https://www.xquartz.org/)
 
+**Note:** If your OS is Windows, take a look at the following:
+<details>
+<summary><strong>PowerShell and WSL (Windows)</strong></summary>
+
+- Install Docker from [installer](https://docs.docker.com/desktop/setup/install/windows-install) or Microsoft Store
+- Open Docker Desktop > Settings > Resources > WSL Integration
+- Enable your distro (e.g., Ubuntu 22.04)
+- Verify installation: in PowerShell `docker --version` and in WSL `docker --version`
+</details>
+
 ## Quick Start
 
-### 1. Build and Launch the Container
+### 1. Build the Container
 
 Navigate to the turtlesim example directory and build the Docker container:
 
 ```bash
-cd examples/turtlesim
-docker compose build
+cd examples/5_docker_turtlesim
+docker compose build --no-cache turtlesim
 ```
 
 ### 2. Start the Container
 
-Launch the turtlesim container:
+Launch the turtlesim container
 
 ```bash
-docker-compose up -d
+docker compose up
+```
+
+If your OS is Windows and you want to launch docker in PowerShell, you first need to set the DISPLAY:
+```bash
+$env:DISPLAY="host.docker.internal:0.0"
+```
+
+If your OS is Ubuntu/WSL and the docker doesn't run successfully, consider:
+
+```bash
+dos2unix docker/scripts/launch_turtlesim.sh
 ```
 
 The container will automatically start both turtlesim and rosbridge websocket server. You should see:
@@ -42,6 +64,12 @@ The container will automatically start both turtlesim and rosbridge websocket se
 ### 3. Access the Container (Optional)
 
 If you need to access the container for debugging or additional commands:
+
+Launch the container in the background:
+```bash
+docker compose up -d
+```
+And attach to the container
 
 ```bash
 docker exec -it ros2-turtlesim bash
@@ -84,6 +112,13 @@ open -a XQuartz
 
 # Allow connections from localhost
 xhost +localhost
+```
+
+### Display Issues (Windows/PowerShell)
+For Windows users, make sure you install an X Server (X410) and set the DISPLAY:
+
+```bash
+$env:DISPLAY="host.docker.internal:0.0"
 ```
 
 ### Container Networking
@@ -165,5 +200,6 @@ Now that you have turtlesim running, you can:
 1. **Try more complex commands** like drawing shapes or following paths
 2. **Install ROS Locally** to add more nodes and services
 3. **Explore other examples in this repository**
+
 
 This example provides a foundation for understanding how the MCP server can interact with ROS2 systems, from simple simulators like turtlesim to complex robotic platforms. 

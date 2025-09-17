@@ -1,11 +1,11 @@
+import base64
 import json
+import os
 import threading
 from typing import Optional, Union
-import base64
-import numpy as np
-import cv2
-import os
 
+import cv2
+import numpy as np
 import websocket
 
 

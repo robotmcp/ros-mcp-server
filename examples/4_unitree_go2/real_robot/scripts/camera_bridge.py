@@ -1,23 +1,21 @@
 import cv2
 import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
-from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+from rclpy.node import Node
+from rclpy.qos import HistoryPolicy, QoSProfile, ReliabilityPolicy
+from sensor_msgs.msg import Image
 
 
 class ImagePublisher(Node):
     def __init__(self):
-        super().__init__('image_publisher')
+        super().__init__("image_publisher")
 
         qos_profile = QoSProfile(
-            reliability=ReliabilityPolicy.RELIABLE,
-            history=HistoryPolicy.KEEP_LAST,
-            depth=10
+            reliability=ReliabilityPolicy.RELIABLE, history=HistoryPolicy.KEEP_LAST, depth=10
         )
 
         # create publisher
-        self.publisher_ = self.create_publisher(Image, 'camera/rgb/image_raw', qos_profile)
+        self.publisher_ = self.create_publisher(Image, "camera/rgb/image_raw", qos_profile)
         self.bridge = CvBridge()
 
         # GStreamer pipeline
@@ -67,5 +65,5 @@ def main(args=None):
         rclpy.shutdown()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
