@@ -16,19 +16,16 @@ ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor
 ROSBRIDGE_PORT = 9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
 
 # MCP transport settings
-MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower() # Default is stdio. 
-
-# MCP connection settings (streamable-http)
-MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1") # Default is localhost. Replace with the address of your remote MCP server.
-MCP_PORT = int(os.getenv("MCP_PORT", "9000")) # Default is 9000. Replace with the port of your remote MCP server.
-
-# MCP transport settings
-MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()  # Default is stdio.
+MCP_TRANSPORT = os.getenv(
+    "MCP_TRANSPORT", "stdio"
+).lower()  # Default is stdio.
 
 # MCP connection settings (streamable-http)
 MCP_HOST = os.getenv(
     "MCP_HOST", "127.0.0.1"
 )  # Default is localhost. Replace with the address of your remote MCP server.
+
+# MCP port settings (default=9000)
 MCP_PORT = int(
     os.getenv("MCP_PORT", "9000")
 )  # Default is 9000. Replace with the port of your remote MCP server.
@@ -38,7 +35,6 @@ mcp = FastMCP("ros-mcp-server")
 ws_manager = WebSocketManager(
     ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0
 )  # Increased default timeout for ROS operations
-
 
 @mcp.tool(description=("Connect to a robot by setting IP/port and testing connectivity."))
 def connect_to_robot(
