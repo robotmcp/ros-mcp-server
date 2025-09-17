@@ -178,4 +178,4 @@ pyrightconfig.json
 .vs/
 
 # camera
-.camera/
+/camera/*

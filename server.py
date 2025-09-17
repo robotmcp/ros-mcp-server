@@ -10,6 +10,7 @@ from utils.network_utils import ping_ip_and_port
 
 from fastmcp.utilities.types import Image
 from PIL import Image as PILImage
+import io
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
@@ -1119,13 +1120,13 @@ def analyze_previously_received_image():
     """
     Analyze the received image.
 
-    This tool loads the previously saved image from './camera/received_image.png'
+    This tool loads the previously saved image from './camera/received_image.jpeg'
     (which must have been created by 'parse_image' or 'subscribe_once'), and converts
     it into an MCP-compatible ImageContent format so that the LLM can interpret it.
     """
-    path = "./camera/received_image.png"
+    path = "./camera/received_image.jpeg"
     if not os.path.exists(path):
-        return {"error": "No previously received image found at ./camera/received_image.png"}
+        return {"error": "No previously received image found at ./camera/received_image.jpeg"}
     image = PILImage.open(path)
     return _encode_image_to_imagecontent(image)
 
@@ -1138,14 +1139,12 @@ def _encode_image_to_imagecontent(image):
         image (PIL.Image.Image): The image to encode.
 
     Returns:
-        ImageContent: PNG-encoded image wrapped in an ImageContent object.
+        ImageContent: JPEG-encoded image wrapped in an ImageContent object.
     """
-    import io
-
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
+    image.save(buffer, format="JPEG")
     img_bytes = buffer.getvalue()
-    img_obj = Image(data=img_bytes, format="png")
+    img_obj = Image(data=img_bytes, format="jpeg")
     return img_obj.to_image_content()
 
 

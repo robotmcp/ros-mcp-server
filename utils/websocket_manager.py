@@ -77,15 +77,18 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
     except ValueError as e:
         print(f"[Image] Reshape error: {e}")
         return None
-    
+
     if not os.path.exists("./camera"):
         os.makedirs("./camera")
 
-    success = cv2.imwrite("./camera/received_image.png", img_cv)
+    success = cv2.imwrite(
+        "./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95]
+    )  # Save as JPEG with quality 95
     if success:
         return result if isinstance(result, dict) else None
     else:
         return None
+
 
 class WebSocketManager:
     def __init__(self, ip: str, port: int, default_timeout: float = 2.0):
