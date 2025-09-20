@@ -1,0 +1,49 @@
+FROM osrf/ros:humble-desktop
+
+# Install dev tools, ROS2 extras, git, Python and pip
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-colcon-common-extensions \
+    python3-rosdep \
+    python3-vcstool \
+    python3-pip \
+    git \
+    build-essential \
+    ros-humble-ros-gz \
+    ros-humble-rosbridge-server \
+    && rm -rf /var/lib/apt/lists/*
+
+# Ensure pip is accessible as `pip`
+RUN ln -sf /usr/bin/pip3 /usr/bin/pip
+
+# Initialize rosdep
+RUN rosdep init || true && rosdep update
+
+# Install Ruff globally
+RUN pip install --no-cache-dir ruff pre-commit uv
+
+# Add non-root user for VSCode devcontainer
+ARG USERNAME=vscode
+ARG USER_UID=1000
+ARG USER_GID=$USER_UID
+
+RUN groupadd --gid $USER_GID $USERNAME \
+    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
+    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME \
+    && chmod 0440 /etc/sudoers.d/$USERNAME
+
+# Auto-source ROS2 for all users
+RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
+
+# Set locale (optional)
+ENV LANG=C.UTF-8
+ENV LC_ALL=C.UTF-8
+
+# Default workspace
+WORKDIR /root/workspace
+
+# Switch to non-root user by default in devcontainer
+USER $USERNAME
+
+RUN git init . \
+    && pre-commit install || true

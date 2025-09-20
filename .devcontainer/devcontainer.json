@@ -1,0 +1,35 @@
+{
+  "name": "ROS2 Humble Dev",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "workspaceFolder": "/root/workspace",
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/root/workspace,type=bind",
+    // Mount Git config
+    "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
+    // Mount SSH keys (if you use SSH for GitHub)
+    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+  ],
+  "runArgs": [
+    "--net=host",
+    "--env=DISPLAY",
+    "--env=QT_X11_NO_MITSHM=1",
+    "--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw",
+    "--device=/dev/dri"
+  ],
+  "remoteUser": "root",
+  "forwardPorts": [5000],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-azuretools.vscode-docker",
+        "twxs.cmake",
+        "ms-vscode.cpptools",
+        "ms-python.vscode-pylance",
+        "astral-sh.ruff"
+      ]
+    }
+  }
+}
