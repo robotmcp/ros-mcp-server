@@ -44,5 +44,8 @@ WORKDIR /root/workspace
 # Switch to non-root user by default in devcontainer
 USER $USERNAME
 
+# Allow pre-commit to run even if no config exists
+ENV PRE_COMMIT_ALLOW_NO_CONFIG=1
+
 RUN git init . \
     && pre-commit install --allow-missing-config || true
