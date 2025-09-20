@@ -8,7 +8,7 @@
     "source=${localWorkspaceFolder},target=/root/workspace,type=bind",
     // Mount Git config
     "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
-    // Mount SSH keys (if you use SSH for GitHub)
+    // Mount SSH keys
     "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
   ],
   "runArgs": [
@@ -31,5 +31,7 @@
         "astral-sh.ruff"
       ]
     }
-  }
+  },
+  "postStartCommand": "chmod 700 /root/.ssh && chmod 600 /root/.ssh/config /root/.ssh/id_* && chown -R root:root /root/.ssh"
+
 }

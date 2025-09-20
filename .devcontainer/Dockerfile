@@ -9,7 +9,6 @@ RUN apt-get update && apt-get install -y \
     python3-pip \
     git \
     build-essential \
-    ros-humble-ros-gz \
     ros-humble-rosbridge-server \
     && rm -rf /var/lib/apt/lists/*
 
@@ -46,4 +45,4 @@ WORKDIR /root/workspace
 USER $USERNAME
 
 RUN git init . \
-    && pre-commit install || true
+    && pre-commit install --allow-missing-config || true
