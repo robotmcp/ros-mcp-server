@@ -87,27 +87,6 @@ Follow the [installation guide](docs/installation.md) for step-by-step instructi
 4. Configure your client to connect to the ROS MCP Server  
 5. Start `rosbridge` on the target robot  
 
-**Optional: Using Devcontainer**  
-**Optional: Using Devcontainer**  
-1. Install [VSCode](https://code.visualstudio.com/) and the **Remote - Containers** extension.  
-2. Open the `ros-mcp-server` repository in VSCode.  
-3. When prompted, **reopen in container**.  
-   - The container includes ROS2 Humble, Python 3.10+, `ruff`, `pre-commit`, `uv`, and `git`.  
-   - The repository is mounted at `/root/workspace`.  
-   - **Note for GUI apps** (`turtlesim`, `rviz`, `Gazebo`): 
-     Ensure the container can access your host X server by running the following command once on the host:
-     ```bash
-     sudo apt install x11-xserver-utils   # if xhost is not installed
-     xhost +local:vscode                  # allow container user access
-     ```
-4. Initialize pre-commit hooks (optional but recommended):
-   ```bash
-   pre-commit install
-   pre-commit run --all-files
-5. Check Python code formatting with `ruff`
-   ```bash
-   ruff check .
-   ruff format --check .
 ---
 
 ## 📚 More Examples & Tutorials  

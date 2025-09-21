@@ -2,6 +2,7 @@
 
 > ⚠️ **Prerequisite**: You need either ROS installed locally on your machine OR access over the network to a robot/computer with ROS installed. This MCP server connects to ROS systems on a robot, so a running ROS environment is required.
 
+## **Option 1: Manual Installation**
 Installation includes the following steps:
 - Install the MCP server
   - Clone this repository
@@ -10,7 +11,6 @@ Installation includes the following steps:
   - Instal any language model client (We demo with Claude Desktop)
   - Configure the client to run the MCP server and connect automatically on launch.
 - Install and launch Rosbridge
-
 
 Below are detailed instructions for each of these steps. 
 
@@ -317,3 +317,27 @@ What topics and services do you see on the robot?
 </p>
 
 </details>
+
+---
+
+## **Option 2: Using Devcontainer**  
+1. Install [VSCode](https://code.visualstudio.com/) and the **Remote - Containers** extension.  
+2. Open the `ros-mcp-server` repository in VSCode.  
+3. When prompted, **reopen in container**.  
+   - The container includes ROS2 Humble, Python 3.10+, `ruff`, `pre-commit`, `uv`, and `git`.  
+   - The repository is mounted at `/root/workspace`.  
+   - **Note for GUI apps** (`turtlesim`, `rviz`, `Gazebo`): 
+     Ensure the container can access your host X server by running the following command once on the host:
+     ```bash
+     sudo apt install x11-xserver-utils   # if xhost is not installed
+     xhost +local:vscode                  # allow container user access
+     ```
+4. You can now run turtle sim following **Step-4** from the above given manual installation.
+5. Initialize pre-commit hooks (optional but recommended):
+   ```bash
+   pre-commit install
+   pre-commit run --all-files
+5. Check Python code formatting with `ruff`
+   ```bash
+   ruff check .
+   ruff format --check .
