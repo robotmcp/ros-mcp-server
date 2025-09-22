@@ -1,8 +1,10 @@
-import io
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional, Union
+
+import io
+
+from typing import Optional, Union, List, Dict, Any
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
@@ -14,22 +16,14 @@ from utils.websocket_manager import WebSocketManager, parse_image, parse_json
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
-ROSBRIDGE_PORT = (
-    9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
-)
+ROSBRIDGE_PORT = 9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
 
 # MCP transport settings
-MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower()  # Default is stdio.
+MCP_TRANSPORT = os.getenv("MCP_TRANSPORT", "stdio").lower() # Default is stdio. 
 
 # MCP connection settings (streamable-http)
-MCP_HOST = os.getenv(
-    "MCP_HOST", "127.0.0.1"
-)  # Default is localhost. Replace with the address of your remote MCP server.
-
-# MCP port settings (default=9000)
-MCP_PORT = int(
-    os.getenv("MCP_PORT", "9000")
-)  # Default is 9000. Replace with the port of your remote MCP server.
+MCP_HOST = os.getenv("MCP_HOST", "127.0.0.1") # Default is localhost. Replace with the address of your remote MCP server.
+MCP_PORT = int(os.getenv("MCP_PORT", "9000")) # Default is 9000. Replace with the port of your remote MCP server.
 
 # Initialize MCP server and WebSocket manager
 mcp = FastMCP("ros-mcp-server")
@@ -47,21 +41,15 @@ def get_robot_config(name: str) -> dict:
         dict: The robot configuration.
     """
     robot_config = parse_robot_config(name)
-
+    
     if len(robot_config) > 1:
-        return {
-            "error": f"Multiple configurations found for robot '{name}'. Please specify a more precise name."
-        }
+        return {"error": f"Multiple configurations found for robot '{name}'. Please specify a more precise name."}
     elif not robot_config:
-        return {
-            "error": f"No configuration found for robot '{name}'. Please check the name and try again. Or you can set the IP/port manually using the 'connect_to_robot' tool."
-        }
+        return {"error": f"No configuration found for robot '{name}'. Please check the name and try again. Or you can set the IP/port manually using the 'connect_to_robot' tool."}
     return {"robot_config": robot_config}
 
 
-@mcp.tool(
-    description=("List all available robot specifications that can be used with get_robot_config.")
-)
+@mcp.tool(description=("List all available robot specifications that can be used with get_robot_config."))
 def list_verified_robot_specifications() -> dict:
     """
     Get a list of all available robot specification files.
@@ -72,11 +60,7 @@ def list_verified_robot_specifications() -> dict:
     return get_robot_specifications()
 
 
-@mcp.tool(
-    description=(
-        "After getting the robot config, connect to the robot by setting the IP/port and testing connectivity."
-    )
-)
+@mcp.tool(description=("After getting the robot config, connect to the robot by setting the IP/port and testing connectivity."))
 def connect_to_robot(
     ip: Optional[str] = None,
     port: Optional[Union[int, str]] = None,
@@ -450,9 +434,7 @@ def subscribe_once(
                 unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
                 ws_manager.send(unsubscribe_msg)
                 if "Image" in msg_type:
-                    return {
-                        "message": "Image received successfully and saved in the MCP server. Run the 'analyze_image' tool to analyze it"
-                    }
+                    return {"message": "Image received successfully and saved in the MCP server. Run the 'analyze_image' tool to analyze it"}
                 else:
                     return {"msg": msg_data.get("msg", {})}
 
@@ -460,6 +442,41 @@ def subscribe_once(
         unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
         ws_manager.send(unsubscribe_msg)
         return {"error": "Timeout waiting for message from topic"}
+    
+
+
+    # =========================================================================================
+# Image encoding helper
+# =========================================================================================
+def _encode_image_to_imagecontent(image: PILImage.Image):
+    """
+    Encode a PIL Image to MCP-compatible ImageContent so Claude can analyze it.
+    """
+    buffer = io.BytesIO()
+    image.save(buffer, format="JPEG")
+    img_bytes = buffer.getvalue()
+    img_obj = MCPImage(data=img_bytes, format="jpeg")
+    return img_obj.to_image_content()
+
+
+# =========================================================================================
+# Vision tools
+# =========================================================================================
+@mcp.tool(description="Analyze the previously received image saved at ./camera/received_image.jpeg")
+def analyze_previously_received_image() -> dict:
+    path = "./camera/received_image.jpeg"
+    if not os.path.exists(path):
+        return {"success": False, "error": "No image found at ./camera/received_image.jpeg"}
+    img = PILImage.open(path)
+    return {
+        "success": True,
+        "image_content": _encode_image_to_imagecontent(img),
+        "vision_instruction": (
+            "Please analyze the provided image and describe the environment, "
+            "people, PPE, objects, and any visible flags."
+        ),
+    }
+
 
 
 @mcp.tool(
@@ -648,10 +665,7 @@ def subscribe_for_duration(
     )
 )
 def publish_for_durations(
-    topic: str = "",
-    msg_type: str = "",
-    messages: List[Dict[str, Any]] = [],
-    durations: List[float] = [],
+    topic: str = "", msg_type: str = "", messages: List[Dict[str, Any]] = [], durations: List[float] = []
 ) -> dict:
     """
     Publish a sequence of messages to a given ROS topic with delays in between.
@@ -1155,10 +1169,8 @@ def ping_robot(ip: str, port: int, ping_timeout: float = 2.0, port_timeout: floa
 ##
 ## ############################################################################################## ##
 @mcp.tool(
-    description=(
-        "First, subscribe to an Image topic using 'subscribe_once' to save an image.\n"
-        "Then, use this tool to analyze the saved image\n"
-    )
+    description=("First, subscribe to an Image topic using 'subscribe_once' to save an image.\n"
+                 "Then, use this tool to analyze the saved image\n")
 )
 def analyze_previously_received_image():
     """
@@ -1191,9 +1203,8 @@ def _encode_image_to_imagecontent(image):
     img_obj = Image(data=img_bytes, format="jpeg")
     return img_obj.to_image_content()
 
+if __name__ == "__main__":
 
-def main():
-    """Main entry point for the MCP server console script."""
     if MCP_TRANSPORT == "stdio":
         # stdio doesn't need host/port
         mcp.run(transport="stdio")
@@ -1205,15 +1216,12 @@ def main():
 
     elif MCP_TRANSPORT == "sse":
         print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}")
-        print("Currently unsupported. Use 'stdio', 'http', or 'streamable-http'.")
+        print("Currently unsupported. "
+              "Use 'stdio', 'http', or 'streamable-http'.")
         mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
-
+    
     else:
         raise ValueError(
             f"Unsupported MCP_TRANSPORT={MCP_TRANSPORT!r}. "
             "Use 'stdio', 'http', or 'streamable-http'."
         )
-
-
-if __name__ == "__main__":
-    main()

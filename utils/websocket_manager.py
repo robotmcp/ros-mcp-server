@@ -32,15 +32,9 @@ def parse_json(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
 
 def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
     """
-    Decode a image message (json with base64 data) and save as PNG.
-
-    Args:
-        raw: JSON string, bytes, or None
-
-    Returns:
-        Parsed dict if successful, None if raw is None, parsing fails, or result is not a dict
+    Decode an image message (json with base64 data) and save as JPEG.
+    Supports both sensor_msgs/Image and sensor_msgs/CompressedImage.
     """
-
     if raw is None:
         return None
 
@@ -51,18 +45,32 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
         print("[Image] Invalid JSON or missing 'msg' field.")
         return None
 
-    height, width, encoding = msg.get("height"), msg.get("width"), msg.get("encoding")
     data_b64 = msg.get("data")
-
-    if not all([height, width, encoding, data_b64]):
-        print("[Image] Missing required fields in message.")
+    if not data_b64:
+        print("[Image] Missing 'data' field in message.")
         return None
 
-    # Decode base64 to numpy array
+    # ✅ Ensure output directory exists
+    os.makedirs("./camera", exist_ok=True)
+
+    # Case 1: CompressedImage (already JPEG/PNG encoded)
+    if "format" in msg and msg["format"].lower() in ["jpeg", "jpg", "png"]:
+        image_bytes = base64.b64decode(data_b64)
+        path = "./camera/received_image.jpeg"
+        with open(path, "wb") as f:
+            f.write(image_bytes)
+        print(f"[Image] Saved CompressedImage to {path}")
+        return result if isinstance(result, dict) else None
+
+    # Case 2: Raw Image (rgb8, bgr8, mono8)
+    height, width, encoding = msg.get("height"), msg.get("width"), msg.get("encoding")
+    if not all([height, width, encoding]):
+        print("[Image] Missing required fields for raw image.")
+        return None
+
     image_bytes = base64.b64decode(data_b64)
     img_np = np.frombuffer(image_bytes, dtype=np.uint8)
 
-    # Encoding handlers
     try:
         if encoding == "rgb8":
             img_cv = img_np.reshape((height, width, 3))
@@ -78,16 +86,13 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
         print(f"[Image] Reshape error: {e}")
         return None
 
-    if not os.path.exists("./camera"):
-        os.makedirs("./camera")
-
-    success = cv2.imwrite(
-        "./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95]
-    )  # Save as JPEG with quality 95
+    success = cv2.imwrite("./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
     if success:
+        print("[Image] Saved raw Image to ./camera/received_image.jpeg")
         return result if isinstance(result, dict) else None
     else:
         return None
+
 
 
 class WebSocketManager:
