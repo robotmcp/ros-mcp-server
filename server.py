@@ -367,7 +367,7 @@ def get_subscribers_for_topic(topic: str) -> dict:
 def inspect_all_topics() -> dict:
     """
     Get comprehensive information about all ROS topics including publishers, subscribers, and message types.
-    
+
     Returns:
         dict: Contains detailed information about all topics including:
             - Topic names and message types
@@ -399,7 +399,7 @@ def inspect_all_topics() -> dict:
         for i, topic in enumerate(topics):
             # Get topic type
             topic_type = types[i] if i < len(types) else "unknown"
-            
+
             # Get publishers for this topic
             publishers_message = {
                 "op": "call_service",
@@ -1096,21 +1096,27 @@ def inspect_all_services() -> dict:
             elif type_response and "error" in type_response:
                 service_errors.append(f"Service {service}: {type_response['error']}")
 
-            # Get service providers
-            providers_message = {
+            # Get service provider (using service_node instead of service_providers)
+            provider_message = {
                 "op": "call_service",
-                "service": "/rosapi/service_providers",
-                "type": "rosapi/ServiceProviders",
+                "service": "/rosapi/service_node",
+                "type": "rosapi/ServiceNode",
                 "args": {"service": service},
-                "id": f"get_providers_{service.replace('/', '_')}",
+                "id": f"get_provider_{service.replace('/', '_')}",
             }
 
-            providers_response = ws_manager.request(providers_message)
+            provider_response = ws_manager.request(provider_message)
             providers = []
-            if providers_response and "values" in providers_response:
-                providers = providers_response["values"].get("providers", [])
-            elif providers_response and "error" in providers_response:
-                service_errors.append(f"Service {service} providers: {providers_response['error']}")
+            if provider_response and "values" in provider_response:
+                node = provider_response["values"].get("node", "")
+                if node:
+                    providers = [node]
+            elif provider_response and "result" in provider_response:
+                node = provider_response["result"].get("node", "")
+                if node:
+                    providers = [node]
+            elif provider_response and "error" in provider_response:
+                service_errors.append(f"Service {service} provider: {provider_response['error']}")
 
             service_details[service] = {
                 "type": service_type,
