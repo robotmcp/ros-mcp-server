@@ -1232,6 +1232,86 @@ def get_node_details(node: str) -> dict:
     return result
 
 
+@mcp.tool(
+    description=(
+        "Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.\n"
+        "Example:\n"
+        "inspect_all_nodes()"
+    )
+)
+def inspect_all_nodes() -> dict:
+    """
+    Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.
+    
+    Returns:
+        dict: Contains detailed information about all nodes including:
+            - Node names and details
+            - Publishers for each node
+            - Subscribers for each node
+            - Services provided by each node
+            - Connection counts and statistics
+    """
+    # First get all nodes
+    nodes_message = {
+        "op": "call_service",
+        "service": "/rosapi/nodes",
+        "type": "rosapi/Nodes",
+        "args": {},
+        "id": "inspect_all_nodes_request_1",
+    }
+
+    with ws_manager:
+        nodes_response = ws_manager.request(nodes_message)
+
+        if not nodes_response or "values" not in nodes_response:
+            return {"error": "Failed to get nodes list"}
+
+        nodes = nodes_response["values"].get("nodes", [])
+        node_details = {}
+
+        # Get details for each node
+        node_errors = []
+        for node in nodes:
+            # Get node details (publishers, subscribers, services)
+            node_details_message = {
+                "op": "call_service",
+                "service": "/rosapi/node_details",
+                "type": "rosapi/NodeDetails",
+                "args": {"node": node},
+                "id": f"get_node_details_{node.replace('/', '_')}",
+            }
+
+            node_details_response = ws_manager.request(node_details_message)
+            
+            if node_details_response and "values" in node_details_response:
+                values = node_details_response["values"]
+                # Extract publishers, subscribers, and services from the response
+                # Note: rosapi uses "publishing" and "subscribing" field names
+                publishers = values.get("publishing", [])
+                subscribers = values.get("subscribing", [])
+                services = values.get("services", [])
+
+                node_details[node] = {
+                    "publishers": publishers,
+                    "subscribers": subscribers,
+                    "services": services,
+                    "publisher_count": len(publishers),
+                    "subscriber_count": len(subscribers),
+                    "service_count": len(services),
+                }
+            elif node_details_response and "result" in node_details_response and not node_details_response["result"]:
+                error_msg = node_details_response.get("values", {}).get("message", "Service call failed")
+                node_errors.append(f"Node {node}: {error_msg}")
+            else:
+                node_errors.append(f"Node {node}: Failed to get node details")
+
+        return {
+            "total_nodes": len(nodes),
+            "nodes": node_details,
+            "node_errors": node_errors,  # Include any errors encountered during inspection
+        }
+
+
 ## ############################################################################################## ##
 ##
 ##                       NETWORK DIAGNOSTICS
