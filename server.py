@@ -1160,19 +1160,22 @@ def ping_robot(ip: str, port: int, ping_timeout: float = 2.0, port_timeout: floa
         "Then, use this tool to analyze the saved image\n"
     )
 )
-def analyze_previously_received_image():
+def analyze_previously_received_image() -> dict:
     """
-    Analyze the received image.
-
-    This tool loads the previously saved image from './camera/received_image.jpeg'
-    (which must have been created by 'parse_image' or 'subscribe_once'), and converts
-    it into an MCP-compatible ImageContent format so that the LLM can interpret it.
+    Analyze the previously received image saved at ./camera/received_image.jpeg
     """
     path = "./camera/received_image.jpeg"
     if not os.path.exists(path):
-        return {"error": "No previously received image found at ./camera/received_image.jpeg"}
-    image = PILImage.open(path)
-    return _encode_image_to_imagecontent(image)
+        return {"success": False, "error": "No image found at ./camera/received_image.jpeg"}
+    img = PILImage.open(path)
+    return {
+        "success": True,
+        "image_content": _encode_image_to_imagecontent(img),
+        "vision_instruction": (
+            "Please analyze the provided image and describe the environment, "
+            "people, PPE, objects, and any visible flags."
+        ),
+    }
 
 
 def _encode_image_to_imagecontent(image):
