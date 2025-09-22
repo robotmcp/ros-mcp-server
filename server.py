@@ -1563,36 +1563,42 @@ def get_parameters() -> dict:
 
 @mcp.tool(
     description=(
-        "Get detailed information about ROS parameters including types and values.\n"
+        "Get comprehensive information about all ROS parameters including values and metadata.\n"
         "Example:\n"
-        "inspect_parameters('/turtlesim:background_b,/turtlesim:background_g')"
+        "inspect_all_parameters()"
     )
 )
-def inspect_parameters(names: str) -> dict:
+def inspect_all_parameters() -> dict:
     """
-    Get detailed information about ROS parameters including types and values.
-
-    Args:
-        names (str): Comma-separated parameter names to inspect
+    Get comprehensive information about all ROS parameters including values and metadata.
 
     Returns:
-        dict: Contains detailed parameter information, or error message if failed.
+        dict: Contains detailed information about all parameters,
+            including parameter names, values, and metadata.
     """
-    if not names or not names.strip():
-        return {"error": "At least one parameter name must be provided"}
+    # First get all parameters
+    parameters_message = {
+        "op": "call_service",
+        "service": "/rosapi/get_param_names",
+        "type": "rosapi/GetParamNames",
+        "args": {},
+        "id": "inspect_all_parameters_request_1",
+    }
 
-    # Parse comma-separated parameter names
-    param_names = [name.strip() for name in names.split(",") if name.strip()]
-    if not param_names:
-        return {"error": "No valid parameter names provided"}
+    with ws_manager:
+        parameters_response = ws_manager.request(parameters_message)
 
-    result = {"total_parameters": len(param_names), "parameters": {}, "parameter_errors": []}
+        if not parameters_response or "values" not in parameters_response:
+            return {"error": "Failed to get parameters list"}
 
-    # Get details for each parameter using the working get_param function
-    for param_name in param_names:
-        try:
-            # Use the working get_param function logic
-            message = {
+        parameters = parameters_response["values"].get("names", [])
+        parameter_details = {}
+
+        # Get details for each parameter
+        parameter_errors = []
+        for param_name in parameters:
+            # Get parameter value
+            value_message = {
                 "op": "call_service",
                 "service": "/rosapi/get_param",
                 "type": "rosapi/GetParam",
@@ -1600,32 +1606,51 @@ def inspect_parameters(names: str) -> dict:
                 "id": f"get_param_{param_name.replace('/', '_').replace(':', '_')}",
             }
 
-            with ws_manager:
-                response = ws_manager.request(message)
+            value_response = ws_manager.request(value_message)
+            param_value = ""
+            param_successful = False
+            if value_response and "values" in value_response:
+                value_data = value_response["values"]
+                param_value = value_data.get("value", "")
+                param_successful = value_data.get("successful", False)
+            elif value_response and "result" in value_response and value_response["result"]:
+                value_data = value_response["result"]
+                param_value = value_data.get("value", "")
+                param_successful = value_data.get("successful", False)
+            elif value_response and "error" in value_response:
+                parameter_errors.append(f"Parameter {param_name}: {value_response['error']}")
 
-            if response and "values" in response:
-                result_data = response["values"]
-                param_value = result_data.get("value", "")
-                param_successful = result_data.get("successful", False)
-            elif response and "result" in response and response["result"]:
-                result_data = response["result"]
-                param_value = result_data.get("value", "")
-                param_successful = result_data.get("successful", False)
-            else:
-                result["parameter_errors"].append(f"Parameter {param_name}: Failed to get value")
-                continue
+            # Get parameter type (using describe_parameters service)
+            type_message = {
+                "op": "call_service",
+                "service": "/rosapi/describe_parameters",
+                "type": "rcl_interfaces/DescribeParameters",
+                "args": {"names": [param_name]},
+                "id": f"describe_param_{param_name.replace('/', '_').replace(':', '_')}",
+            }
 
-            result["parameters"][param_name] = {
+            type_response = ws_manager.request(type_message)
+            param_type = "unknown"
+            if type_response and "result" in type_response and type_response["result"]:
+                result_data = type_response["result"]
+                if isinstance(result_data, dict):
+                    descriptors = result_data.get("descriptors", [])
+                    if descriptors and len(descriptors) > 0:
+                        param_type = descriptors[0].get("type", "unknown")
+            elif type_response and "error" in type_response:
+                parameter_errors.append(f"Parameter {param_name} type: {type_response['error']}")
+
+            parameter_details[param_name] = {
                 "value": param_value,
-                "type": "unknown",  # Type detection disabled for now
+                "type": param_type,
                 "exists": param_successful,
             }
 
-        except Exception as e:
-            result["parameter_errors"].append(f"Parameter {param_name}: Exception - {str(e)}")
-            continue
-
-    return result
+        return {
+            "total_parameters": len(parameters),
+            "parameters": parameter_details,
+            "parameter_errors": parameter_errors,  # Include any errors encountered during inspection
+        }
 
 
 @mcp.tool(
