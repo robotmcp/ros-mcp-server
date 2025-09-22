@@ -359,6 +359,96 @@ def get_subscribers_for_topic(topic: str) -> dict:
 
 @mcp.tool(
     description=(
+        "Get comprehensive information about all ROS topics including publishers, subscribers, and message types.\n"
+        "Example:\n"
+        "inspect_all_topics()"
+    )
+)
+def inspect_all_topics() -> dict:
+    """
+    Get comprehensive information about all ROS topics including publishers, subscribers, and message types.
+    
+    Returns:
+        dict: Contains detailed information about all topics including:
+            - Topic names and message types
+            - Publishers for each topic
+            - Subscribers for each topic
+            - Connection counts and statistics
+    """
+    # First get all topics
+    topics_message = {
+        "op": "call_service",
+        "service": "/rosapi/topics",
+        "type": "rosapi/Topics",
+        "args": {},
+        "id": "inspect_all_topics_request_1",
+    }
+
+    with ws_manager:
+        topics_response = ws_manager.request(topics_message)
+
+        if not topics_response or "values" not in topics_response:
+            return {"error": "Failed to get topics list"}
+
+        topics = topics_response["values"].get("topics", [])
+        types = topics_response["values"].get("types", [])
+        topic_details = {}
+
+        # Get details for each topic
+        topic_errors = []
+        for i, topic in enumerate(topics):
+            # Get topic type
+            topic_type = types[i] if i < len(types) else "unknown"
+            
+            # Get publishers for this topic
+            publishers_message = {
+                "op": "call_service",
+                "service": "/rosapi/publishers",
+                "type": "rosapi/Publishers",
+                "args": {"topic": topic},
+                "id": f"get_publishers_{topic.replace('/', '_')}",
+            }
+
+            publishers_response = ws_manager.request(publishers_message)
+            publishers = []
+            if publishers_response and "values" in publishers_response:
+                publishers = publishers_response["values"].get("publishers", [])
+            elif publishers_response and "error" in publishers_response:
+                topic_errors.append(f"Topic {topic} publishers: {publishers_response['error']}")
+
+            # Get subscribers for this topic
+            subscribers_message = {
+                "op": "call_service",
+                "service": "/rosapi/subscribers",
+                "type": "rosapi/Subscribers",
+                "args": {"topic": topic},
+                "id": f"get_subscribers_{topic.replace('/', '_')}",
+            }
+
+            subscribers_response = ws_manager.request(subscribers_message)
+            subscribers = []
+            if subscribers_response and "values" in subscribers_response:
+                subscribers = subscribers_response["values"].get("subscribers", [])
+            elif subscribers_response and "error" in subscribers_response:
+                topic_errors.append(f"Topic {topic} subscribers: {subscribers_response['error']}")
+
+            topic_details[topic] = {
+                "type": topic_type,
+                "publishers": publishers,
+                "subscribers": subscribers,
+                "publisher_count": len(publishers),
+                "subscriber_count": len(subscribers),
+            }
+
+        return {
+            "total_topics": len(topics),
+            "topics": topic_details,
+            "topic_errors": topic_errors,  # Include any errors encountered during inspection
+        }
+
+
+@mcp.tool(
+    description=(
         "Subscribe to a ROS topic and return the first message received.\n"
         "Example:\n"
         "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
