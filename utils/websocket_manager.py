@@ -34,6 +34,12 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
     """
     Decode an image message (json with base64 data) and save as JPEG.
     Supports both sensor_msgs/Image and sensor_msgs/CompressedImage.
+
+    Args:
+        raw: JSON string, bytes, or None
+
+    Returns:
+        Parsed dict if successful, None otherwise.
     """
     if raw is None:
         return None
@@ -86,13 +92,13 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
         print(f"[Image] Reshape error: {e}")
         return None
 
+    # Save as JPEG with quality 95
     success = cv2.imwrite("./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
     if success:
         print("[Image] Saved raw Image to ./camera/received_image.jpeg")
         return result if isinstance(result, dict) else None
     else:
         return None
-
 
 
 class WebSocketManager:
