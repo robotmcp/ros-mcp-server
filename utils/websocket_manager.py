@@ -74,9 +74,11 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
         print("[Image] Missing required fields for raw image.")
         return None
 
+    # Decode base64 to numpy array
     image_bytes = base64.b64decode(data_b64)
     img_np = np.frombuffer(image_bytes, dtype=np.uint8)
 
+    # Encoding handlers
     try:
         if encoding == "rgb8":
             img_cv = img_np.reshape((height, width, 3))
@@ -92,6 +94,7 @@ def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
         print(f"[Image] Reshape error: {e}")
         return None
 
+    # Save as JPEG with quality 95
     success = cv2.imwrite("./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
     if success:
         print("[Image] Saved raw Image to ./camera/received_image.jpeg")
