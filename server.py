@@ -1170,6 +1170,7 @@ def _encode_image_to_imagecontent(image):
     img_obj = Image(data=img_bytes, format="jpeg")
     return img_obj.to_image_content()
 
+
 @mcp.tool(
     description=(
         "First, subscribe to an Image topic using 'subscribe_once' to save an image.\n"
@@ -1179,7 +1180,7 @@ def _encode_image_to_imagecontent(image):
 def analyze_previously_received_image():
     """
     Analyze the previously received image saved at ./camera/received_image.jpeg
-    
+
     This tool loads the previously saved image from './camera/received_image.jpeg'
     (which must have been created by 'parse_image' or 'subscribe_once'), and converts
     it into an MCP-compatible ImageContent format so that the LLM can interpret it.
@@ -1189,9 +1190,6 @@ def analyze_previously_received_image():
         return {"error": "No image found at ./camera/received_image.jpeg"}
     img = PILImage.open(path)
     return _encode_image_to_imagecontent(img)
-
-
-
 
 
 def main():
