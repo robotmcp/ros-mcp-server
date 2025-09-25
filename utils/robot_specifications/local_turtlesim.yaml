@@ -1,0 +1,15 @@
+# Robot configuration template
+# Replace this text with specific instructions and information about your robot.
+# Include details on how to control it, important topics, and any special commands.
+# For example:
+# - Control commands (e.g., movement, actions)
+# - Sensor topics (e.g., camera, lidar)
+# - Safety guidelines
+# - Any custom messages or services used by the robot
+
+name: local_turtlesim
+ip:  127.0.0.1
+port: 9090
+alias: turtlesim # Optional alias for easier reference
+type: sim # or 'real' for simulation
+prompts: The local_turtlesim is a generic local turtlesim robot.

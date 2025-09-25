@@ -3,12 +3,17 @@ import io
 import json
 import os
 import time
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 
 from fastmcp import FastMCP
 from fastmcp.utilities.types import Image
 from PIL import Image as PILImage
 
+# Import tools
+from tools.ros_actions import register_action_tools
+from tools.ros_services import register_service_tools
+
+# Import utils
 from utils.config_utils import get_robot_specifications, parse_robot_config
 from utils.network_utils import ping_ip_and_port
 from utils.websocket_manager import WebSocketManager, parse_image, parse_json
@@ -33,6 +38,11 @@ mcp = FastMCP("ros-mcp-server")
 ws_manager = WebSocketManager(
     ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0
 )  # Increased default timeout for ROS operations
+
+
+# Register all ROS tools
+register_service_tools(mcp, ws_manager)
+register_action_tools(mcp, ws_manager)
 
 
 @mcp.tool(description=("Get robot configuration from YAML file."))
@@ -75,8 +85,8 @@ def list_verified_robot_specifications() -> dict:
     )
 )
 def connect_to_robot(
-    ip: Optional[str] = None,
-    port: Optional[Union[int, str]] = None,
+    ip: str = ROSBRIDGE_IP,
+    port: int = ROSBRIDGE_PORT,
     ping_timeout: float = 2.0,
     port_timeout: float = 2.0,
 ) -> dict:
@@ -84,7 +94,7 @@ def connect_to_robot(
     Connect to a robot by setting the IP and port for the WebSocket connection, then testing connectivity.
 
     Args:
-        ip (Optional[str]): The IP address of the rosbridge server. Defaults to "127.0.0.1" (localhost).
+        ip (Optional[str]): The IP address of the rosbridge server. Defaults is localhost.
         port (Optional[int]): The port number of the rosbridge server. Defaults to 9090.
         ping_timeout (float): Timeout for ping in seconds. Default = 2.0.
         port_timeout (float): Timeout for port check in seconds. Default = 2.0.
@@ -92,9 +102,10 @@ def connect_to_robot(
     Returns:
         dict: Connection status with ping and port check results.
     """
+
     # Set default values if None
-    actual_ip = ip if ip is not None else "127.0.0.1"
-    actual_port = int(port) if port is not None else 9090
+    actual_ip = str(ip).strip() if ip else "localhost"
+    actual_port = int(port) if port else 9090
 
     # Fix truncated IP addresses (MCP sometimes truncates "127.0.0.1" to "127")
     if actual_ip == "127":

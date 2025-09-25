@@ -47,12 +47,17 @@ def parse_robot_config(name: str, specs_dir: str = "utils/robot_specifications")
         raise ValueError(f"No configuration found for robot '{name}'")
 
     # Check required fields
-    for field in ("type", "prompts"):
+    for field in ("type", "ip", "port", "prompts"):
         if field not in config or config[field] in (None, ""):
             raise ValueError(f"Robot '{name}' is missing required field: {field}")
 
     # Create configuration with robot name as key
-    parsed_config[name] = {"type": config["type"], "prompts": config["prompts"]}
+    parsed_config[name] = {
+        "type": config["type"],
+        "ip": config["ip"],
+        "port": config["port"],
+        "prompts": config["prompts"],
+    }
 
     return parsed_config
 

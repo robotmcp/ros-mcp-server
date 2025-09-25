@@ -1,7 +1,7 @@
 import platform
 import socket
 import subprocess
-from typing import Dict
+from typing import Dict, Optional, Union
 
 
 def ping_ip_and_port(
@@ -110,3 +110,26 @@ def ping_ip_and_port(
         )
 
     return result
+
+
+def normalize_ip(ip: Optional[Union[str, list, int, float]]) -> str:
+    """Return a valid IPv4 string, fallback to localhost if invalid."""
+    if ip is None:
+        return "localhost"
+
+    try:
+        # Handle array form: [127, 0, 0, 1]
+        if isinstance(ip, (list, tuple)):
+            ip_str = ".".join(str(int(x)) for x in ip)
+        # Handle numbers: 127 or 127.0
+        elif isinstance(ip, (int, float)):
+            ip_str = str(ip)
+        else:
+            ip_str = str(ip).strip()
+
+        # Resolve names like "localhost"
+        return socket.gethostbyname(ip_str)
+
+    except Exception:
+        # Anything weird → use localhost
+        return "localhost"
