@@ -332,7 +332,7 @@ What topics and services do you see on the robot?
      sudo apt install x11-xserver-utils   # if xhost is not installed
      xhost +local:vscode                  # allow container user access
      ```
-4. You can now control the Trutlesim robot following **Step-2**, **Step-3.2** and **Step-4** from the above given manual installation.
+4. You can now control the Turtlesim robot following **Step-2**, **Step-3.2** and **Step-4** from the above given manual installation.
 5. Initialize pre-commit hooks (optional but recommended):
    ```bash
    pre-commit install

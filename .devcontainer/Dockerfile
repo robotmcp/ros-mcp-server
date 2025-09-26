@@ -10,6 +10,15 @@ RUN apt-get update && apt-get install -y \
     git \
     build-essential \
     ros-humble-rosbridge-server \
+    # GUI + X11/WSL2 compatibility
+    x11-apps \
+    mesa-utils \
+    libgl1-mesa-glx \
+    libglu1-mesa \
+    libxext6 \
+    libxrender1 \
+    libxrandr2 \
+    libxi6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Ensure pip is accessible as `pip`
@@ -18,7 +27,7 @@ RUN ln -sf /usr/bin/pip3 /usr/bin/pip
 # Initialize rosdep
 RUN rosdep init || true && rosdep update
 
-# Install Ruff globally
+# Install Ruff, pre-commit, uv globally
 RUN pip install --no-cache-dir ruff pre-commit uv
 
 # Add non-root user for VSCode devcontainer
@@ -34,7 +43,7 @@ RUN groupadd --gid $USER_GID $USERNAME \
 # Auto-source ROS2 for all users
 RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
 
-# Set locale (optional)
+# Set locale
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
 

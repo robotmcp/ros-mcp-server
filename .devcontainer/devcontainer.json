@@ -5,19 +5,18 @@
   },
   "workspaceFolder": "/root/workspace",
   "mounts": [
-    "source=${localWorkspaceFolder},target=/root/workspace,type=bind",
-    // Mount Git config
-    "source=${localEnv:HOME}/.gitconfig,target=/root/.gitconfig,type=bind,consistency=cached",
-    // Mount SSH keys
-    "source=${localEnv:HOME}/.ssh,target=/root/.ssh,type=bind,consistency=cached"
+    "source=${localWorkspaceFolder},target=/root/workspace,type=bind"
   ],
   "runArgs": [
-    "--net=host",
-    "--env=DISPLAY",
-    "--env=QT_X11_NO_MITSHM=1",
-    "--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw",
-    "--device=/dev/dri"
+    "--gpus=all",// works on WSL2 (NVIDIA) and Linux
+    "-v", "${env:SSH_AUTH_SOCK}:/ssh-agent",
+    "-e", "SSH_AUTH_SOCK=/ssh-agent"
   ],
+  "containerEnv": {
+    "QT_X11_NO_MITSHM": "1",
+    "DISPLAY": "${localEnv:DISPLAY}",
+    "SSH_AUTH_SOCK": "/ssh-agent"
+  },
   "remoteUser": "root",
   "forwardPorts": [5000],
   "customizations": {
@@ -31,7 +30,5 @@
         "astral-sh.ruff"
       ]
     }
-  },
-  "postStartCommand": "chmod 700 /root/.ssh && chmod 600 /root/.ssh/config /root/.ssh/id_* && chown -R root:root /root/.ssh"
-
+  }
 }
