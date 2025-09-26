@@ -343,22 +343,23 @@ What topics and services do you see on the robot?
    ruff check .
    ruff format --check .
    ```
-   <details>
-    <summary>SSH Agent Setup for Git (click to expand)</summary>
+  <details>
+  <summary>SSH Agent Setup for Git (click to expand)</summary>
 
-    ```bash
-    # Start the SSH agent
-    eval "$(ssh-agent -s)"
+  This should be run on the host side prior to building the devcontainer.
+  ```bash
+  # Start the SSH agent
+  eval "$(ssh-agent -s)"
 
-    # List keys currently loaded
-    ssh-add -l
-    ```
+  # List keys currently loaded
+  ssh-add -l
+  ```
 
-    If it says “The agent has no identities”, you must load your key, for example:
-    ```bash
-    ssh-add ~/.ssh/id_ed25519
-    ssh-add -l   # confirm fingerprint shows up
-    ```
-    </details>
-    
+  If it says “The agent has no identities”, you must load your key, for example:
+  ```bash
+  ssh-add ~/.ssh/id_ed25519
+  ssh-add -l   # confirm fingerprint shows up
+  ```
+  </details>
+  
    **Note:** This setup has been tested and verified on Ubuntu.
