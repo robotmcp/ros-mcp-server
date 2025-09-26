@@ -1,0 +1,33 @@
+{
+  "mcpServers": {
+    "ros-mcp-server-http": {
+      "name": "ROS-MCP Server (http)",
+      "transport": "http",
+      "url": "http://127.0.0.1:9000/mcp"
+    },
+    "ros-mcp-server-stdio-linux": {
+      "name": "ROS-MCP Server (stdio)",
+      "transport": "stdio",
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/home/<YOUR_USER>/ros-mcp-server",
+        "run",
+        "server.py"
+      ]
+    },
+    "ros-mcp-server-stdio-wsl": {
+      "name": "ROS-MCP Server (stdio)",
+      "transport": "stdio",
+      "command": "wsl",
+      "args": [
+        "-d", "Ubuntu",
+        "/home/<YOUR_USER>/.local/bin/uv",
+        "--directory",
+        "/home/<YOUR_USER>/ros-mcp-server",
+        "run",
+        "server.py"
+      ]
+    }
+  }
+}

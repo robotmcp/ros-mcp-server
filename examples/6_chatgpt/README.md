@@ -4,15 +4,25 @@
 
 ### Prepare host machine (MCP Server)
 
-* Installation of ChatGPT Desktop. \[chatgpt.com/download] or Microsoft Store.
+* Installation of ChatGPT Desktop. Download [here](chatgpt.com/download) or Microsoft Store.
 * Installation of WSL (Linux).
 
 ### Prepare target robot (ROS)
 
 * Installation of Ubuntu or WSL (Windows Subsystem for Linux).
-* Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow, this toturial \[https://wiki.ros.org/ROS/Tutorials]
+* Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow, this tutorial \[https://wiki.ros.org/ROS/Tutorials]
 
 # Tutorial
+
+## Quick Start (For Experienced Users)
+
+1. **Install dependencies**: `curl -LsSf https://astral.sh/uv/install.sh | sh` and `ngrok config add-authtoken <YOUR_AUTHTOKEN>`
+2. **Clone repository**: `cd ~ && git clone https://github.com/robotmcp/ros-mcp-server.git && cd ros-mcp-server`
+3. **Start MCP server**: `export MCP_TRANSPORT="streamable-http" && uv run server.py`
+4. **Start ngrok tunnel**: `ngrok http --url=your-domain.ngrok-free.app 9000`
+5. **Configure ChatGPT**: Add connector with URL `https://your-domain.ngrok-free.app/mcp`
+6. **Start ROS**: `ros2 launch rosbridge_server rosbridge_websocket_launch.xml & ros2 run turtlesim turtlesim_node`
+7. **Test**: Ask ChatGPT to "List ROS topics"
 
 ## 1.1 Installation on Host Machine
 
@@ -39,11 +49,11 @@
 	```bash
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 	```
-	or
+	or (not recommended)
 	```bash
 	pip install uv
 	```
-	or
+	or (not recommended)
 	```bash
 	sudo snap install --classic astral-uv
 	```
@@ -116,15 +126,14 @@ export MCP_DOMAIN=abc123-xyz789.ngrok-free.app
 
 *  On your Host Machine, clone the repository and navigate to the ROS-MCP Server folder.
 
-```bash
+```bash 
+cd ~
 git clone https://github.com/robotmcp/ros-mcp-server.git
 cd ros-mcp-server
 ```
 
 
 ## 1.2 Run ROS-MCP Server
-
-
 
 * Run the ROS-MCP using one of the following:
 		
@@ -215,7 +224,7 @@ cd ros-mcp-server
 * Once you launch `ngrok`, verify your public url domain, it should be the same as `MCP_DOMAIN`.
 
 	```bash
-	https://abc123xyz.ngrok-free.app -> http://localhost:9000
+	https://your-domain.ngrok-free.app -> http://localhost:9000
 	```
 
 
@@ -228,8 +237,8 @@ cd ros-mcp-server
 
 	- Name: *ROS-MCP Server*
 	- Description: *An MCP Server to connect with ROS/ROS2*
-	- MCP Server URL: `https://abc123-xyz789.ngrok-free.app/mcp` (don't forget to replace with your domain and add the `\mcp`)
-	- Authention: *No authentication*
+	- MCP Server URL: `https://your-domain.ngrok-free.app/mcp` (don't forget to replace with your domain and add the `/mcp`)
+	- Authentication: *No authentication*
 	- I trust this application
 
 * In ChatGPT, start a new Chat, navigate to `+` > `Developer Mode` > `Add sources` > Activate `ROS-MCP Server`
@@ -249,10 +258,136 @@ or
 launch_ros.sh
 ```
 
-## Test Host Machine
+## 1.6 Test Your Setup
+
+Once everything is configured, test your connection:
+
+1. **Start a new chat in ChatGPT Desktop**
+2. **Activate the ROS-MCP Server** in Developer Mode
+3. **Try a simple ROS command** like:
+   - "List all available ROS topics"
+   - "Show me the current ROS node information"
+   - "What robots are available in the specifications?"
+
+4. **Verify the connection** - you should see ROS-related responses from the MCP server
+
+## 2. Troubleshooting
+
+### Common Issues
+
+**MCP Server not connecting:**
+- Verify the server is running: Check if `uv run server.py` is active
+- Check if ngrok tunnel is working: Visit your ngrok URL in browser
+- Ensure the server is accessible at `http://127.0.0.1:9000/mcp`
+
+**ROS Bridge connection failed:**
+- Make sure ROS is running: `ros2 node list`
+- Verify rosbridge is active: `ros2 launch rosbridge_server rosbridge_websocket_launch.xml`
+- Check if port 9090 is available
+
+**Ngrok tunnel issues:**
+- Verify your authtoken is set: `ngrok config check`
+- Check if your domain is active: Visit ngrok dashboard at `http://127.0.0.1:4040/status`
+- Ensure port 9000 is not blocked by firewall
+
+**ChatGPT connector not working:**
+- Verify the MCP Server URL includes `/mcp` at the end
+- Check if "I trust this application" is checked
+- Restart ChatGPT Desktop after adding the connector
+
+### Debug Commands
+
+```bash
+# Test server locally
+curl http://127.0.0.1:9000/mcp
+
+# Test ngrok tunnel
+curl https://your-domain.ngrok-free.app/mcp
+
+# Test ROS installation
+wsl -- ros2 node list
+
+# Test rosbridge
+wsl -- ros2 topic list
+
+# Check ngrok status
+ngrok api tunnels list
+```
+
+## 3. Usage Examples
+
+Once connected, you can use natural language to interact with your ROS system:
+
+- **"Move the turtle forward"** - Controls turtlesim
+- **"What topics are currently publishing?"** - Lists active topics
+- **"Show me the robot specifications"** - Displays available robot configs
+- **"Connect to robot at IP 192.168.1.100"** - Connects to remote robot
+- **"Take a picture with the camera"** - Captures camera data
+- **"Publish a velocity command"** - Sends movement commands
+
+## 4. Advanced Configuration
+
+### Environment Variables
+
+You can customize the MCP server behavior with these environment variables:
+
+```bash
+# ROS Bridge settings
+export ROSBRIDGE_IP="127.0.0.1"  # Default: localhost
+export ROSBRIDGE_PORT="9090"     # Default: 9090
+
+# MCP Transport settings
+export MCP_TRANSPORT="streamable-http"  # For ChatGPT: streamable-http
+export MCP_HOST="127.0.0.1"             # For HTTP transport
+export MCP_PORT="9000"                  # For HTTP transport
+
+# Ngrok settings
+export MCP_DOMAIN="your-domain.ngrok-free.app"  # Your ngrok domain
+```
+
+## 5. FAQ
+
+**Q: Do I need ngrok for local testing?**
+A: For ChatGPT Desktop, yes. ChatGPT requires a public URL to connect to MCP servers.
+
+**Q: Can I use a different tunneling service?**
+A: Yes, you can use any tunneling service that provides HTTPS URLs, but ngrok is recommended.
+
+**Q: Is the connection secure?**
+A: The connection uses HTTPS through ngrok, but for production use, consider additional security measures.
+
+**Q: Can I run multiple MCP servers?**
+A: Yes, you can configure multiple servers, but each needs its own ngrok tunnel and port.
+
+**Q: What if my ngrok domain changes?**
+A: You'll need to update the MCP Server URL in ChatGPT Desktop settings.
+
+**Q: Can I use this without WSL?**
+A: The current setup requires WSL for ROS compatibility on Windows. Linux and macOS users can run directly.
+
+## 6. Tested Configurations
+
+### Host Machine
 * Windows 11
 * WSL with Ubuntu 22.04
- 
-## Test Target Machine
+* ChatGPT Desktop
+* ngrok (free/paid)
+
+### Target Machine
 * WSL with Ubuntu 22.04
 * ROS 2 Jazzy
+* rosbridge_server
+
+## 7. Support and Contributing
+
+### Getting Help
+- **Issues**: Report bugs and request features on [GitHub Issues](https://github.com/robotmcp/ros-mcp-server/issues)
+- **Documentation**: Check the main [README.md](../../README.md) for additional information
+- **Community**: Join discussions in the project's GitHub Discussions
+
+### Contributing
+We welcome contributions! Please see our [Contributing Guide](../../docs/contributing.md) for details on:
+- Setting up a development environment
+- Code style guidelines
+- Submitting pull requests
+- Testing procedures

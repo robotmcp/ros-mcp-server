@@ -10,8 +10,8 @@ NC='\033[0m'
 echo -e "${BLUE}Starting ROS 2 environment...${NC}"
 
 # 0. Source ROS 2 environment
-echo -e "${GREEN}[rosjazzy]${NC} Source ROS 2 Jazzy (change according to your distro)..."
-source /opt/ros/jazzy/setup.bash
+echo -e "${GREEN}[ros${ROS_DISTRO}]${NC} Source ROS 2 ${ROS_DISTRO} ..."
+source /opt/ros/${ROS_DISTRO}/setup.bash
 
 # 1. Check if rosbridge is already running
 if pgrep -f rosbridge_websocket > /dev/null; then

@@ -100,7 +100,7 @@ After connecting via SSH, the following commands are executed on the user PC.
             
     ```bash
     cd /<ABSOLUTE_PATH>/ros-mcp-server
-    scp ./examples/limo/scripts \
+    scp ./examples/3_limo_mobile_robot/real_robot/scripts \
         <ROBOT_NAME>@<LIMO_IP>:~/catkin_ws/src/limo_base
     ssh <ROBOT_NAME>@<LIMO_IP> \
         "chmod +x ~/catkin_ws/src/limo_base/scripts/cmd_vel_repeat.py"
@@ -110,9 +110,9 @@ After connecting via SSH, the following commands are executed on the user PC.
             
     ```bash
     cd /<ABSOLUTE_PATH>/ros-mcp-server
-    scp ./examples/limo/launch/limo_base.launch \
+    scp /examples/3_limo_mobile_robot/real_robot/launch/limo_base.launch \
         <ROBOT_NAME>@<LIMO_IP>:~/catkin_ws/src/limo_base/launch/
-    scp ./examples/limo/launch/limo/limo_start.launch \
+    scp ./examples/3_limo_mobile_robot/real_robot/launch/limo_start.launch \
         <ROBOT_NAME>@<LIMO_IP>:~/catkin_ws/src/limo_bringup/launch/
     ```
             
