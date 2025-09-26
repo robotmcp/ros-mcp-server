@@ -12,6 +12,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rosbridge-server \
     # GUI + X11/WSL2 compatibility
     x11-apps \
+    libx11-xcb1 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+    libxcb-randr0 libxcb-render-util0 libxcb-xinerama0 \
     mesa-utils \
     libgl1-mesa-glx \
     libglu1-mesa \
@@ -46,6 +48,12 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
 # Set locale
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
+
+# Ensure Qt apps can run
+ENV QT_X11_NO_MITSHM=1
+ENV QT_QPA_PLATFORM=xcb
+ENV LIBGL_ALWAYS_SOFTWARE=1
+ENV QT_XCB_GL_INTEGRATION=none
 
 # Default workspace
 WORKDIR /root/workspace

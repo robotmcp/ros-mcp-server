@@ -328,10 +328,27 @@ What topics and services do you see on the robot?
    - The repository is mounted at `/root/workspace`.  
    - **Note for GUI apps** (`turtlesim`, `rviz`, `Gazebo`): 
      Ensure the container can access your host X server by running the following command once on the host:
+
+     <details>
+     <summary> Ubuntu host </summary>
+
      ```bash
      sudo apt install x11-xserver-utils   # if xhost is not installed
      xhost +local:vscode                  # allow container user access
      ```
+     </details>
+
+     <details>
+     <summary> Windows WSL2 host </summary>
+
+     ```bash
+     export DISPLAY=$(grep nameserver /etc/resolv.conf | awk '{print $2}'):0
+     export QT_X11_NO_MITSHM=1
+     xhost +local:root
+     ```
+     </details>
+     
+
 4. You can now control the Turtlesim robot following **Step-2**, **Step-3.2** and **Step-4** from the above given manual installation.
 5. Initialize pre-commit hooks (optional but recommended):
    ```bash

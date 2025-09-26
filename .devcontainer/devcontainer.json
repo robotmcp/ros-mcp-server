@@ -1,23 +1,30 @@
 {
   "name": "ROS2 Humble Dev",
-  "build": {
-    "dockerfile": "Dockerfile"
-  },
+  "build": { "dockerfile": "Dockerfile" },
   "workspaceFolder": "/root/workspace",
   "mounts": [
     "source=${localWorkspaceFolder},target=/root/workspace,type=bind"
   ],
   "runArgs": [
-    "--gpus=all",// works on WSL2 (NVIDIA) and Linux
+    "--gpus=all",
+    "--network=host",
     "-v", "${env:SSH_AUTH_SOCK}:/ssh-agent",
-    "-e", "SSH_AUTH_SOCK=/ssh-agent"
+    "-e", "SSH_AUTH_SOCK=/ssh-agent",
+    "-e", "DISPLAY=${localEnv:DISPLAY}",
+    "-e", "LIBGL_ALWAYS_SOFTWARE=1",
+    "-e", "QT_XCB_GL_INTEGRATION=none"
   ],
   "containerEnv": {
     "QT_X11_NO_MITSHM": "1",
+    "QT_QPA_PLATFORM": "xcb",
     "DISPLAY": "${localEnv:DISPLAY}",
-    "SSH_AUTH_SOCK": "/ssh-agent"
+    "SSH_AUTH_SOCK": "/ssh-agent",
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "QT_XCB_GL_INTEGRATION": "none",
+    "TERM": "xterm-256color"
   },
   "remoteUser": "root",
+  "postStartCommand": "xhost +local:root || true",
   "forwardPorts": [5000],
   "customizations": {
     "vscode": {
