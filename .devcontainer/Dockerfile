@@ -66,3 +66,5 @@ ENV PRE_COMMIT_ALLOW_NO_CONFIG=1
 
 RUN git init . \
     && pre-commit install --allow-missing-config || true
+
+CMD ["bash", "-c", "roscore & sleep 5 && roslaunch rosbridge_server rosbridge_websocket.launch"]
