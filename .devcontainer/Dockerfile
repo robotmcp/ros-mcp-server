@@ -55,8 +55,12 @@ ENV QT_QPA_PLATFORM=xcb
 ENV LIBGL_ALWAYS_SOFTWARE=1
 ENV QT_XCB_GL_INTEGRATION=none
 
-# Default workspace
-WORKDIR /root/workspace
+# Create a workspace for the non-root user
+RUN mkdir -p /home/$USERNAME/workspace \
+    && chown -R $USERNAME:$USERNAME /home/$USERNAME/workspace
+
+# Set workspace directory
+WORKDIR /home/$USERNAME/workspace
 
 # Switch to non-root user by default in devcontainer
 USER $USERNAME

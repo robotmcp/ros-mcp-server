@@ -1,9 +1,9 @@
 {
   "name": "ROS2 Humble Dev",
   "build": { "dockerfile": "Dockerfile" },
-  "workspaceFolder": "/root/workspace",
+  "workspaceFolder": "/home/vscode/workspace",
   "mounts": [
-    "source=${localWorkspaceFolder},target=/root/workspace,type=bind"
+    "source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind"
   ],
   "runArgs": [
       "--gpus=all",
@@ -23,8 +23,8 @@
     "QT_XCB_GL_INTEGRATION": "none",
     "TERM": "xterm-256color"
   },
-  "remoteUser": "root",
-  "postStartCommand": "xhost +local:root || true",
+  "remoteUser": "vscode",
+  "postStartCommand": "xhost +local:vscode || true",
   "forwardPorts": [5000, 9000, 9090],
   "portsAttributes": {
     "9000": { "label": "MCP Server", "onAutoForward": "ignore" },
@@ -41,5 +41,8 @@
         "astral-sh.ruff"
       ]
     }
+  },
+  "settings": {
+    "terminal.integrated.defaultProfile.linux": "bash"
   }
 }
