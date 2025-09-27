@@ -39,10 +39,10 @@
         "ms-vscode.cpptools",
         "ms-python.vscode-pylance",
         "astral-sh.ruff"
-      ]
+      ],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
     }
-  },
-  "settings": {
-    "terminal.integrated.defaultProfile.linux": "bash"
   }
 }
