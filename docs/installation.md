@@ -5,9 +5,9 @@
 Installation includes the following steps:
 - Install the MCP server
   - Clone this repository
-  - Instal uv (Python virtual environment manager)
+  - Install uv (Python virtual environment manager)
 - Install and configure the Language model client
-  - Instal any language model client (We demo with Claude Desktop)
+  - Install any language model client (We demo with Claude Desktop)
   - Configure the client to run the MCP server and connect automatically on launch.
 - Install and launch Rosbridge
 
