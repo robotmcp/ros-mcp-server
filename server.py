@@ -1238,7 +1238,7 @@ def get_node_details(node: str) -> dict:
 def inspect_all_nodes() -> dict:
     """
     Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.
-    
+
     Returns:
         dict: Contains detailed information about all nodes including:
             - Node names and details
@@ -1278,7 +1278,7 @@ def inspect_all_nodes() -> dict:
             }
 
             node_details_response = ws_manager.request(node_details_message)
-            
+
             if node_details_response and "values" in node_details_response:
                 values = node_details_response["values"]
                 # Extract publishers, subscribers, and services from the response
@@ -1295,8 +1295,14 @@ def inspect_all_nodes() -> dict:
                     "subscriber_count": len(subscribers),
                     "service_count": len(services),
                 }
-            elif node_details_response and "result" in node_details_response and not node_details_response["result"]:
-                error_msg = node_details_response.get("values", {}).get("message", "Service call failed")
+            elif (
+                node_details_response
+                and "result" in node_details_response
+                and not node_details_response["result"]
+            ):
+                error_msg = node_details_response.get("values", {}).get(
+                    "message", "Service call failed"
+                )
                 node_errors.append(f"Node {node}: {error_msg}")
             else:
                 node_errors.append(f"Node {node}: Failed to get node details")
