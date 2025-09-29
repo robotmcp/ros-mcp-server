@@ -18,7 +18,7 @@
 
 1. **Install dependencies**: `curl -LsSf https://astral.sh/uv/install.sh | sh` and `ngrok config add-authtoken <YOUR_AUTHTOKEN>`
 2. **Clone repository**: `cd ~ && git clone https://github.com/robotmcp/ros-mcp-server.git && cd ros-mcp-server`
-3. **Start MCP server**: `export MCP_TRANSPORT="streamable-http" && uv run server.py`
+3. **Start MCP server**: `uv run server.py --transport streamable-http`
 4. **Start ngrok tunnel**: `ngrok http --url=your-domain.ngrok-free.app 9000`
 5. **Configure ChatGPT**: Add connector with URL `https://your-domain.ngrok-free.app/mcp`
 6. **Start ROS**: `ros2 launch rosbridge_server rosbridge_websocket_launch.xml & ros2 run turtlesim turtlesim_node`
@@ -149,13 +149,13 @@ cd ros-mcp-server
 	If you installed `uv` used the following:
 	```bash
 
-	uv run server.py
+	uv run server.py --transport streamable-http
 	```
 	
 	Otherwise you have to install all the dependencies manually and run:
 
 	```bash
-	python server.py
+	python server.py --transport streamable-http
 	```
 	
 	</details>
@@ -167,8 +167,7 @@ cd ros-mcp-server
 
 	Run the following:
 	```bash
-	export MCP_TRANSPORT="streamable-http"
-	uv run server.py
+	uv run server.py --transport streamable-http
 	```
 
 	or
@@ -276,7 +275,7 @@ Once everything is configured, test your connection:
 ### Common Issues
 
 **MCP Server not connecting:**
-- Verify the server is running: Check if `uv run server.py` is active
+- Verify the server is running: Check if `uv run server.py --transport streamable-http` is active
 - Check if ngrok tunnel is working: Visit your ngrok URL in browser
 - Ensure the server is accessible at `http://127.0.0.1:9000/mcp`
 

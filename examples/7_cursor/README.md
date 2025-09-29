@@ -84,8 +84,7 @@ cd ros-mcp-server
 ```bash
 wsl
 cd ros-mcp-server
-export MCP_TRANSPORT="http"
-uv run server.py
+uv run server.py --transport http
 ```
 
 * Configure Cursor with the following:
