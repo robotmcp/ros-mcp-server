@@ -13,9 +13,7 @@
         "--directory",
         "/home/<YOUR_USER>/ros-mcp-server",
         "run",
-        "server.py",
-        "--transport",
-        "stdio"
+        "server.py"
       ]
     },
     "ros-mcp-server-stdio-wsl": {
@@ -28,20 +26,8 @@
         "--directory",
         "/home/<YOUR_USER>/ros-mcp-server",
         "run",
-        "server.py",
-        "--transport",
-        "stdio"
+        "server.py"
       ]
-    },
-    "ros-mcp-server-http-custom": {
-      "name": "ROS-MCP Server (http with custom args)",
-      "transport": "http",
-      "url": "http://0.0.0.0:8080/mcp"
-    },
-    "ros-mcp-server-streamable-http-custom": {
-      "name": "ROS-MCP Server (streamable-http with custom args)",
-      "transport": "http",
-      "url": "http://127.0.0.1:9001/mcp"
     }
   }
 }
