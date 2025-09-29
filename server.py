@@ -38,6 +38,41 @@ ws_manager = WebSocketManager(
 )  # Increased default timeout for ROS operations
 
 
+@mcp.tool(description="Detect the ROS version and distribution via rosbridge.")
+def detect_ros_version(timeout: float = 5.0) -> dict:
+    """
+    Detects the ROS version and distro via rosbridge WebSocket.
+    Returns:
+        dict: {'version': <version or '1'>, 'distro': <distro>} or error info.
+    """
+    # Try ROS2 detection
+    ros2_req = {
+        "op": "call_service",
+        "id": "ros2_version_check",
+        "service": "/rosapi/get_ros_version",
+        "args": {},
+    }
+    with ws_manager:
+        response = ws_manager.request(ros2_req, timeout=timeout)
+        values = response.get("values") if response else None
+        if isinstance(values, dict) and "version" in values:
+            return {"version": values.get("version"), "distro": values.get("distro")}
+        # Fallback to ROS1 detection
+        ros1_req = {
+            "op": "call_service",
+            "id": "ros1_distro_check",
+            "service": "/rosapi/get_param",
+            "args": {"name": "/rosdistro"},
+        }
+        response = ws_manager.request(ros1_req, timeout=timeout)
+        value = response.get("values") if response else None
+        if value:
+            distro = value.get("value") if isinstance(value, dict) else value
+            distro_clean = str(distro).strip('"').replace("\\n", "").replace("\n", "")
+            return {"version": "1", "distro": distro_clean}
+        return {"error": "Could not detect ROS version"}
+
+
 @mcp.tool(description=("Get robot configuration from YAML file."))
 def get_robot_config(name: str) -> dict:
     """
