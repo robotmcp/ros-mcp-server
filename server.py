@@ -1,3 +1,4 @@
+import argparse
 import io
 import json
 import os
@@ -1192,8 +1193,53 @@ def analyze_previously_received_image():
     return _encode_image_to_imagecontent(img)
 
 
+def parse_arguments():
+    """Parse command line arguments for MCP server configuration."""
+    parser = argparse.ArgumentParser(
+        description="ROS MCP Server - Connect to ROS robots via MCP protocol",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python server.py                                    # Use stdio transport (default)
+  python server.py --transport http --host 0.0.0.0 --port 9000
+  python server.py --transport streamable-http --host 127.0.0.1 --port 8080
+        """,
+    )
+
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http", "streamable-http", "sse"],
+        default="stdio",
+        help="MCP transport protocol to use (default: stdio)",
+    )
+
+    parser.add_argument(
+        "--host",
+        default="127.0.0.1",
+        help="Host address for HTTP-based transports (default: 127.0.0.1)",
+    )
+
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=9000,
+        help="Port number for HTTP-based transports (default: 9000)",
+    )
+
+    return parser.parse_args()
+
+
 def main():
     """Main entry point for the MCP server console script."""
+    # Parse command line arguments
+    args = parse_arguments()
+
+    # Update global variables with parsed arguments
+    global MCP_TRANSPORT, MCP_HOST, MCP_PORT
+    MCP_TRANSPORT = args.transport.lower()
+    MCP_HOST = args.host
+    MCP_PORT = args.port
+
     if MCP_TRANSPORT == "stdio":
         # stdio doesn't need host/port
         mcp.run(transport="stdio")

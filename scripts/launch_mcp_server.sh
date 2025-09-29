@@ -9,18 +9,21 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}Starting MCP server environment...${NC}"
 
-# 0. Use MCP_TRANSPORT. You can add MCP_HOST / MCP_PORT if needed, otherwise fallback to default.
-export MCP_TRANSPORT="streamable-http"
+# 0. Use command line arguments for MCP configuration
+# Default: streamable-http transport on localhost:9000
+TRANSPORT=${MCP_TRANSPORT:-"streamable-http"}
+HOST=${MCP_HOST:-"127.0.0.1"}
+PORT=${MCP_PORT:-"9000"}
 
 # 1. Check if MCP server is running
 if pgrep -f ros-mcp-server > /dev/null; then
   echo -e "${YELLOW}[mcp-server]${NC} is already running. Continuing without starting a new instance."
   MCP_PID=$(pgrep -f ros-mcp-server | head -n1)
 else 
-  # 2. Start MCP server
-  echo -e "${GREEN}[mcp-server]${NC} Launching MCP server..."
-  # Run with uv (already in pyproject.toml)
-  uv run ../server.py &
+  # 2. Start MCP server with command line arguments
+  echo -e "${GREEN}[mcp-server]${NC} Launching MCP server with transport=$TRANSPORT, host=$HOST, port=$PORT..."
+  # Run with uv using command line arguments
+  uv run ../server.py --transport "$TRANSPORT" --host "$HOST" --port "$PORT" &
   MCP_PID=$!
 fi
 
