@@ -1023,11 +1023,11 @@ def get_service_providers(service: str) -> dict:
     if not service or not service.strip():
         return {"error": "Service name cannot be empty"}
 
-    # rosbridge service call to get service providers
+    # rosbridge service call to get service providers (using service_node like inspect_all_services)
     message = {
         "op": "call_service",
-        "service": "/rosapi/service_providers",
-        "type": "rosapi/ServiceProviders",
+        "service": "/rosapi/service_node",
+        "type": "rosapi/ServiceNode",
         "args": {"service": service},
         "id": f"get_service_providers_request_{service.replace('/', '_')}",
     }
@@ -1036,12 +1036,18 @@ def get_service_providers(service: str) -> dict:
     with ws_manager:
         response = ws_manager.request(message)
 
-    # Return service providers if present
-    if response and "values" in response:
-        providers = response["values"].get("providers", [])
-        return {"service": service, "providers": providers, "provider_count": len(providers)}
+    # Return service providers if present (using same logic as inspect_all_services)
+    providers = []
+    if response and "result" in response:
+        node = response["result"].get("node", "")
+        if node:
+            providers = [node]
+    elif response and "error" in response:
+        return {"error": f"Service call failed: {response['error']}"}
     else:
         return {"error": f"Failed to get providers for service {service}"}
+
+    return {"service": service, "providers": providers, "provider_count": len(providers)}
 
 
 @mcp.tool(
@@ -1107,11 +1113,8 @@ def inspect_all_services() -> dict:
 
             provider_response = ws_manager.request(provider_message)
             providers = []
-            if provider_response and "values" in provider_response:
-                node = provider_response["values"].get("node", "")
-                if node:
-                    providers = [node]
-            elif provider_response and "result" in provider_response:
+
+            if provider_response and "result" in provider_response:
                 node = provider_response["result"].get("node", "")
                 if node:
                     providers = [node]
