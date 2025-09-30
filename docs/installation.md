@@ -193,6 +193,10 @@ For HTTP transport, the configuration is the same across all platforms. First st
 **Linux/macOS/Windows(WSL):**
 ```bash
 cd /<ABSOLUTE_PATH>/ros-mcp-server
+# Using command line arguments (recommended)
+uv run server.py --transport streamable-http --host 127.0.0.1 --port 9000
+
+# Or using environment variables (legacy)
 export MCP_TRANSPORT=streamable-http
 export MCP_HOST=127.0.0.1
 export MCP_PORT=9000
@@ -483,21 +487,31 @@ which uv
 **Symptoms**: HTTP transport not working or connection timeouts.
 
 **Solutions**:
-1. **Check environment variables**: Ensure MCP_TRANSPORT, MCP_HOST, and MCP_PORT are set correctly
-2. **Verify port availability**: Check if the port is already in use:
+1. **Check command line arguments**: Ensure the correct transport, host, and port are specified:
+   ```bash
+   # Check available options
+   python server.py --help
+   
+   # Example with custom settings
+   python server.py --transport http --host 0.0.0.0 --port 8080
+   ```
+
+2. **Check environment variables** (legacy): Ensure MCP_TRANSPORT, MCP_HOST, and MCP_PORT are set correctly
+
+3. **Verify port availability**: Check if the port is already in use:
 
 ```bash
 # Check if port is in use
 netstat -tulpn | grep :9000
 ```
 
-3. **Test HTTP endpoint**: Try accessing the HTTP endpoint directly:
+4. **Test HTTP endpoint**: Try accessing the HTTP endpoint directly:
 
 ```bash
 curl http://localhost:9000
 ```
 
-4. **Check firewall**: Ensure firewall allows the configured port
+5. **Check firewall**: Ensure firewall allows the configured port
 
 </details>
 
