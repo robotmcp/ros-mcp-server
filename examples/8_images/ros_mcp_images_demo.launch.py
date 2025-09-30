@@ -7,11 +7,11 @@ from launch.launch_description_sources import AnyLaunchDescriptionSource
 from ament_index_python.packages import get_package_share_directory
 import os
 
+
 def generate_launch_description():
     # Declare port argument for rosbridge
     port_arg = DeclareLaunchArgument(
-        "port", default_value="9090",
-        description="Port for rosbridge websocket"
+        "port", default_value="9090", description="Port for rosbridge websocket"
     )
 
     # rosbridge websocket
@@ -20,7 +20,7 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory("rosbridge_server"),
                 "launch",
-                "rosbridge_websocket_launch.xml"
+                "rosbridge_websocket_launch.xml",
             )
         ),
         launch_arguments={"port": LaunchConfiguration("port")}.items(),
@@ -50,13 +50,15 @@ def generate_launch_description():
         remappings=[
             ("in", "/image"),
             ("out", "/image/compressed"),
-        ]
+        ],
     )
 
-    return LaunchDescription([
-        port_arg,
-        rosbridge_launch,
-        cam2image,
-        showimage,
-        republish,
-    ])
+    return LaunchDescription(
+        [
+            port_arg,
+            rosbridge_launch,
+            cam2image,
+            showimage,
+            republish,
+        ]
+    )
