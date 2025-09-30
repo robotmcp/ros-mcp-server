@@ -1317,7 +1317,7 @@ def get_nodes() -> dict:
         "Get a single ROS parameter value by name.\nExample:\nget_param('/turtlesim:background_b')"
     )
 )
-def get_param(name: str) -> dict:
+def get_parameter(name: str) -> dict:
     """
     Get a single ROS parameter value by name.
 
@@ -1371,7 +1371,7 @@ def get_param(name: str) -> dict:
         "Set a single ROS parameter value.\nExample:\nset_param('/turtlesim:background_b', '255')"
     )
 )
-def set_param(name: str, value: str) -> dict:
+def set_parameter(name: str, value: str) -> dict:
     """
     Set a single ROS parameter value.
 
@@ -1424,7 +1424,7 @@ def set_param(name: str, value: str) -> dict:
 @mcp.tool(
     description=("Check if a ROS parameter exists.\nExample:\nhas_param('/turtlesim:background_b')")
 )
-def has_param(name: str) -> dict:
+def has_parameter(name: str) -> dict:
     """
     Check if a ROS parameter exists.
 
@@ -1476,7 +1476,7 @@ def has_param(name: str) -> dict:
 @mcp.tool(
     description=("Delete a ROS parameter.\nExample:\ndelete_param('/turtlesim:background_b')")
 )
-def delete_param(name: str) -> dict:
+def delete_parameter(name: str) -> dict:
     """
     Delete a ROS parameter.
 
@@ -1631,7 +1631,7 @@ def inspect_all_parameters() -> dict:
 
             type_response = ws_manager.request(type_message)
             param_type = "unknown"
-            
+
             # Handle different response formats for parameter type detection
             if type_response and isinstance(type_response, dict):
                 if "values" in type_response:
@@ -1647,20 +1647,27 @@ def inspect_all_parameters() -> dict:
                         if descriptors and len(descriptors) > 0:
                             param_type = descriptors[0].get("type", "unknown")
                 elif "error" in type_response:
-                    parameter_errors.append(f"Parameter {param_name} type: {type_response['error']}")
-            
+                    parameter_errors.append(
+                        f"Parameter {param_name} type: {type_response['error']}"
+                    )
+
             # Fallback: Try to infer type from value
             if param_type == "unknown" and param_value:
                 try:
                     # Remove quotes for type checking
                     clean_value = param_value.strip('"')
-                    
+
                     # Try to parse as different types
                     if clean_value.lower() in ["true", "false"]:
                         param_type = "bool"
-                    elif clean_value.isdigit() or (clean_value.startswith('-') and clean_value[1:].isdigit()):
+                    elif clean_value.isdigit() or (
+                        clean_value.startswith("-") and clean_value[1:].isdigit()
+                    ):
                         param_type = "int"
-                    elif '.' in clean_value and clean_value.replace('.', '').replace('-', '').isdigit():
+                    elif (
+                        "." in clean_value
+                        and clean_value.replace(".", "").replace("-", "").isdigit()
+                    ):
                         param_type = "float"
                     elif param_value.startswith('"') and param_value.endswith('"'):
                         param_type = "string"
@@ -1741,7 +1748,7 @@ def get_parameter_details(name: str) -> dict:
 
     param_type = "unknown"
     param_description = ""
-    
+
     if type_response and isinstance(type_response, dict):
         if "values" in type_response:
             result_data = type_response["values"]
@@ -1766,9 +1773,11 @@ def get_parameter_details(name: str) -> dict:
             clean_value = param_value.strip('"')
             if clean_value.lower() in ["true", "false"]:
                 param_type = "bool"
-            elif clean_value.isdigit() or (clean_value.startswith('-') and clean_value[1:].isdigit()):
+            elif clean_value.isdigit() or (
+                clean_value.startswith("-") and clean_value[1:].isdigit()
+            ):
                 param_type = "int"
-            elif '.' in clean_value and clean_value.replace('.', '').replace('-', '').isdigit():
+            elif "." in clean_value and clean_value.replace(".", "").replace("-", "").isdigit():
                 param_type = "float"
             elif param_value.startswith('"') and param_value.endswith('"'):
                 param_type = "string"
@@ -1785,8 +1794,8 @@ def get_parameter_details(name: str) -> dict:
         "type": param_type,
         "exists": param_successful,
         "description": param_description,
-        "node": name.split(':')[0] if ':' in name else "",
-        "parameter": name.split(':')[1] if ':' in name else name
+        "node": name.split(":")[0] if ":" in name else "",
+        "parameter": name.split(":")[1] if ":" in name else name,
     }
 
 
