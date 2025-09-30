@@ -1675,7 +1675,7 @@ def inspect_all_parameters() -> dict:
                         param_type = "string"
                     else:
                         param_type = "string"
-                except:
+                except Exception:
                     param_type = "string"
 
             parameter_details[param_name] = {
@@ -1785,7 +1785,7 @@ def get_parameter_details(name: str) -> dict:
                 param_type = "string"
             else:
                 param_type = "string"
-        except:
+        except Exception:
             param_type = "string"
 
     return {
