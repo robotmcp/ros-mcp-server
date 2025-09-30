@@ -1314,12 +1314,12 @@ def get_nodes() -> dict:
 
 @mcp.tool(
     description=(
-        "Get a single ROS parameter value by name.\nExample:\nget_param('/turtlesim:background_b')"
+        "Get a single ROS parameter value by name. Works only with ROS 2.\nExample:\nget_param('/turtlesim:background_b')"
     )
 )
 def get_parameter(name: str) -> dict:
     """
-    Get a single ROS parameter value by name.
+    Get a single ROS parameter value by name. Works only with ROS 2.
 
     Args:
         name (str): The parameter name (e.g., '/turtlesim:background_b')
@@ -1368,12 +1368,12 @@ def get_parameter(name: str) -> dict:
 
 @mcp.tool(
     description=(
-        "Set a single ROS parameter value.\nExample:\nset_param('/turtlesim:background_b', '255')"
+        "Set a single ROS parameter value. Works only with ROS 2.\nExample:\nset_param('/turtlesim:background_b', '255')"
     )
 )
 def set_parameter(name: str, value: str) -> dict:
     """
-    Set a single ROS parameter value.
+    Set a single ROS parameter value. Works only with ROS 2.
 
     Args:
         name (str): The parameter name (e.g., '/turtlesim:background_b')
@@ -1422,11 +1422,13 @@ def set_parameter(name: str, value: str) -> dict:
 
 
 @mcp.tool(
-    description=("Check if a ROS parameter exists.\nExample:\nhas_param('/turtlesim:background_b')")
+    description=(
+        "Check if a ROS parameter exists. Works only with ROS 2.\nExample:\nhas_param('/turtlesim:background_b')"
+    )
 )
 def has_parameter(name: str) -> dict:
     """
-    Check if a ROS parameter exists.
+    Check if a ROS parameter exists. Works only with ROS 2.
 
     Args:
         name (str): The parameter name (e.g., '/turtlesim:background_b')
@@ -1474,11 +1476,13 @@ def has_parameter(name: str) -> dict:
 
 
 @mcp.tool(
-    description=("Delete a ROS parameter.\nExample:\ndelete_param('/turtlesim:background_b')")
+    description=(
+        "Delete a ROS parameter. Works only with ROS 2.\nExample:\ndelete_param('/turtlesim:background_b')"
+    )
 )
 def delete_parameter(name: str) -> dict:
     """
-    Delete a ROS parameter.
+    Delete a ROS parameter. Works only with ROS 2.
 
     Args:
         name (str): The parameter name (e.g., '/turtlesim:background_b')
@@ -1523,10 +1527,14 @@ def delete_parameter(name: str) -> dict:
         return {"error": f"Failed to delete parameter {name}: {error_msg}"}
 
 
-@mcp.tool(description=("Get list of all ROS parameter names.\nExample:\nget_parameters()"))
+@mcp.tool(
+    description=(
+        "Get list of all ROS parameter names. Works only with ROS 2.\nExample:\nget_parameters()"
+    )
+)
 def get_parameters() -> dict:
     """
-    Get list of all ROS parameter names.
+    Get list of all ROS parameter names. Works only with ROS 2.
 
     Returns:
         dict: Contains list of all parameter names, or error message if failed.
@@ -1563,14 +1571,14 @@ def get_parameters() -> dict:
 
 @mcp.tool(
     description=(
-        "Get comprehensive information about all ROS parameters including values and metadata.\n"
+        "Get comprehensive information about all ROS parameters including values and metadata.\nWorks only with ROS 2.\n"
         "Example:\n"
         "inspect_all_parameters()"
     )
 )
 def inspect_all_parameters() -> dict:
     """
-    Get comprehensive information about all ROS parameters including values and metadata.
+    Get comprehensive information about all ROS parameters including values and metadata. Works only with ROS 2.
 
     Returns:
         dict: Contains detailed information about all parameters,
@@ -1693,14 +1701,14 @@ def inspect_all_parameters() -> dict:
 
 @mcp.tool(
     description=(
-        "Get comprehensive details about a specific ROS parameter including value, type, and metadata.\n"
+        "Get comprehensive details about a specific ROS parameter including value, type, and metadata. Works only with ROS 2.\n    "
         "Example:\n"
         "get_parameter_details('/turtlesim:background_r')"
     )
 )
 def get_parameter_details(name: str) -> dict:
     """
-    Get comprehensive details about a specific ROS parameter including value, type, and metadata.
+    Get comprehensive details about a specific ROS parameter including value, type, and metadata. Works only with ROS 2.
 
     Args:
         name (str): The parameter name (e.g., '/turtlesim:background_r')
