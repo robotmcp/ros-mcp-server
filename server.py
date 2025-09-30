@@ -1038,7 +1038,7 @@ def get_service_providers(service: str) -> dict:
 
     # Return service providers if present (using same logic as inspect_all_services)
     providers = []
-    
+
     # Handle different response formats safely
     if response and isinstance(response, dict):
         if "values" in response:
@@ -1124,7 +1124,7 @@ def inspect_all_services() -> dict:
 
             provider_response = ws_manager.request(provider_message)
             providers = []
-            
+
             # Handle different response formats safely
             if provider_response and isinstance(provider_response, dict):
                 if "values" in provider_response:
@@ -1136,7 +1136,9 @@ def inspect_all_services() -> dict:
                     if node:
                         providers = [node]
                 elif "error" in provider_response:
-                    service_errors.append(f"Service {service} provider: {provider_response['error']}")
+                    service_errors.append(
+                        f"Service {service} provider: {provider_response['error']}"
+                    )
             elif provider_response is False:
                 service_errors.append(f"Service {service} provider: No response received")
             elif provider_response is True:
