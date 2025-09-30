@@ -2,7 +2,7 @@
 
 """
 ROS2 Launch file for Rosbridge WebSocket Server only
-Launches only the rosbridge server without turtlesim.
+Launches only the rosbridge server.
 
 Use this when you want to connect to an external robot or simulation.
 """
@@ -16,6 +16,13 @@ from launch import LaunchDescription
 
 def generate_launch_description():
     """Generate the launch description for rosbridge only."""
+
+    # Add here your robot nodes
+    # robot_node = Node(
+    #     package='my_robot_pkg',
+    #     executable='robot_node',
+    #     name='my_robot'
+    # )
 
     # Declare launch arguments
     port_arg = DeclareLaunchArgument(
