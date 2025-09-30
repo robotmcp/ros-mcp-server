@@ -1631,14 +1631,45 @@ def inspect_all_parameters() -> dict:
 
             type_response = ws_manager.request(type_message)
             param_type = "unknown"
-            if type_response and "result" in type_response and type_response["result"]:
-                result_data = type_response["result"]
-                if isinstance(result_data, dict):
-                    descriptors = result_data.get("descriptors", [])
-                    if descriptors and len(descriptors) > 0:
-                        param_type = descriptors[0].get("type", "unknown")
-            elif type_response and "error" in type_response:
-                parameter_errors.append(f"Parameter {param_name} type: {type_response['error']}")
+            
+            # Handle different response formats for parameter type detection
+            if type_response and isinstance(type_response, dict):
+                if "values" in type_response:
+                    result_data = type_response["values"]
+                    if isinstance(result_data, dict):
+                        descriptors = result_data.get("descriptors", [])
+                        if descriptors and len(descriptors) > 0:
+                            param_type = descriptors[0].get("type", "unknown")
+                elif "result" in type_response and type_response["result"]:
+                    result_data = type_response["result"]
+                    if isinstance(result_data, dict):
+                        descriptors = result_data.get("descriptors", [])
+                        if descriptors and len(descriptors) > 0:
+                            param_type = descriptors[0].get("type", "unknown")
+                elif "error" in type_response:
+                    parameter_errors.append(f"Parameter {param_name} type: {type_response['error']}")
+            
+            # Fallback: Try to infer type from value
+            if param_type == "unknown" and param_value:
+                try:
+                    # Remove quotes for type checking
+                    clean_value = param_value.strip('"')
+                    
+                    # Try to parse as different types
+                    if clean_value.lower() in ["true", "false"]:
+                        param_type = "bool"
+                    elif clean_value.isdigit() or (clean_value.startswith('-') and clean_value[1:].isdigit()):
+                        param_type = "int"
+                    elif '.' in clean_value and clean_value.replace('.', '').replace('-', '').isdigit():
+                        param_type = "float"
+                    elif param_value.startswith('"') and param_value.endswith('"'):
+                        param_type = "string"
+                    elif clean_value == "":
+                        param_type = "string"
+                    else:
+                        param_type = "string"
+                except:
+                    param_type = "string"
 
             parameter_details[param_name] = {
                 "value": param_value,
@@ -1651,6 +1682,112 @@ def inspect_all_parameters() -> dict:
             "parameters": parameter_details,
             "parameter_errors": parameter_errors,  # Include any errors encountered during inspection
         }
+
+
+@mcp.tool(
+    description=(
+        "Get comprehensive details about a specific ROS parameter including value, type, and metadata.\n"
+        "Example:\n"
+        "get_parameter_details('/turtlesim:background_r')"
+    )
+)
+def get_parameter_details(name: str) -> dict:
+    """
+    Get comprehensive details about a specific ROS parameter including value, type, and metadata.
+
+    Args:
+        name (str): The parameter name (e.g., '/turtlesim:background_r')
+
+    Returns:
+        dict: Contains detailed parameter information or error details.
+    """
+    # Validate input
+    if not name or not name.strip():
+        return {"error": "Parameter name cannot be empty"}
+
+    # Get parameter value
+    value_message = {
+        "op": "call_service",
+        "service": "/rosapi/get_param",
+        "type": "rosapi/GetParam",
+        "args": {"name": name},
+        "id": f"get_param_details_{name.replace('/', '_').replace(':', '_')}",
+    }
+
+    with ws_manager:
+        value_response = ws_manager.request(value_message)
+
+    if not value_response or "values" not in value_response:
+        return {"error": f"Failed to get parameter {name}"}
+
+    value_data = value_response["values"]
+    param_value = value_data.get("value", "")
+    param_successful = value_data.get("successful", False)
+
+    if not param_successful:
+        return {"error": f"Parameter {name} does not exist"}
+
+    # Get parameter type
+    type_message = {
+        "op": "call_service",
+        "service": "/rosapi/describe_parameters",
+        "type": "rcl_interfaces/DescribeParameters",
+        "args": {"names": [name]},
+        "id": f"describe_param_details_{name.replace('/', '_').replace(':', '_')}",
+    }
+
+    with ws_manager:
+        type_response = ws_manager.request(type_message)
+
+    param_type = "unknown"
+    param_description = ""
+    
+    if type_response and isinstance(type_response, dict):
+        if "values" in type_response:
+            result_data = type_response["values"]
+            if isinstance(result_data, dict):
+                descriptors = result_data.get("descriptors", [])
+                if descriptors and len(descriptors) > 0:
+                    descriptor = descriptors[0]
+                    param_type = descriptor.get("type", "unknown")
+                    param_description = descriptor.get("description", "")
+        elif "result" in type_response and type_response["result"]:
+            result_data = type_response["result"]
+            if isinstance(result_data, dict):
+                descriptors = result_data.get("descriptors", [])
+                if descriptors and len(descriptors) > 0:
+                    descriptor = descriptors[0]
+                    param_type = descriptor.get("type", "unknown")
+                    param_description = descriptor.get("description", "")
+
+    # Fallback: Try to infer type from value
+    if param_type == "unknown" and param_value:
+        try:
+            clean_value = param_value.strip('"')
+            if clean_value.lower() in ["true", "false"]:
+                param_type = "bool"
+            elif clean_value.isdigit() or (clean_value.startswith('-') and clean_value[1:].isdigit()):
+                param_type = "int"
+            elif '.' in clean_value and clean_value.replace('.', '').replace('-', '').isdigit():
+                param_type = "float"
+            elif param_value.startswith('"') and param_value.endswith('"'):
+                param_type = "string"
+            elif clean_value == "":
+                param_type = "string"
+            else:
+                param_type = "string"
+        except:
+            param_type = "string"
+
+    return {
+        "name": name,
+        "value": param_value,
+        "type": param_type,
+        "exists": param_successful,
+        "description": param_description,
+        "node": name.split(':')[0] if ':' in name else "",
+        "parameter": name.split(':')[1] if ':' in name else name
+    }
 
 
 @mcp.tool(
