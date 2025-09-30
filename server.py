@@ -359,7 +359,7 @@ def get_subscribers_for_topic(topic: str) -> dict:
 
 @mcp.tool(
     description=(
-        "Get comprehensive information about all ROS topics including publishers, subscribers, and message types.\n"
+        "Get comprehensive information about all ROS topics including publishers, subscribers, and message types. Note that this may take time to execute when three are a large number of topics since it queries each one by one under the hood. \n"
         "Example:\n"
         "inspect_all_topics()"
     )
