@@ -1038,12 +1038,23 @@ def get_service_providers(service: str) -> dict:
 
     # Return service providers if present (using same logic as inspect_all_services)
     providers = []
-    if response and "result" in response:
-        node = response["result"].get("node", "")
-        if node:
-            providers = [node]
-    elif response and "error" in response:
-        return {"error": f"Service call failed: {response['error']}"}
+    
+    # Handle different response formats safely
+    if response and isinstance(response, dict):
+        if "values" in response:
+            node = response["values"].get("node", "")
+            if node:
+                providers = [node]
+        elif "result" in response:
+            node = response["result"].get("node", "")
+            if node:
+                providers = [node]
+        elif "error" in response:
+            return {"error": f"Service call failed: {response['error']}"}
+    elif response is False:
+        return {"error": f"No response received for service {service}"}
+    elif response is True:
+        return {"error": f"Unexpected boolean response for service {service}"}
     else:
         return {"error": f"Failed to get providers for service {service}"}
 
@@ -1113,13 +1124,23 @@ def inspect_all_services() -> dict:
 
             provider_response = ws_manager.request(provider_message)
             providers = []
-
-            if provider_response and "result" in provider_response:
-                node = provider_response["result"].get("node", "")
-                if node:
-                    providers = [node]
-            elif provider_response and "error" in provider_response:
-                service_errors.append(f"Service {service} provider: {provider_response['error']}")
+            
+            # Handle different response formats safely
+            if provider_response and isinstance(provider_response, dict):
+                if "values" in provider_response:
+                    node = provider_response["values"].get("node", "")
+                    if node:
+                        providers = [node]
+                elif "result" in provider_response:
+                    node = provider_response["result"].get("node", "")
+                    if node:
+                        providers = [node]
+                elif "error" in provider_response:
+                    service_errors.append(f"Service {service} provider: {provider_response['error']}")
+            elif provider_response is False:
+                service_errors.append(f"Service {service} provider: No response received")
+            elif provider_response is True:
+                service_errors.append(f"Service {service} provider: Unexpected boolean response")
 
             service_details[service] = {
                 "type": service_type,
