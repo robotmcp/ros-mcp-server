@@ -1063,7 +1063,7 @@ def get_service_providers(service: str) -> dict:
 
 @mcp.tool(
     description=(
-        "Get comprehensive information about all services including types and providers. Note that this may take time to execute when three are a large number of services since it queries each one by one under the hood. \n"        
+        "Get comprehensive information about all services including types and providers. Note that this may take time to execute when three are a large number of services since it queries each one by one under the hood. \n"
         "Example:\n"
         "inspect_all_services()"
     )
