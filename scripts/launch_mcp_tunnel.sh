@@ -7,6 +7,9 @@ GREEN='\033[1;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+DOMAIN=${MCP_DOMAIN:-"mazie-nonmodificatory-noncontemporaneously.ngrok-free.app"}
+PORT=${MCP_PORT:-"9000"}
+
 echo -e "${BLUE}Starting MCP ngrok tunneling...${NC}"
 
 # 1. Check if MCP server is running
@@ -16,7 +19,7 @@ if pgrep -f ngrok > /dev/null; then
 else 
   # 2. Start ngrok tunnel
   echo -e "${GREEN}[mcp-ngrok]${NC} Exposing MCP server via ngrok tunnel..."
-  ngrok http --url=${MCP_DOMAIN} ${MCP_PORT} &
+  ngrok http --url=${DOMAIN} ${PORT} &
   NGROK_PID=$!
 fi
 
