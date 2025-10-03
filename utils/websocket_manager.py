@@ -2,14 +2,14 @@ import base64
 import json
 import os
 import threading
-from typing import Optional, Union
+from typing import Union
 
 import cv2
 import numpy as np
 import websocket
 
 
-def parse_json(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
+def parse_json(raw: Union[str, bytes] | None) -> dict | None:
     """
     Safely parse JSON from string or bytes.
 
@@ -30,7 +30,7 @@ def parse_json(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
         return None
 
 
-def parse_image(raw: Optional[Union[str, bytes]]) -> Optional[dict]:
+def parse_image(raw: Union[str, bytes] | None) -> dict | None:
     """
     Decode an image message (json with base64 data) and save it as JPEG.
 
@@ -119,7 +119,7 @@ class WebSocketManager:
         self.port = port
         print(f"[WebSocket] IP set to {self.ip}:{self.port}")
 
-    def connect(self) -> Optional[str]:
+    def connect(self) -> str | None:
         """
         Attempt to establish a WebSocket connection.
 
@@ -141,7 +141,7 @@ class WebSocketManager:
                     return error_msg
             return None  # already connected, no error
 
-    def send(self, message: dict) -> Optional[str]:
+    def send(self, message: dict) -> str | None:
         """
         Send a JSON-serializable message over WebSocket.
 
@@ -172,16 +172,16 @@ class WebSocketManager:
 
             return "[WebSocket] Not connected, send aborted."
 
-    def receive(self, timeout: Optional[float] = None) -> Optional[Union[str, bytes]]:
+    def receive(self, timeout: float | None = None) -> Union[str, bytes] | None:
         """
         Receive a single message from rosbridge within the given timeout.
 
         Args:
-            timeout (Optional[float]): Seconds to wait before timing out.
+            timeout (float | None): Seconds to wait before timing out.
                                      If None, uses the default timeout.
 
         Returns:
-            Optional[str]: JSON string received from rosbridge, or None if timeout/error.
+            str | None: JSON string received from rosbridge, or None if timeout/error.
         """
         with self.lock:
             self.connect()
@@ -199,13 +199,13 @@ class WebSocketManager:
                     return None
             return None
 
-    def request(self, message: dict, timeout: Optional[float] = None) -> dict:
+    def request(self, message: dict, timeout: float | None = None) -> dict:
         """
         Send a request to Rosbridge and return the response.
 
         Args:
             message (dict): The Rosbridge message dictionary to send.
-            timeout (Optional[float]): Seconds to wait for a response.
+            timeout (float | None): Seconds to wait for a response.
                                      If None, uses the default timeout.
 
         Returns:
