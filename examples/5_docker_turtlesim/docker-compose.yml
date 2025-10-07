@@ -5,12 +5,15 @@ services:
       dockerfile: Dockerfile.turtlesim
     container_name: ros2-turtlesim
     environment:
-      - DISPLAY=${DISPLAY}
+      - DISPLAY=${DOCKER_DISPLAY}
       - ROS_DISTRO=humble
+      - QT_X11_NO_MITSHM=1
     volumes:
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ./docker/scripts:/ros2_ws/scripts:ro
-    network_mode: host
+      # Linux X11 socket (only works on Linux)
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    ports:
+      - "9090:9090"
     stdin_open: true
     tty: true
-    command: bash -c "/ros2_ws/scripts/launch_turtlesim.sh"
+    command: ["/bin/bash", "/ros2_ws/scripts/launch_turtlesim.sh"]
