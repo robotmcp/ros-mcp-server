@@ -5,15 +5,27 @@ Turtlesim is a lightweight simulator for learning ROS / ROS 2. It illustrates wh
 
 ## Prerequisites
 
-✅ **Note:** This tutorial is designed to be run on linux and has been tested with Ubuntu as well as [Ubuntu running on WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US). Being a dockerized container, it is likely to work on other OS versions as well with the correct X11 forwarding settings. 
+✅ **Cross-Platform Support:** This tutorial works on Linux, macOS, and Windows with proper X11/display forwarding setup. Each platform has specific requirements detailed below.
 
 Before starting this tutorial, make sure you have the following installed:
 
+### All Platforms
 - **Docker**: [Install Docker](https://docs.docker.com/get-docker/)
 - **Docker Compose**: Usually comes with Docker Desktop, or install separately
-- **X Server** (for Windows): Install [X410](https://x410.dev/) or another X Server from Microsoft Store
-- **X11 forwarding** (for Linux): `sudo apt-get install x11-apps`
-- **XQuartz** (for macOS): Install from [XQuartz website](https://www.xquartz.org/)
+
+### Platform-Specific Requirements
+
+#### macOS
+- **XQuartz**: Install from [XQuartz website](https://www.xquartz.org/) 
+- **Important**: XQuartz setup can be complex - see [macOS Setup](#macos-setup) section below for detailed instructions
+
+#### Linux
+- **X11 forwarding**: `sudo apt-get install x11-apps`
+- Usually works out of the box with minimal setup
+
+#### Windows
+- **X Server**: Install [X410](https://x410.dev/), [VcXsrv](https://sourceforge.net/projects/vcxsrv/), or another X Server from Microsoft Store
+- **WSL recommended**: Works best with Windows Subsystem for Linux
 
 **Note:** If your OS is Windows, take a look at the following:
 <details>
@@ -38,22 +50,42 @@ docker compose build --no-cache turtlesim
 
 ### 2. Start the Container
 
-Launch the turtlesim container
+**The startup process varies by platform. Choose your OS:**
 
+#### MacOS
 ```bash
+# 1. Start XQuartz
+open -a XQuartz
+
+# 2. Set up X11 permissions (wait for XQuartz to start)
+export DISPLAY=:1 && xhost +
+
+# 3. Set up Docker display variable
+export DOCKER_DISPLAY="$(ifconfig en0 | grep inet | awk '$1=="inet" {print $2}'):1"
+
+# 4. Launch container
 docker compose up
 ```
 
-If your OS is Windows and you want to launch docker in PowerShell, you first need to set the DISPLAY:
+#### Linux
 ```bash
-$env:DISPLAY="host.docker.internal:0.0"
+# 1. Allow X11 forwarding
+xhost +local:docker
+
+# 2. Launch container  
+DOCKER_DISPLAY=$DISPLAY docker compose up
 ```
 
-If your OS is Ubuntu/WSL and the docker doesn't run successfully, consider:
-
+#### Windows (PowerShell)
 ```bash
-dos2unix docker/scripts/launch_turtlesim.sh
+# 1. Set DISPLAY for Windows Docker Desktop
+$env:DOCKER_DISPLAY="host.docker.internal:0.0"
+
+# 2. Launch container
+docker compose up
 ```
+
+
 
 The container will automatically start both turtlesim and rosbridge websocket server. You should see:
 
@@ -92,9 +124,91 @@ Follow the [installation guide](../../docs/installation.md) for full setup instr
 Since it is running on the same machine, you can tell the LLM to connect to the robot on localhost. 
 
 
+## macOS Setup
+
+macOS requires special X11 forwarding setup. Follow these steps carefully:
+
+### Step 1: Install XQuartz
+Download and install from [XQuartz website](https://www.xquartz.org/)
+
+### Step 2: Configure XQuartz
+1. **Start XQuartz**: `open -a XQuartz`
+2. **Wait for it to fully load** (you'll see an xterm window)
+
+### Step 3: Detect Your Setup
+```bash
+# Check if XQuartz is running and which display it's using
+ps aux | grep -i xquartz
+
+# You should see something like:
+# /opt/X11/bin/Xquartz :1 -listen tcp ...
+# The `:1` or `:0` is your display number
+```
+
+### Step 4: Get Your Machine IP
+```bash
+# Get your machine's IP address
+ifconfig en0 | grep inet | awk '$1=="inet" {print $2}'
+# Example output: 10.1.56.72
+```
+
+### Step 5: Set Up Environment
+```bash
+# Set DISPLAY for your Mac (use the display number from Step 3)
+export DISPLAY=:1  # or :0 depending on what you found
+
+# Allow X11 connections
+xhost +
+
+# Set DISPLAY for Docker (use your IP from Step 4 + display number)
+export DOCKER_DISPLAY="10.1.56.72:1"  # Replace with your actual IP
+```
+
 ## Troubleshooting
 
-### Display Issues (Linux)
+### macOS Display Issues
+
+**Problem**: `qt.qpa.xcb: could not connect to display`
+
+**Solutions**:
+
+1. **Check XQuartz is running**:
+   ```bash
+   ps aux | grep X11
+   ```
+
+2. **Verify display number**:
+   ```bash
+   # Look for :0 or :1 in the Xquartz process
+   ps aux | grep Xquartz | grep -o ":[0-9]"
+   ```
+
+3. **Check your IP address**:
+   ```bash
+   ifconfig en0 | grep inet
+   ```
+
+4. **Set correct DOCKER_DISPLAY**:
+   ```bash
+   export DOCKER_DISPLAY="YOUR_IP:DISPLAY_NUMBER"
+   # Example: export DOCKER_DISPLAY="10.1.56.72:1"
+   ```
+
+5. **Allow X11 connections**:
+   ```bash
+   export DISPLAY=:1  # Use your display number
+   xhost +
+   ```
+
+**Problem**: `xhost: unable to open display ":0"`
+
+**Solution**: XQuartz might be using `:1` instead of `:0`:
+```bash
+export DISPLAY=:1
+xhost +
+```
+
+### Linux Display Issues
 
 If you encounter display issues on Linux, run:
 
@@ -102,24 +216,26 @@ If you encounter display issues on Linux, run:
 xhost +local:docker
 ```
 
-### Display Issues (macOS)
+### Windows Display Issues
 
-For macOS users, make sure XQuartz is running and configured:
-
-```bash
-# Start XQuartz
-open -a XQuartz
-
-# Allow connections from localhost
-xhost +localhost
-```
-
-### Display Issues (Windows/PowerShell)
 For Windows users, make sure you install an X Server (X410) and set the DISPLAY:
 
 ```bash
-$env:DISPLAY="host.docker.internal:0.0"
+$env:DOCKER_DISPLAY="host.docker.internal:0.0"
 ```
+
+### General Issues
+
+**Problem**: Container starts but no window appears
+
+**Solutions**:
+1. Check if the window is hidden behind other windows
+2. Look in Mission Control (macOS) or Alt+Tab (Windows/Linux)
+3. Verify your DOCKER_DISPLAY is set correctly for your platform
+
+**Problem**: `libGL error: No matching fbConfigs or visuals found`
+
+**Solution**: This is just a warning and doesn't prevent the GUI from working. The turtlesim window should still appear.
 
 ### Container Networking
 
