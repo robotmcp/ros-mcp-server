@@ -3,12 +3,9 @@ name: Publish MCP Registry
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["Build"]       # exact name of workflow 1
+    workflows: ["Publish PyPI"]       # exact name of PyPI workflow
     types:
       - completed
-  push:
-    tags:
-      - "v*"
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -58,14 +55,5 @@ jobs:
               # Get current version from server.json
               CURRENT_VERSION=$(jq -r '.version' server.json)
               echo "Current version: $CURRENT_VERSION"
-              
-              # Check if version exists in registry
-              if curl -s "https://registry.modelcontextprotocol.io/v0/servers/io.github.robotmcp/ros-mcp-server" | jq -e ".version == \"$CURRENT_VERSION\"" > /dev/null; then
-                echo "Version $CURRENT_VERSION already exists in registry. Skipping publication."
-                echo "Server is already published with version $CURRENT_VERSION"
-              else
-                echo "Publication failed for unknown reason"
-                exit $PUBLISH_EXIT_CODE
-              fi
             fi
           fi
