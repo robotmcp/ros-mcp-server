@@ -1,9 +1,10 @@
 name: Track Clone Metrics
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '0 8 * * *'  # Run every day at 8am
-  workflow_dispatch:
+
 
 jobs:
   clone-stats:
