@@ -33,7 +33,6 @@ jobs:
           echo "Get the latest release version"
           LATEST_VERSION=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | jq -r '.tag_name')
           echo "Installing MCP Publisher version: $LATEST_VERSION"
-          echo "Download and extract the latest release"
           curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${LATEST_VERSION#v}_${OS}_${ARCH}.tar.gz" \
           | tar xz mcp-publisher
 
@@ -45,4 +44,28 @@ jobs:
       - name: Publish server.json to MCP Registry
         run: |
           echo "Publish server.json to MCP Registry"
-          ./mcp-publisher publish
+          # Try to publish, with fallback for duplicate version
+          if ./mcp-publisher publish; then
+            echo "Successfully published to MCP Registry"
+          else
+            PUBLISH_EXIT_CODE=$?
+            echo "Publish failed with exit code: $PUBLISH_EXIT_CODE"
+            
+            # Check if it's a duplicate version error
+            if [ $PUBLISH_EXIT_CODE -ne 0 ]; then
+              echo "Checking if version already exists in registry..."
+              
+              # Get current version from server.json
+              CURRENT_VERSION=$(jq -r '.version' server.json)
+              echo "Current version: $CURRENT_VERSION"
+              
+              # Check if version exists in registry
+              if curl -s "https://registry.modelcontextprotocol.io/v0/servers/io.github.robotmcp/ros-mcp-server" | jq -e ".version == \"$CURRENT_VERSION\"" > /dev/null; then
+                echo "Version $CURRENT_VERSION already exists in registry. Skipping publication."
+                echo "✅ Server is already published with version $CURRENT_VERSION"
+              else
+                echo "❌ Publication failed for unknown reason"
+                exit $PUBLISH_EXIT_CODE
+              fi
+            fi
+          fi
