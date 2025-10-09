@@ -4,12 +4,7 @@ on:
   workflow_dispatch:
   workflow_run:
     workflows: ["Track View Metrics"]       # exact name of PyPI workflow
-<<<<<<< HEAD
     types: [completed]
-=======
-    types:
-      - completed
->>>>>>> main
 
 jobs:
   download-stats:
