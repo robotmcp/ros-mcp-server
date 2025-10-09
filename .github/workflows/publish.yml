@@ -1,9 +1,6 @@
 name: Publish (PyPI + MCP Registry)
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
 
 concurrency:
