@@ -1,8 +1,8 @@
-name: Track Clone Metrics via GitHub App
+name: Track Clone Metrics
 
 on:
   schedule:
-    - cron: '30 * * * *'  # Run every hour at minute 30
+    - cron: '0 8 * * *'  # Run every day at 8am
   workflow_dispatch:
 
 jobs:

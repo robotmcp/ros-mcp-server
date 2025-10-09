@@ -3,21 +3,22 @@ name: Publish MCP Registry
 on:
   workflow_dispatch:
   workflow_run:
-    workflows: ["Publish PyPI"]       # exact name of PyPI workflow
-    types:
-      - completed
+    workflows: ["Publish PyPI"]
+    types: [completed]
+    branches: [main]
 
 concurrency:
   group: publish-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  registry:
+  on-success:
     name: Publish to MCP Registry
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     permissions:
       contents: read
-      id-token: write  # REQUIRED for MCP Registry GitHub OIDC login
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,33 +28,21 @@ jobs:
           set -e
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
-          echo "Get the latest release version"
           LATEST_VERSION=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | jq -r '.tag_name')
-          echo "Installing MCP Publisher version: $LATEST_VERSION"
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${LATEST_VERSION#v}_${OS}_${ARCH}.tar.gz" \
-          | tar xz mcp-publisher
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${LATEST_VERSION#v}_${OS}_${ARCH}.tar.gz" | tar xz mcp-publisher
 
-      - name: Login to MCP Registry (OIDC)
-        run: |
-          echo "Login to MCP Registry (OIDC)"
-          ./mcp-publisher login github-oidc
+      - name: Login to MCP Registry
+        run: ./mcp-publisher login github-oidc
 
-      - name: Publish server.json to MCP Registry
+      - name: Publish to MCP Registry
         run: |
-          echo "Publish server.json to MCP Registry"
-          # Try to publish, with fallback for duplicate version
-          if ./mcp-publisher publish; then
-            echo "Successfully published to MCP Registry"
-          else
-            PUBLISH_EXIT_CODE=$?
-            echo "Publish failed with exit code: $PUBLISH_EXIT_CODE"
-            
-            # Check if it's a duplicate version error
-            if [ $PUBLISH_EXIT_CODE -ne 0 ]; then
-              echo "Checking if version already exists in registry..."
-              
-              # Get current version from server.json
-              CURRENT_VERSION=$(jq -r '.version' server.json)
-              echo "Current version: $CURRENT_VERSION"
-            fi
-          fi
+          echo "PyPI workflow succeeded - Publishing to MCP Registry"
+          ./mcp-publisher publish
+
+  on-failure:
+    name: Handle PyPI Failure
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    steps:
+      - name: Log PyPI Failure
+        run: echo "PyPI workflow failed - MCP Registry publication skipped"

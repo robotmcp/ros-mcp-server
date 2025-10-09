@@ -1,9 +1,11 @@
-name: Track Download Metrics via GitHub App
+name: Track Download Metrics
 
 on:
-  schedule:
-    - cron: '30 * * * *'  # Run every hour at minute 30
   workflow_dispatch:
+  workflow_run:
+    workflows: ["Track View Metrics"]       # exact name of PyPI workflow
+    types:
+      - completed
 
 jobs:
   download-stats:
