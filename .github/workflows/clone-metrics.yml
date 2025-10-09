@@ -1,6 +1,11 @@
 name: Track Clone Metrics
 
 on:
+<<<<<<< HEAD
+=======
+  schedule:
+    - cron: '0 8 * * *'  # Run every day at 8am
+>>>>>>> main
   workflow_dispatch:
   schedule:
     - cron: '0 8 * * *'  # Run every day at 8am
