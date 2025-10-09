@@ -1,0 +1,40 @@
+name: Publish MCP Registry
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build"]       # exact name of workflow 1
+    types:
+      - completed
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  registry:
+    name: Publish to MCP Registry
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # REQUIRED for MCP Registry GitHub OIDC login
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install MCP Publisher
+        run: |
+          set -e
+          OS=$(uname -s | tr '[:upper:]' '[:lower:]')
+          ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/v1.0.0/mcp-publisher_1.0.0_${OS}_${ARCH}.tar.gz" \
+          | tar xz mcp-publisher
+
+      - name: Login to MCP Registry (OIDC)
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish server.json to MCP Registry
+        run: ./mcp-publisher publish

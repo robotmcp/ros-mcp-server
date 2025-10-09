@@ -1,0 +1,60 @@
+name: Publish to PyPI Only
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: publish-pypi-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pypi:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # REQUIRED for PyPI Trusted Publishing (OIDC)
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: pipx install uv
+
+      # --- Optional checks (keep for now; can be moved to PR CI later) ---
+      - name: Sync deps
+        run: uv sync
+
+      - name: Ruff lint
+        run: uvx ruff check .
+
+      - name: Ruff format check
+        run: uvx ruff format --check .
+
+      - name: Run tests (if present)
+        run: |
+          if [ -d tests ]; then
+            uv run pytest -q
+          else
+            echo "No tests/ directory; skipping."
+          fi
+
+      # --- Build artifacts for PyPI ---
+      - name: Build sdist & wheel
+        run: uv build
+
+      # --- Publish using Trusted Publishing (no tokens) ---
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist
+          # For a dress rehearsal, you can set:
+          # repository-url: https://test.pypi.org/legacy/
