@@ -159,6 +159,53 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         return None
 
 
+def parse_input(raw: Union[str, bytes] | None, expects_image: bool | None = None) -> tuple[dict | None, bool]:
+    """
+    Parse input data with optional image hint for optimized handling.
+    
+    This function determines the parsing strategy based on the expects_image hint:
+    - If expects_image=True: prioritize image parsing, fall back to JSON
+    - If expects_image=False: parse as JSON only (faster for non-image data)
+    - If expects_image=None: auto-detect based on message structure
+    
+    Args:
+        raw: JSON string, bytes, or None
+        expects_image: Optional hint about whether to expect image data
+    
+    Returns:
+        tuple: (parsed_data, was_parsed_as_image)
+            - parsed_data: Parsed dict if successful, None otherwise
+            - was_parsed_as_image: True if data was successfully parsed as image
+    """
+    if raw is None:
+        return None, False
+    
+    # Step 1: Auto-detect mode if not explicitly specified
+    if expects_image is None:
+        # Try to parse as JSON first to check structure
+        temp_parsed = parse_json(raw)
+        if temp_parsed and isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
+            msg_content = temp_parsed.get("msg", {})
+            expects_image = is_image_like(msg_content)
+        else:
+            expects_image = False
+    
+    # Step 2: Parse based on expected type with graceful fallback
+    if expects_image:
+        # Try image parsing first
+        result = parse_image(raw)
+        if result is not None:
+            return result, True
+        else:
+            # Fallback to JSON if image parsing failed
+            result = parse_json(raw)
+            return result, False
+    else:
+        # Parse as JSON (faster for non-image data)
+        result = parse_json(raw)
+        return result, False
+
+
 class WebSocketManager:
     def __init__(self, ip: str, port: int, default_timeout: float = 2.0):
         self.ip = ip

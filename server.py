@@ -13,7 +13,7 @@ from PIL import Image as PILImage
 
 from utils.config_utils import get_robot_specifications, parse_robot_config
 from utils.network_utils import ping_ip_and_port
-from utils.websocket_manager import WebSocketManager, is_image_like, parse_image, parse_json
+from utils.websocket_manager import WebSocketManager, parse_input
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
@@ -560,9 +560,6 @@ def subscribe_once(
         # Use default timeout if none specified
         actual_timeout = timeout if timeout is not None else ws_manager.default_timeout
 
-        # Track whether we actually parsed as image
-        was_parsed_as_image = False
-
         # Loop until we receive the first message or timeout
         end_time = time.time() + actual_timeout
         while time.time() < end_time:
@@ -570,41 +567,11 @@ def subscribe_once(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
-            # Determine whether to parse as image based on expects_image hint
-            try:
-                # Parse response to a Python dictionary
-                temp_parsed = json.loads(response) if isinstance(response, str) else response
-                # Check if the response is a publish message
-                if isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
-                    msg_content = temp_parsed.get("msg", {})
-
-                    # Determine parsing strategy based on expects_image hint
-                    if expects_image is None:
-                        # Auto-detect mode: check if message looks like an image
-                        should_parse_as_image = is_image_like(msg_content)
-                    else:
-                        # Use the hint provided by the LLM
-                        should_parse_as_image = expects_image
-
-                    # Parse with graceful fallback
-                    if should_parse_as_image:
-                        # Try image parsing first
-                        msg_data = parse_image(response)
-                        if msg_data is not None:
-                            was_parsed_as_image = True
-                        else:
-                            # Fallback to JSON if image parsing failed
-                            msg_data = parse_json(response)
-                    else:
-                        # Parse as JSON (faster for non-image data)
-                        msg_data = parse_json(response)
-                else:
-                    msg_data = parse_json(response)
-            except (json.JSONDecodeError, TypeError, AttributeError):
-                msg_data = parse_json(response)
+            # Parse input with expects_image hint
+            msg_data, was_parsed_as_image = parse_input(response, expects_image)
 
             if not msg_data:
-                continue  # non-JSON or empty
+                continue  # parsing failed or empty
 
             # Check for status errors from rosbridge
             if msg_data.get("op") == "status" and msg_data.get("level") == "error":
@@ -793,44 +760,11 @@ def subscribe_for_duration(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
-            # Track whether this message was parsed as image
-            was_parsed_as_image = False
-
-            # Determine whether to parse as image based on expects_image hint
-            try:
-                # Parse response to a Python dictionary
-                temp_parsed = json.loads(response) if isinstance(response, str) else response
-                # Check if the response is a publish message
-                if isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
-                    msg_content = temp_parsed.get("msg", {})
-
-                    # Determine parsing strategy based on expects_image hint
-                    if expects_image is None:
-                        # Auto-detect mode: check if message looks like an image
-                        should_parse_as_image = is_image_like(msg_content)
-                    else:
-                        # Use the hint provided by the LLM
-                        should_parse_as_image = expects_image
-
-                    # Parse with graceful fallback
-                    if should_parse_as_image:
-                        # Try image parsing first
-                        msg_data = parse_image(response)
-                        if msg_data is not None:
-                            was_parsed_as_image = True
-                        else:
-                            # Fallback to JSON if image parsing failed
-                            msg_data = parse_json(response)
-                    else:
-                        # Parse as JSON (faster for non-image data)
-                        msg_data = parse_json(response)
-                else:
-                    msg_data = parse_json(response)
-            except (json.JSONDecodeError, TypeError, AttributeError):
-                msg_data = parse_json(response)
+            # Parse input with expects_image hint
+            msg_data, was_parsed_as_image = parse_input(response, expects_image)
 
             if not msg_data:
-                continue  # non-JSON or empty
+                continue  # parsing failed or empty
 
             # Check for status errors from rosbridge
             if msg_data.get("op") == "status" and msg_data.get("level") == "error":
