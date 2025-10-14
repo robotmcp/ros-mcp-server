@@ -33,44 +33,56 @@ def parse_json(raw: Union[str, bytes] | None) -> dict | None:
 def is_image_like(msg_content: dict) -> bool:
     """
     Check if a message looks like an image message by examining its fields.
-    
-    This checks for image-specific fields (width, height, encoding) in addition 
-    to the data field to distinguish images from other messages that may contain 
+
+    This checks for image-specific fields (width, height, encoding) in addition
+    to the data field to distinguish images from other messages that may contain
     binary data (e.g., PointCloud2, ByteMultiArray).
-    
+
     Args:
         msg_content: The message content dictionary
-        
+
     Returns:
         bool: True if the message appears to be an image, False otherwise
     """
     if not isinstance(msg_content, dict):
         return False
-    
+
     # Check for CompressedImage format (has 'data' and 'format' fields)
     if "data" in msg_content and "format" in msg_content:
         format_str = msg_content.get("format", "").lower()
         if any(fmt in format_str for fmt in ["jpeg", "jpg", "png"]):
             return True
-    
+
     # Check for raw Image format (has 'data', 'width', 'height', 'encoding')
     required_fields = {"data", "width", "height", "encoding"}
     if not required_fields.issubset(msg_content.keys()):
         return False
-    
+
     # Validate field types
-    if not isinstance(msg_content.get("width"), int) or not isinstance(msg_content.get("height"), int):
+    if not isinstance(msg_content.get("width"), int) or not isinstance(
+        msg_content.get("height"), int
+    ):
         return False
-    
+
     # Check for valid image encodings (sensor_msgs/Image standard encodings)
     encoding = msg_content.get("encoding", "").lower()
     valid_encodings = [
-        "rgb8", "rgba8", "bgr8", "bgra8", "mono8", "mono16",
-        "8uc1", "8uc3", "8uc4", "16uc1", "bayer", "yuv"
+        "rgb8",
+        "rgba8",
+        "bgr8",
+        "bgra8",
+        "mono8",
+        "mono16",
+        "8uc1",
+        "8uc3",
+        "8uc4",
+        "16uc1",
+        "bayer",
+        "yuv",
     ]
     if not any(enc in encoding for enc in valid_encodings):
         return False
-    
+
     return True
 
 

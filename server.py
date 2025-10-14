@@ -560,6 +560,9 @@ def subscribe_once(
         # Use default timeout if none specified
         actual_timeout = timeout if timeout is not None else ws_manager.default_timeout
 
+        # Track whether we actually parsed as image
+        was_parsed_as_image = False
+
         # Loop until we receive the first message or timeout
         end_time = time.time() + actual_timeout
         while time.time() < end_time:
@@ -574,7 +577,7 @@ def subscribe_once(
                 # Check if the response is a publish message
                 if isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
                     msg_content = temp_parsed.get("msg", {})
-                    
+
                     # Determine parsing strategy based on expects_image hint
                     if expects_image is None:
                         # Auto-detect mode: check if message looks like an image
@@ -582,12 +585,14 @@ def subscribe_once(
                     else:
                         # Use the hint provided by the LLM
                         should_parse_as_image = expects_image
-                    
+
                     # Parse with graceful fallback
                     if should_parse_as_image:
                         # Try image parsing first
                         msg_data = parse_image(response)
-                        if msg_data is None:
+                        if msg_data is not None:
+                            was_parsed_as_image = True
+                        else:
                             # Fallback to JSON if image parsing failed
                             msg_data = parse_json(response)
                     else:
@@ -610,10 +615,14 @@ def subscribe_once(
                 # Unsubscribe before returning the message
                 unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
                 ws_manager.send(unsubscribe_msg)
-                # Check if this was an image message by checking if it looks like an image
-                if msg_data and isinstance(msg_data, dict) and is_image_like(msg_data.get("msg", {})):
+                # Return appropriate message based on whether image was actually parsed
+                if was_parsed_as_image:
+                    # Exclude the 'data' field from image messages as it's too large
+                    msg_content = msg_data.get("msg", {})
+                    filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
                     return {
-                        "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it"
+                        "msg": filtered_msg,
+                        "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
                     }
                 else:
                     return {"msg": msg_data.get("msg", {})}
@@ -784,6 +793,9 @@ def subscribe_for_duration(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
+            # Track whether this message was parsed as image
+            was_parsed_as_image = False
+
             # Determine whether to parse as image based on expects_image hint
             try:
                 # Parse response to a Python dictionary
@@ -791,7 +803,7 @@ def subscribe_for_duration(
                 # Check if the response is a publish message
                 if isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
                     msg_content = temp_parsed.get("msg", {})
-                    
+
                     # Determine parsing strategy based on expects_image hint
                     if expects_image is None:
                         # Auto-detect mode: check if message looks like an image
@@ -799,12 +811,14 @@ def subscribe_for_duration(
                     else:
                         # Use the hint provided by the LLM
                         should_parse_as_image = expects_image
-                    
+
                     # Parse with graceful fallback
                     if should_parse_as_image:
                         # Try image parsing first
                         msg_data = parse_image(response)
-                        if msg_data is None:
+                        if msg_data is not None:
+                            was_parsed_as_image = True
+                        else:
                             # Fallback to JSON if image parsing failed
                             msg_data = parse_json(response)
                     else:
@@ -825,12 +839,15 @@ def subscribe_for_duration(
 
             # Check for published messages matching our topic
             if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
-                # Check if this was an image message
-                if isinstance(msg_data.get("msg"), dict) and is_image_like(msg_data.get("msg", {})):
+                # Add message based on whether it was actually parsed as image
+                if was_parsed_as_image:
+                    # Exclude the 'data' field from image messages as it's too large
+                    msg_content = msg_data.get("msg", {})
+                    filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
                     collected_messages.append(
                         {
                             "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
-                            "msg": msg_data.get("msg", {}),
+                            "msg": filtered_msg,
                         }
                     )
                 else:
