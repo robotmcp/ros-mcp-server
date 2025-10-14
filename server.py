@@ -13,7 +13,7 @@ from PIL import Image as PILImage
 
 from utils.config_utils import get_robot_specifications, parse_robot_config
 from utils.network_utils import ping_ip_and_port
-from utils.websocket_manager import WebSocketManager, parse_image, parse_json
+from utils.websocket_manager import WebSocketManager, is_image_like, parse_image, parse_json
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
@@ -491,7 +491,9 @@ def inspect_all_topics() -> dict:
         "Example:\n"
         "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
         "subscribe_once(topic='/slow_topic', msg_type='my_package/SlowMsg', timeout=None)  # Specify timeout only if topic publishes infrequently\n"
-        "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=None, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate"
+        "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=None, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
+        "subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image=True)  # Hint that this is an image for faster processing\n"
+        "subscribe_once(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', expects_image=False)  # Skip image detection for non-image data"
     )
 )
 def subscribe_once(
@@ -500,6 +502,7 @@ def subscribe_once(
     timeout: float | None = None,
     queue_length: int | None = None,
     throttle_rate_ms: int | None = None,
+    expects_image: bool | None = None,
 ) -> dict:
     """
     Subscribe to a given ROS topic via rosbridge and return the first message received.
@@ -510,6 +513,10 @@ def subscribe_once(
         timeout (float | None): Timeout in seconds. If None, uses the default timeout.
         queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
         throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+        expects_image (bool | None): Optional hint about whether to expect image data.
+            - True: prioritize image parsing (use for sensor_msgs/Image topics)
+            - False: skip image detection for faster processing (use for non-image topics)
+            - None: auto-detect based on message fields (default)
 
     Returns:
         dict:
@@ -560,18 +567,31 @@ def subscribe_once(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
-            # Try to detect if this is an image message by checking the content
+            # Determine whether to parse as image based on expects_image hint
             try:
                 # Parse response to a Python dictionary
                 temp_parsed = json.loads(response) if isinstance(response, str) else response
                 # Check if the response is a publish message
                 if isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
                     msg_content = temp_parsed.get("msg", {})
-                    # Check if message contains image data (base64 data field)
-                    if isinstance(msg_content, dict) and "data" in msg_content:
-                        # If it does, parse the image
-                        msg_data = parse_image(response)
+                    
+                    # Determine parsing strategy based on expects_image hint
+                    if expects_image is None:
+                        # Auto-detect mode: check if message looks like an image
+                        should_parse_as_image = is_image_like(msg_content)
                     else:
+                        # Use the hint provided by the LLM
+                        should_parse_as_image = expects_image
+                    
+                    # Parse with graceful fallback
+                    if should_parse_as_image:
+                        # Try image parsing first
+                        msg_data = parse_image(response)
+                        if msg_data is None:
+                            # Fallback to JSON if image parsing failed
+                            msg_data = parse_json(response)
+                    else:
+                        # Parse as JSON (faster for non-image data)
                         msg_data = parse_json(response)
                 else:
                     msg_data = parse_json(response)
@@ -590,8 +610,8 @@ def subscribe_once(
                 # Unsubscribe before returning the message
                 unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
                 ws_manager.send(unsubscribe_msg)
-                # Check if this was an image message by seeing if parse_image was used
-                if msg_data and isinstance(msg_data, dict) and "data" in msg_data.get("msg", {}):
+                # Check if this was an image message by checking if it looks like an image
+                if msg_data and isinstance(msg_data, dict) and is_image_like(msg_data.get("msg", {})):
                     return {
                         "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it"
                     }
@@ -685,7 +705,9 @@ def publish_once(topic: str = "", msg_type: str = "", msg: dict = {}) -> dict:
         "Subscribe to a topic for a duration and collect messages.\n"
         "Example:\n"
         "subscribe_for_duration(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', duration=5, max_messages=10)\n"
-        "subscribe_for_duration(topic='/high_rate_topic', msg_type='sensor_msgs/Image', duration=10, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate"
+        "subscribe_for_duration(topic='/high_rate_topic', msg_type='sensor_msgs/Image', duration=10, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
+        "subscribe_for_duration(topic='/camera/image_raw', msg_type='sensor_msgs/Image', duration=5, expects_image=True)  # Hint that this is an image for faster processing\n"
+        "subscribe_for_duration(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', duration=5, expects_image=False)  # Skip image detection for non-image data"
     )
 )
 def subscribe_for_duration(
@@ -695,6 +717,7 @@ def subscribe_for_duration(
     max_messages: int = 100,
     queue_length: int | None = None,
     throttle_rate_ms: int | None = None,
+    expects_image: bool | None = None,
 ) -> dict:
     """
     Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages.
@@ -706,6 +729,10 @@ def subscribe_for_duration(
         max_messages (int): Maximum number of messages to collect before stopping
         queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
         throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+        expects_image (bool | None): Optional hint about whether to expect image data.
+            - True: prioritize image parsing (use for sensor_msgs/Image topics)
+            - False: skip image detection for faster processing (use for non-image topics)
+            - None: auto-detect based on message fields (default)
 
     Returns:
         dict:
@@ -757,18 +784,31 @@ def subscribe_for_duration(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
-            # Try to detect if this is an image message by checking the content
+            # Determine whether to parse as image based on expects_image hint
             try:
                 # Parse response to a Python dictionary
                 temp_parsed = json.loads(response) if isinstance(response, str) else response
                 # Check if the response is a publish message
                 if isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
                     msg_content = temp_parsed.get("msg", {})
-                    # Check if message contains image data (base64 data field)
-                    if isinstance(msg_content, dict) and "data" in msg_content:
-                        # If it does, parse the image
-                        msg_data = parse_image(response)
+                    
+                    # Determine parsing strategy based on expects_image hint
+                    if expects_image is None:
+                        # Auto-detect mode: check if message looks like an image
+                        should_parse_as_image = is_image_like(msg_content)
                     else:
+                        # Use the hint provided by the LLM
+                        should_parse_as_image = expects_image
+                    
+                    # Parse with graceful fallback
+                    if should_parse_as_image:
+                        # Try image parsing first
+                        msg_data = parse_image(response)
+                        if msg_data is None:
+                            # Fallback to JSON if image parsing failed
+                            msg_data = parse_json(response)
+                    else:
+                        # Parse as JSON (faster for non-image data)
                         msg_data = parse_json(response)
                 else:
                     msg_data = parse_json(response)
@@ -786,7 +826,7 @@ def subscribe_for_duration(
             # Check for published messages matching our topic
             if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
                 # Check if this was an image message
-                if isinstance(msg_data.get("msg"), dict) and "data" in msg_data.get("msg", {}):
+                if isinstance(msg_data.get("msg"), dict) and is_image_like(msg_data.get("msg", {})):
                     collected_messages.append(
                         {
                             "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
