@@ -329,8 +329,8 @@ class WebSocketManager:
         if response is None:
             return {"error": "no response or timeout from rosbridge"}
 
-        # Attempt to parse JSON
-        parsed_response = parse_json(response)
+        # Attempt to parse response (auto-detect images, but services rarely return images)
+        parsed_response, _ = parse_input(response, expects_image=None)
         if parsed_response is None:
             print(f"[WebSocket] JSON decode error for response: {response}")
             return {"error": "invalid_json", "raw": response}
