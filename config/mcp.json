@@ -1,4 +1,5 @@
 {
+  "_comment": "For WSL users: Use /home/<YOUR_USER>/ paths (native Linux filesystem) instead of /mnt/c/Users/<YOUR_USER>/ (Windows mount) for better performance and to avoid permission issues",
   "mcpServers": {
     "ros-mcp-server-http": {
       "name": "ROS-MCP Server (http)",

@@ -69,6 +69,8 @@ git clone https://github.com/robotmcp/ros-mcp-server.git
 cd ros-mcp-server
 ```
 
+> ⚠️ **WSL Users**: Clone the repository in your WSL home directory (e.g., `/home/username/`) instead of the Windows filesystem mount (e.g., `/mnt/c/Users/username/`). Using the native Linux filesystem provides better performance and avoids potential permission issues.
+
 ## 1.4 Connect ROS-MCP to Cursor
 
 * Open Cursor Desktop
@@ -109,11 +111,11 @@ uv run server.py --transport http
 - Automatic server management
 
 **Important Configuration Notes:**
-- Make sure to move ros-mcp-server folder to your `/home/<YOUR_USER>` (note: ~ for home directory may not work in JSON files)
+- Make sure to clone the ros-mcp-server folder to your `/home/<YOUR_USER>` directory (note: ~ for home directory may not work in JSON files)
 ```
-"/home/<YOUR_USER>/ros-mcp-server" # Linux home directory
-"/mnt/c/Users/<YOUR_USER>/ros-mcp-server" # WSL home directory
+"/home/<YOUR_USER>/ros-mcp-server" # Recommended: WSL/Linux home directory
 ```
+- **Avoid using `/mnt/c/Users/<YOUR_USER>/` paths** - these point to the Windows filesystem which can cause performance issues and permission problems
 - Use the correct WSL distribution name (e.g., "Ubuntu" or "Ubuntu-22.04")
 - Make sure to replace `<YOUR_USER>` with your actual WSL username
 

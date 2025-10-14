@@ -23,7 +23,9 @@ Below are detailed instructions for each of these steps.
 git clone https://github.com/robotmcp/ros-mcp-server.git
 ```
 
-Note the **absolute path** to the cloned directory — you’ll need this later when configuring your language model client.
+> ⚠️ **WSL Users**: Clone the repository in your WSL home directory (e.g., `/home/username/`) instead of the Windows filesystem mount (e.g., `/mnt/c/Users/username/`). Using the native Linux filesystem provides better performance and avoids potential permission issues.
+
+Note the **absolute path** to the cloned directory — you'll need this later when configuring your language model client.
 
 ---
 
