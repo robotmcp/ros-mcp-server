@@ -159,19 +159,21 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         return None
 
 
-def parse_input(raw: Union[str, bytes] | None, expects_image: bool | None = None) -> tuple[dict | None, bool]:
+def parse_input(
+    raw: Union[str, bytes] | None, expects_image: bool | None = None
+) -> tuple[dict | None, bool]:
     """
     Parse input data with optional image hint for optimized handling.
-    
+
     This function determines the parsing strategy based on the expects_image hint:
     - If expects_image=True: prioritize image parsing, fall back to JSON
     - If expects_image=False: parse as JSON only (faster for non-image data)
     - If expects_image=None: auto-detect based on message structure
-    
+
     Args:
         raw: JSON string, bytes, or None
         expects_image: Optional hint about whether to expect image data
-    
+
     Returns:
         tuple: (parsed_data, was_parsed_as_image)
             - parsed_data: Parsed dict if successful, None otherwise
@@ -179,7 +181,7 @@ def parse_input(raw: Union[str, bytes] | None, expects_image: bool | None = None
     """
     if raw is None:
         return None, False
-    
+
     # Step 1: Auto-detect mode if not explicitly specified
     if expects_image is None:
         # Try to parse as JSON first to check structure
@@ -189,7 +191,7 @@ def parse_input(raw: Union[str, bytes] | None, expects_image: bool | None = None
             expects_image = is_image_like(msg_content)
         else:
             expects_image = False
-    
+
     # Step 2: Parse based on expected type with graceful fallback
     if expects_image:
         # Try image parsing first
