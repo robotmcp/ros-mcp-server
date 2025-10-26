@@ -17,6 +17,13 @@ Below are detailed instructions for each of these steps.
 
 Install using pipx (recommended for isolated installation):
 
+```bash
+# Install pipx if you don't have it
+pip install pipx
+
+# Install ros-mcp using pipx
+pipx install ros-mcp
+```
 <details>
 <summary><strong>Why pipx?</strong></summary>
 
@@ -27,14 +34,6 @@ Install using pipx (recommended for isolated installation):
 - Automatic PATH management
 
 </details>
-
-```bash
-# Install pipx if you don't have it
-pip install pipx
-
-# Install ros-mcp using pipx
-pipx install ros-mcp
-```
 
 <details>
 <summary><strong>Alternative Installation Options</strong></summary>
@@ -372,8 +371,8 @@ What topics and services do you see on the robot?
 ---
 
 # 5. Alternate Clients (ChatGPT, Gemini, Cursor)
-
-Examples and setup instructions for other LLMs
+<details>
+<summary><strong>Examples and setup instructions for other LLM Hosts and Clients</strong></summary>
 
 ## 5.1. Cursor IDE
 For detailed Cursor setup instructions, see our [Cursor Tutorial](../examples/7_cursor/README.md).
@@ -385,10 +384,9 @@ For detailed ChatGPT setup instructions, see our [ChatGPT Tutorial](../examples/
 For detailed Gemini setup instructions, see our [Gemini Tutorial](../examples/2_gemini/README.md).
 
 ## 5.4. Custom MCP Client
-You can also use the MCP server directly in your Python code. Here's an example of how to integrate it programmatically:
-
+You can also use the MCP server directly in your Python code. 
 <details>
-<summary><strong>Python Integration Example</strong></summary>
+<summary>Here is a python example of how to integrate it programmatically</summary>
 
 ```python
 from mcp import ClientSession, StdioServerParameters
@@ -409,12 +407,17 @@ async def main():
 
 </details>
 
+</details>
+
 
 ---
 
 # 6. Troubleshooting
 
-## 6.1. Common Issues
+<details>
+<summary><strong>6.1. Common Issues</strong></summary>
+
+Here are some frequently encountered issues and their solutions:
 
 <details>
 <summary><strong>MCP Server Not Appearing in Client</strong></summary>
@@ -520,26 +523,30 @@ curl http://localhost:9000
 
 </details>
 
+---
+
+</details>
+
 <details>
 <summary><strong>6.2. Debug Commands</strong></summary>
 
-### Test ROS connectivity
+Test ROS connectivity
 ```bash
 ros2 topic list  # For ROS 2
 rostopic list   # For ROS 1
 ```
 
-### Test rosbridge
+Test rosbridge
 ```bash
 curl -I http://localhost:9090
 ```
 
-### Test MCP server manually
+Test MCP server manually
 ```bash
 ros-mcp --transport=stdio
 ```
 
-### Check running processes
+Check running processes
 ```bash
 ps aux | grep rosbridge
 ps aux | grep ros-mcp
