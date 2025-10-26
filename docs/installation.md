@@ -17,6 +17,17 @@ Below are detailed instructions for each of these steps.
 
 Install using pipx (recommended for isolated installation):
 
+<details>
+<summary><strong>Why pipx?</strong></summary>
+
+**Benefits of pipx:**
+- Isolated installation in its own virtual environment
+- Won't conflict with other Python packages
+- Easy to uninstall: `pipx uninstall ros-mcp`
+- Automatic PATH management
+
+</details>
+
 ```bash
 # Install pipx if you don't have it
 pip install pipx
@@ -38,12 +49,6 @@ pip install ros-mcp
 ### Option B: Install from Source
 For developers or advanced users who need to modify the source code, see [Installation from Source](installation-from-source.md).
 
-### Why pipx?
-**Benefits of pipx:**
-- Isolated installation in its own virtual environment
-- Won't conflict with other Python packages
-- Easy to uninstall: `pipx uninstall ros-mcp`
-- Automatic PATH management
 
 </details>
 
@@ -368,23 +373,22 @@ What topics and services do you see on the robot?
 
 # 5. Alternate Clients (ChatGPT, Gemini, Cursor)
 
-<details>
-<summary><strong> Examples and setup instructions for other LLMs</strong></summary>
+Examples and setup instructions for other LLMs
 
-#### 3.2.1. Cursor IDE
+## 5.1. Cursor IDE
 For detailed Cursor setup instructions, see our [Cursor Tutorial](../examples/7_cursor/README.md).
 
-#### 3.2.2. ChatGPT
+## 5.2. ChatGPT
 For detailed ChatGPT setup instructions, see our [ChatGPT Tutorial](../examples/6_chatgpt/README.md).
 
-#### 3.2.3. Google Gemini
+## 5.3. Google Gemini
 For detailed Gemini setup instructions, see our [Gemini Tutorial](../examples/2_gemini/README.md).
 
-<details>
-<summary><strong>Custom MCP Client</strong></summary>
+## 5.4. Custom MCP Client
+You can also use the MCP server directly in your Python code. Here's an example of how to integrate it programmatically:
 
-#### 3.2.1. Using the MCP Server Programmatically
-You can also use the MCP server directly in your Python code:
+<details>
+<summary><strong>Python Integration Example</strong></summary>
 
 ```python
 from mcp import ClientSession, StdioServerParameters
@@ -402,8 +406,6 @@ async def main():
             result = await session.call_tool("get_topics", {})
             print(result)
 ```
-
-</details>
 
 </details>
 
@@ -504,30 +506,8 @@ curl http://localhost:9000
 
 </details>
 
-## 6.2. Debug Commands
-
-```bash
-# Test ROS connectivity
-ros2 topic list  # For ROS 2
-rostopic list   # For ROS 1
-
-# Test rosbridge
-curl -I http://localhost:9090
-
-# Test MCP server manually
-cd /<ABSOLUTE_PATH>/ros-mcp-server
-uv run server.py
-
-# Check processes
-ps aux | grep rosbridge
-ps aux | grep ros-mcp
-```
-
-## 6.3. Getting Help
-
 <details>
 <summary><strong>If you're still having issues:</strong></summary>
-
 
 1. **Check the logs**: Look for error messages in your LLM client and MCP server logs
 2. **Test with turtlesim**: Try the [turtlesim tutorial](../examples/1_turtlesim/README.md) to verify basic functionality
@@ -539,4 +519,33 @@ ps aux | grep ros-mcp
    - Steps to reproduce
 
 </details>
+
+<details>
+<summary><strong>6.2. Debug Commands</strong></summary>
+
+### Test ROS connectivity
+```bash
+ros2 topic list  # For ROS 2
+rostopic list   # For ROS 1
+```
+
+### Test rosbridge
+```bash
+curl -I http://localhost:9090
+```
+
+### Test MCP server manually
+```bash
+ros-mcp --transport=stdio
+```
+
+### Check running processes
+```bash
+ps aux | grep rosbridge
+ps aux | grep ros-mcp
+```
+
+</details>
+
+
 ---
