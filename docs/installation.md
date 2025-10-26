@@ -25,12 +25,6 @@ pip install pipx
 pipx install ros-mcp
 ```
 
-**Benefits of pipx:**
-- Isolated installation in its own virtual environment
-- Won't conflict with other Python packages
-- Easy to uninstall: `pipx uninstall ros-mcp`
-- Automatic PATH management
-
 <details>
 <summary><strong>Alternative Installation Options</strong></summary>
 
@@ -43,6 +37,13 @@ pip install ros-mcp
 
 ### Option B: Install from Source
 For developers or advanced users who need to modify the source code, see [Installation from Source](installation-from-source.md).
+
+### Why pipx?
+**Benefits of pipx:**
+- Isolated installation in its own virtual environment
+- Won't conflict with other Python packages
+- Easy to uninstall: `pipx uninstall ros-mcp`
+- Automatic PATH management
 
 </details>
 
