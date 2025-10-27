@@ -48,8 +48,19 @@ pip install ros-mcp
 ### Option B: Install from Source
 For developers or advanced users who need to modify the source code, see [Installation from Source](installation-from-source.md).
 
+### Option C: Install from Source using pipx
+For developers who want to install from source but still use pipx for isolation:
 
-</details>
+```bash
+# Clone the repository
+git clone https://github.com/robotmcp/ros-mcp-server.git
+cd ros-mcp-server
+
+# Install from source using pipx
+pipx install .
+```
+
+> **Note**: This also works with regular pip: `pip install .`
 
 ---
 
