@@ -8,11 +8,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  mcp-publish:
+  mcp-registry:
     name: Publish to MCP Registry
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
-      permissions:
+    permissions:
       contents: read
       id-token: write
     steps:
@@ -31,6 +30,4 @@ jobs:
         run: ./mcp-publisher login github-oidc
 
       - name: Publish to MCP Registry
-        run: |
-          echo "PyPI workflow succeeded - Publishing to MCP Registry"
-          ./mcp-publisher publish
+        run: ./mcp-publisher publish
