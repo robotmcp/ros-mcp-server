@@ -2,16 +2,13 @@ name: Publish MCP Registry
 
 on:
   workflow_dispatch:
-  workflow_run:
-    workflows: ["Publish PyPI"]
-    types: [completed]
 
 concurrency:
-  group: publish-${{ github.ref }}
+  group: publish-mcpc-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  on-success:
+  mcp-publish:
     name: Publish to MCP Registry
     runs-on: ubuntu-latest
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -37,11 +34,3 @@ jobs:
         run: |
           echo "PyPI workflow succeeded - Publishing to MCP Registry"
           ./mcp-publisher publish
-
-  on-failure:
-    name: Handle PyPI Failure
-    runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
-    steps:
-      - name: Log PyPI Failure
-        run: echo "PyPI workflow failed - MCP Registry publication skipped"
