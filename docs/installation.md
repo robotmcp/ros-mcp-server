@@ -62,6 +62,8 @@ pipx install .
 
 > **Note**: This also works with regular pip: `pip install .`
 
+</details>
+
 ---
 
 # 2. Install and configure a Language Model Client 
