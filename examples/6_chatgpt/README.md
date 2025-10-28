@@ -132,6 +132,8 @@ git clone https://github.com/robotmcp/ros-mcp-server.git
 cd ros-mcp-server
 ```
 
+> ⚠️ **WSL Users**: Clone the repository in your WSL home directory (e.g., `/home/username/`) instead of the Windows filesystem mount (e.g., `/mnt/c/Users/username/`). Using the native Linux filesystem provides better performance and avoids potential permission issues.
+
 
 ## 1.2 Run ROS-MCP Server
 

@@ -1,1 +1,2 @@
 include server.json
+recursive-include robot_specifications *.yaml

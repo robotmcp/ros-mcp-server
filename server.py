@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import os
+import sys
 import time
 import uuid
 from typing import Any, Dict, List, Union
@@ -11,7 +12,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.utilities.types import Image
 from PIL import Image as PILImage
 
-from utils.config_utils import get_robot_specifications, parse_robot_config
+from utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
 from utils.network_utils import ping_ip_and_port
 from utils.websocket_manager import WebSocketManager, parse_input
 
@@ -41,15 +42,28 @@ ws_manager = WebSocketManager(
 )  # Increased default timeout for ROS operations
 
 
-@mcp.tool(description=("Get robot configuration from YAML file."))
-def get_robot_config(name: str) -> dict:
+@mcp.tool(
+    description=(
+        "Load specifications and usage context for a verified robot model. "
+        "ONLY use if the robot model is in the verified list (use get_verified_robots_list first to check). "
+        "Most robots won't have a spec - that's OK, connect directly using connect_to_robot instead."
+    )
+)
+def get_verified_robot_spec(name: str) -> dict:
     """
-    Get the robot configuration from the YAML file for connecting to the robot and knowing its capabilities.
+    Load pre-defined specifications and additional context for a verified robot model.
+
+    This is OPTIONAL - only for a small set of pre-verified robot models stored in the repository.
+    Use get_verified_robots_list() first to check if a spec exists.
+    If no spec exists for your robot, simply use connect_to_robot() directly.
+
+    Args:
+        name (str): The exact robot model name from the verified list.
 
     Returns:
-        dict: The robot configuration.
+        dict: The robot specification with type, prompts, and additional context.
     """
-    robot_config = parse_robot_config(name)
+    robot_config = get_verified_robot_spec_util(name)
 
     if len(robot_config) > 1:
         return {
@@ -63,21 +77,29 @@ def get_robot_config(name: str) -> dict:
 
 
 @mcp.tool(
-    description=("List all available robot specifications that can be used with get_robot_config.")
+    description=(
+        "List pre-verified robot models that have specification files with usage guidance available. "
+        "Use this to check if a robot model has additional context available before calling get_verified_robot_spec. "
+        "If your robot is not in this list, you can still connect to it directly using connect_to_robot."
+    )
 )
-def list_verified_robot_specifications() -> dict:
+def get_verified_robots_list() -> dict:
     """
-    Get a list of all available robot specification files.
+    List all pre-verified robot models that have specification files available in the repository.
+
+    This is a small curated list of robot models with pre-defined specifications.
+    If your robot model is not in this list, you can still connect to any ROS robot
+    using the connect_to_robot() tool directly.
 
     Returns:
-        dict: List of available robot names that can be used with get_robot_config.
+        dict: List of available verified robot model names and count.
     """
-    return get_robot_specifications()
+    return get_verified_robots_list_util()
 
 
 @mcp.tool(
     description=(
-        "After getting the robot config, connect to the robot by setting the IP/port and testing connectivity."
+        "Connect to the robot by setting the IP/port. This tool also tests connectivity to confirm that the robot is reachable and the port is open."
     )
 )
 def connect_to_robot(
@@ -301,10 +323,10 @@ def get_message_details(message_type: str) -> dict:
     description=(
         "Get list of nodes that are publishing to a specific topic.\n"
         "Example:\n"
-        "get_publishers_for_topic('/cmd_vel')"
+        "get_topic_publishers('/cmd_vel')"
     )
 )
-def get_publishers_for_topic(topic: str) -> dict:
+def get_topic_publishers(topic: str) -> dict:
     """
     Get list of nodes that are publishing to a specific topic.
 
@@ -325,7 +347,7 @@ def get_publishers_for_topic(topic: str) -> dict:
         "service": "/rosapi/publishers",
         "type": "rosapi/Publishers",
         "args": {"topic": topic},
-        "id": f"get_publishers_for_topic_request_{topic.replace('/', '_')}",
+        "id": f"get_topic_publishers_request_{topic.replace('/', '_')}",
     }
 
     # Request publishers from rosbridge
@@ -350,10 +372,10 @@ def get_publishers_for_topic(topic: str) -> dict:
     description=(
         "Get list of nodes that are subscribed to a specific topic.\n"
         "Example:\n"
-        "get_subscribers_for_topic('/cmd_vel')"
+        "get_topic_subscribers('/cmd_vel')"
     )
 )
-def get_subscribers_for_topic(topic: str) -> dict:
+def get_topic_subscribers(topic: str) -> dict:
     """
     Get list of nodes that are subscribed to a specific topic.
 
@@ -374,7 +396,7 @@ def get_subscribers_for_topic(topic: str) -> dict:
         "service": "/rosapi/subscribers",
         "type": "rosapi/Subscribers",
         "args": {"topic": topic},
-        "id": f"get_subscribers_for_topic_request_{topic.replace('/', '_')}",
+        "id": f"get_topic_subscribers_request_{topic.replace('/', '_')}",
     }
 
     # Request subscribers from rosbridge
@@ -2496,7 +2518,11 @@ def inspect_all_actions() -> dict:
     )
 )
 async def send_action_goal(
-    action_name: str, action_type: str, goal: dict, timeout: float = None, ctx: Context = None
+    action_name: str,
+    action_type: str,
+    goal: dict,
+    timeout: float | None = None,
+    ctx: Context | None = None,
 ) -> dict:
     """
     Send a goal to a ROS action server. Works only with ROS 2.
@@ -2821,12 +2847,12 @@ def main():
 
     elif MCP_TRANSPORT in {"http", "streamable-http"}:
         # http and streamable-http both require host/port
-        print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}")
+        print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}", file=sys.stderr)
         mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
 
     elif MCP_TRANSPORT == "sse":
-        print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}")
-        print("Currently unsupported. Use 'stdio', 'http', or 'streamable-http'.")
+        print(f"Transport: {MCP_TRANSPORT} -> http://{MCP_HOST}:{MCP_PORT}", file=sys.stderr)
+        print("Currently unsupported. Use 'stdio', 'http', or 'streamable-http'.", file=sys.stderr)
         mcp.run(transport=MCP_TRANSPORT, host=MCP_HOST, port=MCP_PORT)
 
     else:

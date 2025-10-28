@@ -1,0 +1,109 @@
+name: Track Download Metrics
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Track View Metrics"]       # exact name of PyPI workflow
+    types: [completed]
+
+jobs:
+  download-stats:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for proper branch operations
+
+      - name: Generate GitHub App token
+        id: generate_token
+        uses: tibdex/github-app-token@v2.1.0
+        with:
+          app_id: ${{ secrets.APP_ID }}
+          private_key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Switch to metrics branch
+        run: |
+          # Checkout or create metrics branch
+          if git show-ref --verify --quiet refs/remotes/origin/metrics; then
+            echo "📋 Checking out existing metrics branch..."
+            git checkout -b metrics origin/metrics || git checkout metrics
+          else
+            echo "🆕 Creating new metrics branch..."
+            git checkout -b metrics
+          fi
+
+      - name: Fetch download data
+        env:
+          TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          mkdir -p .metrics
+          # Fetch download metrics from releases
+          curl -s -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases?per_page=100" \
+              > .metrics/releases.json
+          
+          echo "Download metrics:"
+          jq '[.[] | {tag: .tag_name, date: .published_at, total_downloads: ([.assets[].download_count] | add), assets_count: (.assets | length)}]' .metrics/releases.json
+        
+      - name: Update total download metrics
+        run: |
+          # Process each release from the releases array
+          LAST_UPDATED=$(date -u +"%Y-%m-%d %H:%M:%S UTC")
+
+          # Create total download CSV with header if it doesn't exist
+          if [ ! -f .metrics/total_download_metrics.csv ]; then
+            echo "date,release_tag,total_downloads,last_updated" > .metrics/total_download_metrics.csv
+          fi
+
+          echo "📊 Processing total download metrics..."
+          jq -r '.[] | "\(.published_at[0:10]),\(.tag_name),\([.assets[].download_count] | add)"' .metrics/releases.json | while IFS=',' read -r release_date tag_name total_downloads; do
+            echo "Processing $release_date: $tag_name - $total_downloads downloads"
+            
+            # Check if this release already exists in the CSV
+            if grep -q ",$tag_name," .metrics/total_download_metrics.csv; then
+              echo "📝 Updating existing entry for $tag_name..."
+              # Update existing entry
+              awk -v tag="$tag_name" -v downloads="$total_downloads" -v last_updated="$LAST_UPDATED" '
+                BEGIN { FS=","; OFS="," }
+                $2 == tag { 
+                  print $1, $2, downloads, last_updated; 
+                  updated=1; 
+                  next 
+                }
+                { print }
+              ' .metrics/total_download_metrics.csv > .metrics/total_download_metrics_temp.csv
+              mv .metrics/total_download_metrics_temp.csv .metrics/total_download_metrics.csv
+            else
+              echo "➕ Adding new download entry for $tag_name..."
+              echo "$release_date,$tag_name,$total_downloads,$LAST_UPDATED" >> .metrics/total_download_metrics.csv
+            fi
+          done
+
+          echo "Total download metrics:"
+          tail -n 5 .metrics/total_download_metrics.csv
+
+      - name: Commit and push results
+        env:
+          GITHUB_TOKEN: ${{ steps.generate_token.outputs.token }}
+        run: |
+          git config user.name "DownloadMetricsBot[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Add CSV file
+          git add .metrics/total_download_metrics.csv
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "ℹ️  No changes to commit - CSV data is up to date"
+          else
+            echo "📝 Committing changes..."
+            git commit -m "Automated update: repository download metrics $(date)"
+            
+            echo "🚀 Pushing to metrics branch..."
+            git push --force-with-lease origin metrics
+          fi

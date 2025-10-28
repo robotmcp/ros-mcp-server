@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import sys
 import threading
 from typing import Union
 
@@ -104,12 +105,12 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         result = json.loads(raw)
         msg = result["msg"]
     except (json.JSONDecodeError, KeyError):
-        print("[Image] Invalid JSON or missing 'msg' field.")
+        print("[Image] Invalid JSON or missing 'msg' field.", file=sys.stderr)
         return None
 
     data_b64 = msg.get("data")
     if not data_b64:
-        print("[Image] Missing 'data' field in message.")
+        print("[Image] Missing 'data' field in message.", file=sys.stderr)
         return None
 
     # ✅ Ensure output directory exists
@@ -121,13 +122,13 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         path = "./camera/received_image.jpeg"
         with open(path, "wb") as f:
             f.write(image_bytes)
-        print(f"[Image] Saved CompressedImage to {path}")
+        print(f"[Image] Saved CompressedImage to {path}", file=sys.stderr)
         return result if isinstance(result, dict) else None
 
     # Case 2: Raw Image (rgb8, bgr8, mono8)
     height, width, encoding = msg.get("height"), msg.get("width"), msg.get("encoding")
     if not all([height, width, encoding]):
-        print("[Image] Missing required fields for raw image.")
+        print("[Image] Missing required fields for raw image.", file=sys.stderr)
         return None
 
     # Decode base64 to numpy array
@@ -144,16 +145,16 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         elif encoding == "mono8":
             img_cv = img_np.reshape((height, width))
         else:
-            print(f"[Image] Unsupported encoding: {encoding}")
+            print(f"[Image] Unsupported encoding: {encoding}", file=sys.stderr)
             return None
     except ValueError as e:
-        print(f"[Image] Reshape error: {e}")
+        print(f"[Image] Reshape error: {e}", file=sys.stderr)
         return None
 
     # Save as JPEG with quality 95
     success = cv2.imwrite("./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
     if success:
-        print("[Image] Saved raw Image to ./camera/received_image.jpeg")
+        print("[Image] Saved raw Image to ./camera/received_image.jpeg", file=sys.stderr)
         return result if isinstance(result, dict) else None
     else:
         return None
@@ -222,7 +223,7 @@ class WebSocketManager:
         """
         self.ip = ip
         self.port = port
-        print(f"[WebSocket] IP set to {self.ip}:{self.port}")
+        print(f"[WebSocket] IP set to {self.ip}:{self.port}", file=sys.stderr)
 
     def connect(self) -> str | None:
         """
@@ -237,11 +238,13 @@ class WebSocketManager:
                 try:
                     url = f"ws://{self.ip}:{self.port}"
                     self.ws = websocket.create_connection(url, timeout=self.default_timeout)
-                    print(f"[WebSocket] Connected ({self.default_timeout}s timeout)")
+                    print(
+                        f"[WebSocket] Connected ({self.default_timeout}s timeout)", file=sys.stderr
+                    )
                     return None  # no error
                 except Exception as e:
                     error_msg = f"[WebSocket] Connection error: {e}"
-                    print(error_msg)
+                    print(error_msg, file=sys.stderr)
                     self.ws = None
                     return error_msg
             return None  # already connected, no error
@@ -266,12 +269,12 @@ class WebSocketManager:
                     return None  # no error
                 except TypeError as e:
                     error_msg = f"[WebSocket] JSON serialization error: {e}"
-                    print(error_msg)
+                    print(error_msg, file=sys.stderr)
                     self.close()
                     return error_msg
                 except Exception as e:
                     error_msg = f"[WebSocket] Send error: {e}"
-                    print(error_msg)
+                    print(error_msg, file=sys.stderr)
                     self.close()
                     return error_msg
 
@@ -299,7 +302,7 @@ class WebSocketManager:
                     raw = self.ws.recv()  # rosbridge sends JSON as a string
                     return raw
                 except Exception as e:
-                    print(f"[WebSocket] Receive error or timeout: {e}")
+                    print(f"[WebSocket] Receive error or timeout: {e}", file=sys.stderr)
                     self.close()
                     return None
             return None
@@ -332,7 +335,7 @@ class WebSocketManager:
         # Attempt to parse response (auto-detect images, but services rarely return images)
         parsed_response, _ = parse_input(response, expects_image=None)
         if parsed_response is None:
-            print(f"[WebSocket] JSON decode error for response: {response}")
+            print(f"[WebSocket] JSON decode error for response: {response}", file=sys.stderr)
             return {"error": "invalid_json", "raw": response}
         return parsed_response
 
@@ -341,9 +344,9 @@ class WebSocketManager:
             if self.ws and self.ws.connected:
                 try:
                     self.ws.close()
-                    print("[WebSocket] Closed")
+                    print("[WebSocket] Closed", file=sys.stderr)
                 except Exception as e:
-                    print(f"[WebSocket] Close error: {e}")
+                    print(f"[WebSocket] Close error: {e}", file=sys.stderr)
                 finally:
                     self.ws = None
 

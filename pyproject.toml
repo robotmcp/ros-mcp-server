@@ -1,6 +1,6 @@
 [project]
 name = "ros-mcp"
-version = "2.1.4"
+version = "2.1.7"
 description = "Connect AI Language Models with Robots on ROS using MCP"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -38,7 +38,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools]
 include-package-data = true
 py-modules = ["server"]
-packages = ["utils", "config"]
+packages = ["utils", "config", "robot_specifications"]
+
+[tool.setuptools.package-data]
+robot_specifications = ["*.yaml"]
 
 [tool.setuptools.data-files]
 "." = ["server.json"]
