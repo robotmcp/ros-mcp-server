@@ -2135,6 +2135,57 @@ def get_action_details(action_type: str) -> dict:
     if not action_type or not action_type.strip():
         return {"error": "Action type cannot be empty"}
 
+    # Check if required action detail services are available
+    required_services = [
+        "/rosapi/action_goal_details",
+        "/rosapi/action_result_details", 
+        "/rosapi/action_feedback_details"
+    ]
+    
+    with ws_manager:
+        # Get available services to check compatibility
+        services_message = {
+            "op": "call_service",
+            "service": "/rosapi/services",
+            "type": "rosapi/Services",
+            "args": {},
+            "id": "check_services_for_action_details"
+        }
+        
+        services_response = ws_manager.request(services_message)
+        if not services_response or not isinstance(services_response, dict):
+            return {
+                "error": "Failed to check service availability",
+                "action_type": action_type,
+                "compatibility": {
+                    "issue": "Cannot determine available services",
+                    "required_services": required_services,
+                    "suggestion": "Ensure rosbridge is running and rosapi is available"
+                }
+            }
+        
+        available_services = services_response.get("values", {}).get("services", [])
+        missing_services = [svc for svc in required_services if svc not in available_services]
+        
+        if missing_services:
+            return {
+                "error": f"Action details not supported by this rosbridge/rosapi version",
+                "action_type": action_type,
+                "compatibility": {
+                    "issue": "Required action detail services are not available",
+                    "missing_services": missing_services,
+                    "available_services": [s for s in available_services if "action" in s],
+                    "ros_version": "ROS 2 Humble detected",
+                    "suggestions": [
+                        "This rosbridge version doesn't support action message detail services",
+                        "Use get_actions() to list available actions",
+                        "Use get_action_type() to get action type from action name",
+                        "Consider upgrading rosbridge or using a different implementation"
+                    ],
+                    "note": "Action detail services (/rosapi/action_*_details) are not part of standard rosapi"
+                }
+            }
+
     result = {"action_type": action_type, "goal": {}, "result": {}, "feedback": {}}
 
     # Get goal, result, and feedback details in a single WebSocket context
