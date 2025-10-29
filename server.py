@@ -42,6 +42,31 @@ ws_manager = WebSocketManager(
 )  # Increased default timeout for ROS operations
 
 
+def convert_expects_image_hint(expects_image: str) -> bool | None:
+    """
+    Convert string-based expects_image hint to boolean for internal use.
+    
+    Args:
+        expects_image (str): String hint about whether to expect image data
+            - "true": prioritize image parsing
+            - "false": skip image detection for faster processing  
+            - "auto": auto-detect based on message fields (default)
+            - any other value: treated as "auto"
+    
+    Returns:
+        bool | None: Converted hint for parse_input function
+            - True: prioritize image parsing
+            - False: skip image detection
+            - None: auto-detect
+    """
+    if expects_image == "true":
+        return True
+    elif expects_image == "false":
+        return False
+    else:  # "auto" or any other value
+        return None
+
+
 @mcp.tool(
     description=(
         "Load specifications and usage context for a verified robot model. "
@@ -514,17 +539,17 @@ def inspect_all_topics() -> dict:
         "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
         "subscribe_once(topic='/slow_topic', msg_type='my_package/SlowMsg', timeout=None)  # Specify timeout only if topic publishes infrequently\n"
         "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=None, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
-        "subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image=True)  # Hint that this is an image for faster processing\n"
-        "subscribe_once(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', expects_image=False)  # Skip image detection for non-image data"
+        "subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image='true')  # Hint that this is an image for faster processing\n"
+        "subscribe_once(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', expects_image='false')  # Skip image detection for non-image data"
     )
 )
 def subscribe_once(
     topic: str = "",
     msg_type: str = "",
-    timeout: float | None = None,
+    expects_image: str = "auto",
+    timeout: float = ws_manager.default_timeout,
     queue_length: int | None = None,
     throttle_rate_ms: int | None = None,
-    expects_image: bool | None = None,
 ) -> dict:
     """
     Subscribe to a given ROS topic via rosbridge and return the first message received.
@@ -535,10 +560,10 @@ def subscribe_once(
         timeout (float | None): Timeout in seconds. If None, uses the default timeout.
         queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
         throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
-        expects_image (bool | None): Optional hint about whether to expect image data.
-            - True: prioritize image parsing (use for sensor_msgs/Image topics)
-            - False: skip image detection for faster processing (use for non-image topics)
-            - None: auto-detect based on message fields (default)
+        expects_image (str): Hint about whether to expect image data.
+            - "true": prioritize image parsing (use for sensor_msgs/Image topics)
+            - "false": skip image detection for faster processing (use for non-image topics)
+            - "auto": auto-detect based on message fields (default)
 
     Returns:
         dict:
@@ -589,8 +614,11 @@ def subscribe_once(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
+            # Convert string hint to boolean for parse_input
+            expects_image_bool = convert_expects_image_hint(expects_image)
+            
             # Parse input with expects_image hint
-            msg_data, was_parsed_as_image = parse_input(response, expects_image)
+            msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
             if not msg_data:
                 continue  # parsing failed or empty
@@ -704,8 +732,8 @@ def publish_once(topic: str = "", msg_type: str = "", msg: dict = {}) -> dict:
         "Example:\n"
         "subscribe_for_duration(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', duration=5, max_messages=10)\n"
         "subscribe_for_duration(topic='/high_rate_topic', msg_type='sensor_msgs/Image', duration=10, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
-        "subscribe_for_duration(topic='/camera/image_raw', msg_type='sensor_msgs/Image', duration=5, expects_image=True)  # Hint that this is an image for faster processing\n"
-        "subscribe_for_duration(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', duration=5, expects_image=False)  # Skip image detection for non-image data"
+        "subscribe_for_duration(topic='/camera/image_raw', msg_type='sensor_msgs/Image', duration=5, expects_image='true')  # Hint that this is an image for faster processing\n"
+        "subscribe_for_duration(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', duration=5, expects_image='false')  # Skip image detection for non-image data"
     )
 )
 def subscribe_for_duration(
@@ -715,7 +743,7 @@ def subscribe_for_duration(
     max_messages: int = 100,
     queue_length: int | None = None,
     throttle_rate_ms: int | None = None,
-    expects_image: bool | None = None,
+    expects_image: str = "auto",
 ) -> dict:
     """
     Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages.
@@ -727,10 +755,10 @@ def subscribe_for_duration(
         max_messages (int): Maximum number of messages to collect before stopping
         queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
         throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
-        expects_image (bool | None): Optional hint about whether to expect image data.
-            - True: prioritize image parsing (use for sensor_msgs/Image topics)
-            - False: skip image detection for faster processing (use for non-image topics)
-            - None: auto-detect based on message fields (default)
+        expects_image (str): Hint about whether to expect image data.
+            - "true": prioritize image parsing (use for sensor_msgs/Image topics)
+            - "false": skip image detection for faster processing (use for non-image topics)
+            - "auto": auto-detect based on message fields (default)
 
     Returns:
         dict:
@@ -782,8 +810,11 @@ def subscribe_for_duration(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
+            # Convert string hint to boolean for parse_input
+            expects_image_bool = convert_expects_image_hint(expects_image)
+            
             # Parse input with expects_image hint
-            msg_data, was_parsed_as_image = parse_input(response, expects_image)
+            msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
             if not msg_data:
                 continue  # parsing failed or empty
