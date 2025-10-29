@@ -44,6 +44,10 @@ For users who prefer traditional pip installation:
 ```bash
 pip install ros-mcp
 ```
+> **⚠️ Important**: This package requires pip version 23.0 or higher. Check your pip version with `pip --version` and upgrade if needed:
+```bash
+python3 -m pip install --upgrade pip
+```
 
 ### Option B: Install from Source
 For developers or advanced users who need to modify the source code, see [Installation from Source](installation-from-source.md).
@@ -61,6 +65,11 @@ pipx install .
 ```
 
 > **Note**: This also works with regular pip: `pip install .`
+
+> **⚠️ Important**: This package requires pip version 23.0 or higher. Check your pip version with `pip --version` and upgrade if needed:
+```bash
+python3 -m pip install --upgrade pip
+```
 
 </details>
 
