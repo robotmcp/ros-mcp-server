@@ -67,5 +67,3 @@ def generate_launch_description():
             republish_real,
         ]
     )
-
-
