@@ -139,19 +139,21 @@ def _handle_compressed_image(data_b64: str, result: dict) -> dict | None:
     """Handle compressed image data (JPEG/PNG already encoded)."""
     path = "./camera/received_image_compressed.jpeg"
     image_bytes = base64.b64decode(data_b64)
-    
+
     with open(path, "wb") as f:
         f.write(image_bytes)
-    
+
     print(f"[Image] Saved CompressedImage to {path}", file=sys.stderr)
     return result if isinstance(result, dict) else None
 
 
-def _handle_raw_image(data_b64: str, height: int, width: int, encoding: str, msg: dict, result: dict) -> dict | None:
+def _handle_raw_image(
+    data_b64: str, height: int, width: int, encoding: str, msg: dict, result: dict
+) -> dict | None:
     """Handle raw image data (needs decoding and conversion)."""
     # Decode base64 to numpy array
     image_bytes = base64.b64decode(data_b64)
-    
+
     # Determine data type based on encoding
     if encoding.lower() in ["mono16", "16uc1"]:
         img_np = np.frombuffer(image_bytes, dtype=np.uint16)
@@ -176,7 +178,9 @@ def _handle_raw_image(data_b64: str, height: int, width: int, encoding: str, msg
         return None
 
 
-def _decode_image_data(img_np: np.ndarray, height: int, width: int, encoding: str, msg: dict) -> np.ndarray | None:
+def _decode_image_data(
+    img_np: np.ndarray, height: int, width: int, encoding: str, msg: dict
+) -> np.ndarray | None:
     """Decode image data based on encoding type."""
     # 8-bit encodings
     if encoding == "rgb8":
@@ -211,7 +215,7 @@ def parse_input(
 ) -> tuple[dict | None, bool]:
     """
     Parse input data with optional image hint for optimized handling.
-    
+
     Logic:
     - expects_image=True: Try image parsing, fallback to JSON
     - expects_image=False: Parse as JSON only (fastest)
@@ -246,7 +250,7 @@ def parse_input(
 
 def _handle_image_hint(raw: Union[str, bytes], parsed_data: dict) -> tuple[dict | None, bool]:
     """Handle explicit image hint - try image parsing first."""
-    print(f"[Input] Hinted to parse as image", file=sys.stderr)
+    print("[Input] Hinted to parse as image", file=sys.stderr)
     result = parse_image(raw)
     if result is not None:
         return result, True
@@ -255,26 +259,23 @@ def _handle_image_hint(raw: Union[str, bytes], parsed_data: dict) -> tuple[dict 
 
 def _handle_json_hint(parsed_data: dict) -> tuple[dict | None, bool]:
     """Handle explicit JSON hint - skip image parsing."""
-    print(f"[Input] Hinted to parse as JSON", file=sys.stderr)
+    print("[Input] Hinted to parse as JSON", file=sys.stderr)
     return parsed_data, False
 
 
 def _handle_auto_detection(raw: Union[str, bytes], parsed_data: dict) -> tuple[dict | None, bool]:
     """Handle auto-detection - check if message looks like an image."""
-    print(f"[Input] Auto-detecting image", file=sys.stderr)
-    
+    print("[Input] Auto-detecting image", file=sys.stderr)
+
     # Check if this is a publish message that might contain image data
-    if (parsed_data and 
-        isinstance(parsed_data, dict) and 
-        parsed_data.get("op") == "publish"):
-        
+    if parsed_data and isinstance(parsed_data, dict) and parsed_data.get("op") == "publish":
         msg_content = parsed_data.get("msg", {})
         if is_image_like(msg_content):
             # Try image parsing
             result = parse_image(raw)
             if result is not None:
                 return result, True
-    
+
     # Return the already parsed JSON
     return parsed_data, False
 

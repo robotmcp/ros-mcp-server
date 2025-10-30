@@ -45,14 +45,14 @@ ws_manager = WebSocketManager(
 def convert_expects_image_hint(expects_image: str) -> bool | None:
     """
     Convert string-based expects_image hint to boolean for internal use.
-    
+
     Args:
         expects_image (str): String hint about whether to expect image data
             - "true": prioritize image parsing
-            - "false": skip image detection for faster processing  
+            - "false": skip image detection for faster processing
             - "auto": auto-detect based on message fields (default)
             - any other value: treated as "auto"
-    
+
     Returns:
         bool | None: Converted hint for parse_input function
             - True: prioritize image parsing
@@ -616,7 +616,7 @@ def subscribe_once(
 
             # Convert string hint to boolean for parse_input
             expects_image_bool = convert_expects_image_hint(expects_image)
-            
+
             # Parse input with expects_image hint
             msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
@@ -812,7 +812,7 @@ def subscribe_for_duration(
 
             # Convert string hint to boolean for parse_input
             expects_image_bool = convert_expects_image_hint(expects_image)
-            
+
             # Parse input with expects_image hint
             msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
