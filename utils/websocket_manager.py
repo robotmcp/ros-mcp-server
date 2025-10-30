@@ -51,7 +51,7 @@ def is_image_like(msg_content: dict) -> bool:
     # Check for CompressedImage format (has 'data' and 'format' fields)
     if "data" in msg_content and "format" in msg_content:
         format_str = msg_content.get("format", "").lower()
-        if any(fmt in format_str for fmt in ["jpeg", "jpg", "png"]):
+        if any(fmt in format_str for fmt in ["jpeg", "jpg", "png", "bmp", "compressed"]):
             return True
 
     # Check for raw Image format (has 'data', 'width', 'height', 'encoding')
@@ -97,10 +97,11 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
     Returns:
         Parsed dict if successful, None if raw is None, parsing fails, or result is not a dict
     """
-
+    # 1. Input validation
     if raw is None:
         return None
 
+    # 2. Parse JSON and extract message
     try:
         result = json.loads(raw)
         msg = result["msg"]
@@ -108,44 +109,59 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         print("[Image] Invalid JSON or missing 'msg' field.", file=sys.stderr)
         return None
 
+    # 3. Extract and validate required fields
     data_b64 = msg.get("data")
     if not data_b64:
         print("[Image] Missing 'data' field in message.", file=sys.stderr)
         return None
 
-    # ✅ Ensure output directory exists
+    # 4. Ensure output directory exists
     os.makedirs("./camera", exist_ok=True)
 
-    # Case 1: CompressedImage (already JPEG/PNG encoded)
-    if "format" in msg and msg["format"].lower() in ["jpeg", "jpg", "png"]:
-        image_bytes = base64.b64decode(data_b64)
-        path = "./camera/received_image.jpeg"
-        with open(path, "wb") as f:
-            f.write(image_bytes)
-        print(f"[Image] Saved CompressedImage to {path}", file=sys.stderr)
-        return result if isinstance(result, dict) else None
+    # 5. Determine image type and process accordingly
+    format = msg.get("format")
+    print(f"[Image] Format: {format}", file=sys.stderr)
 
-    # Case 2: Raw Image (rgb8, bgr8, mono8)
+    # 5a. Handle CompressedImage (already JPEG/PNG encoded)
+    if format and any(fmt in format.lower() for fmt in ["jpeg", "jpg", "png", "bmp", "compressed"]):
+        return _handle_compressed_image(data_b64, result)
+
+    # 5b. Handle Raw Image (rgb8, bgr8, mono8, mono16, 16uc1)
     height, width, encoding = msg.get("height"), msg.get("width"), msg.get("encoding")
     if not all([height, width, encoding]):
         print("[Image] Missing required fields for raw image.", file=sys.stderr)
         return None
 
+    return _handle_raw_image(data_b64, height, width, encoding, msg, result)
+
+
+def _handle_compressed_image(data_b64: str, result: dict) -> dict | None:
+    """Handle compressed image data (JPEG/PNG already encoded)."""
+    path = "./camera/received_image_compressed.jpeg"
+    image_bytes = base64.b64decode(data_b64)
+    
+    with open(path, "wb") as f:
+        f.write(image_bytes)
+    
+    print(f"[Image] Saved CompressedImage to {path}", file=sys.stderr)
+    return result if isinstance(result, dict) else None
+
+
+def _handle_raw_image(data_b64: str, height: int, width: int, encoding: str, msg: dict, result: dict) -> dict | None:
+    """Handle raw image data (needs decoding and conversion)."""
     # Decode base64 to numpy array
     image_bytes = base64.b64decode(data_b64)
-    img_np = np.frombuffer(image_bytes, dtype=np.uint8)
+    
+    # Determine data type based on encoding
+    if encoding.lower() in ["mono16", "16uc1"]:
+        img_np = np.frombuffer(image_bytes, dtype=np.uint16)
+    else:
+        img_np = np.frombuffer(image_bytes, dtype=np.uint8)
 
-    # Encoding handlers
+    # Process based on encoding type
     try:
-        if encoding == "rgb8":
-            img_cv = img_np.reshape((height, width, 3))
-            img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
-        elif encoding == "bgr8":
-            img_cv = img_np.reshape((height, width, 3))
-        elif encoding == "mono8":
-            img_cv = img_np.reshape((height, width))
-        else:
-            print(f"[Image] Unsupported encoding: {encoding}", file=sys.stderr)
+        img_cv = _decode_image_data(img_np, height, width, encoding, msg)
+        if img_cv is None:
             return None
     except ValueError as e:
         print(f"[Image] Reshape error: {e}", file=sys.stderr)
@@ -160,16 +176,46 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         return None
 
 
+def _decode_image_data(img_np: np.ndarray, height: int, width: int, encoding: str, msg: dict) -> np.ndarray | None:
+    """Decode image data based on encoding type."""
+    # 8-bit encodings
+    if encoding == "rgb8":
+        img_cv = img_np.reshape((height, width, 3))
+        img_cv = cv2.cvtColor(img_cv, cv2.COLOR_RGB2BGR)
+    elif encoding == "bgr8":
+        img_cv = img_np.reshape((height, width, 3))
+    elif encoding.lower() == "mono8":
+        img_cv = img_np.reshape((height, width))
+    # 16-bit encodings
+    elif encoding.lower() in ["mono16", "16uc1"]:
+        img16 = img_np.reshape((height, width))
+        # Handle big-endian byte order if needed
+        try:
+            if int(msg.get("is_bigendian", 0)) == 1:
+                img16 = img16.byteswap().newbyteorder()
+        except Exception:
+            # If field missing or not int-like, proceed without swapping
+            pass
+
+        # Normalize 16-bit depth to 8-bit [0,255] for saving/preview
+        img_cv = cv2.normalize(img16, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+    else:
+        print(f"[Image] Unsupported encoding: {encoding}", file=sys.stderr)
+        return None
+
+    return img_cv
+
+
 def parse_input(
     raw: Union[str, bytes] | None, expects_image: bool | None = None
 ) -> tuple[dict | None, bool]:
     """
     Parse input data with optional image hint for optimized handling.
-
-    This function determines the parsing strategy based on the expects_image hint:
-    - If expects_image=True: prioritize image parsing, fall back to JSON
-    - If expects_image=False: parse as JSON only (faster for non-image data)
-    - If expects_image=None: auto-detect based on message structure
+    
+    Logic:
+    - expects_image=True: Try image parsing, fallback to JSON
+    - expects_image=False: Parse as JSON only (fastest)
+    - expects_image=None: Auto-detect using lightweight checks, then parse accordingly
 
     Args:
         raw: JSON string, bytes, or None
@@ -180,33 +226,57 @@ def parse_input(
             - parsed_data: Parsed dict if successful, None otherwise
             - was_parsed_as_image: True if data was successfully parsed as image
     """
+    # 1. Input validation
     if raw is None:
         return None, False
 
-    # Step 1: Auto-detect mode if not explicitly specified
-    if expects_image is None:
-        # Try to parse as JSON first to check structure
-        temp_parsed = parse_json(raw)
-        if temp_parsed and isinstance(temp_parsed, dict) and temp_parsed.get("op") == "publish":
-            msg_content = temp_parsed.get("msg", {})
-            expects_image = is_image_like(msg_content)
-        else:
-            expects_image = False
+    # 2. Parse as JSON first (always needed as fallback)
+    parsed_data = parse_json(raw)
+    if parsed_data is None:
+        return None, False
 
-    # Step 2: Parse based on expected type with graceful fallback
-    if expects_image:
-        # Try image parsing first
-        result = parse_image(raw)
-        if result is not None:
-            return result, True
-        else:
-            # Fallback to JSON if image parsing failed
-            result = parse_json(raw)
-            return result, False
+    # 3. Handle explicit hints
+    if expects_image is True:
+        return _handle_image_hint(raw, parsed_data)
+    elif expects_image is False:
+        return _handle_json_hint(parsed_data)
     else:
-        # Parse as JSON (faster for non-image data)
-        result = parse_json(raw)
-        return result, False
+        return _handle_auto_detection(raw, parsed_data)
+
+
+def _handle_image_hint(raw: Union[str, bytes], parsed_data: dict) -> tuple[dict | None, bool]:
+    """Handle explicit image hint - try image parsing first."""
+    print(f"[Input] Hinted to parse as image", file=sys.stderr)
+    result = parse_image(raw)
+    if result is not None:
+        return result, True
+    return parsed_data, False
+
+
+def _handle_json_hint(parsed_data: dict) -> tuple[dict | None, bool]:
+    """Handle explicit JSON hint - skip image parsing."""
+    print(f"[Input] Hinted to parse as JSON", file=sys.stderr)
+    return parsed_data, False
+
+
+def _handle_auto_detection(raw: Union[str, bytes], parsed_data: dict) -> tuple[dict | None, bool]:
+    """Handle auto-detection - check if message looks like an image."""
+    print(f"[Input] Auto-detecting image", file=sys.stderr)
+    
+    # Check if this is a publish message that might contain image data
+    if (parsed_data and 
+        isinstance(parsed_data, dict) and 
+        parsed_data.get("op") == "publish"):
+        
+        msg_content = parsed_data.get("msg", {})
+        if is_image_like(msg_content):
+            # Try image parsing
+            result = parse_image(raw)
+            if result is not None:
+                return result, True
+    
+    # Return the already parsed JSON
+    return parsed_data, False
 
 
 class WebSocketManager:
@@ -297,6 +367,7 @@ class WebSocketManager:
                 try:
                     # Use default timeout if none specified
                     actual_timeout = timeout if timeout is not None else self.default_timeout
+                    print(f"[WebSocket] Using timeout of {actual_timeout} seconds", file=sys.stderr)
                     # Temporarily set the receive timeout
                     self.ws.settimeout(actual_timeout)
                     raw = self.ws.recv()  # rosbridge sends JSON as a string
