@@ -65,7 +65,7 @@ sudo apt install ros-${ROS_DISTRO}-realsense2-camera
 
 Choose your camera type and launch the appropriate system:
 
-### 🎮 **Option A: Synthetic Camera (Turtlesim) - Recommended for Beginners**
+### 🎮 **Option A: Synthetic Camera (Burger) - Recommended for Beginners**
 
 #### Using Launch File (Easiest)
 
@@ -74,7 +74,7 @@ Choose your camera type and launch the appropriate system:
 cd examples/8_images
 
 # Launch synthetic camera system
-ros2 launch ros_mcp_images_demo.launch.py camera_type:=synthetic
+ros2 launch ros_mcp_images_demo.launch.py
 ```
 
 #### Manual Launch (For Learning)
@@ -102,7 +102,7 @@ ros2 run image_transport republish raw in:=/image out:=/image/compressed
 cd examples/8_images
 
 # Launch RealSense camera system
-ros2 launch ros_mcp_images_demo.launch.py camera_type:=realsense
+ros2 launch ros_mcp_images_demo_realsense.launch.py
 ```
 
 #### Manual Launch (For Learning)
@@ -124,7 +124,7 @@ ros2 run image_tools showimage --ros-args --remap /image:=/camera/camera/depth/i
 ros2 run image_transport republish raw in:=/camera/camera/color/image_raw out:=/camera/camera/color/image_raw/compressed
 ```
 
-### 🔧 **What Each System Provides**
+### What Each System Provides
 
 #### Synthetic Camera System:
 - **rosbridge_server** - WebSocket server for MCP communication
@@ -147,7 +147,7 @@ Check that all components are working:
 ros2 topic list
 ```
 
-### 🎮 **For Synthetic Camera System, you should see:**
+### For Synthetic Camera System, you should see:
 ```
 /image - Raw camera feed (burger images)
 /image/compressed - Compressed camera feed
@@ -156,7 +156,7 @@ ros2 topic list
 /connected_clients - Client information
 ```
 
-### 📷 **For RealSense Camera System, you should see:**
+### For RealSense Camera System, you should see:
 ```
 /camera/camera/color/image_raw - Color camera feed
 /camera/camera/color/camera_info - Color camera calibration
@@ -169,7 +169,7 @@ ros2 topic list
 /connected_clients - Client information
 ```
 
-### 🔍 **Test Camera Feed**
+### Test Camera Feed
 
 ```bash
 # For synthetic camera
@@ -198,7 +198,7 @@ Once connected, you can start using natural language commands to interact with t
 
 ## Step 4: Basic Image Operations
 
-### 📸 Capture Images
+### Capture Images
 
 Try these commands with your AI assistant:
 
@@ -228,7 +228,7 @@ Capture the current color camera feed
 Take a picture from /camera/camera/color/image_raw
 ```
 
-### 🔍 Analyze Images
+### Analyze Images
 
 #### General Analysis:
 ```
@@ -269,69 +269,7 @@ Describe the scene from the RealSense camera
 What's the lighting like in the image?
 ```
 
-### 🎛️ Control Image Processing
-
-#### For Synthetic Camera:
-```
-Flip the image
-```
-
-```
-Stop flipping the image
-```
-
-```
-Publish flip commands for 10 seconds
-```
-
-#### For RealSense Camera:
-```
-Subscribe to the depth camera feed
-```
-
-```
-Switch between color and depth images
-```
-
-```
-Analyze the depth information
-```
-
-## Step 5: Advanced Image Analysis
-
-### Object Detection and Counting
-
-#### For Synthetic Camera:
-```
-How many burgers are in the image?
-```
-
-```
-Count all the objects you can see
-```
-
-```
-What objects are visible in the synthetic camera feed?
-```
-
-#### For RealSense Camera:
-```
-What objects are visible in the room?
-```
-
-```
-Count the furniture in the image
-```
-
-```
-Identify any people in the camera feed
-```
-
-```
-Describe the spatial layout of the room
-```
-
-## Step 6: Advanced Camera Control
+## Step 5: Advanced Camera Control
 
 ### Camera Parameters
 
@@ -360,39 +298,6 @@ Get the camera calibration information
 ```
 Check the depth camera parameters
 ```
-
-### Image Topics
-
-#### For Synthetic Camera:
-```
-What image topics are available?
-```
-
-```
-Subscribe to the compressed image topic
-```
-
-```
-Monitor both raw and compressed feeds
-```
-
-#### For RealSense Camera:
-```
-What RealSense topics are available?
-```
-
-```
-Subscribe to the depth camera topic
-```
-
-```
-Monitor both color and depth feeds
-```
-
-```
-Get camera metadata information
-```
-
 
 ## Troubleshooting
 
@@ -481,71 +386,9 @@ Get camera metadata information
 
 </details>
 
-
-## Next Steps
-
-### 🎯 Immediate Next Steps
-
-1. **Try different image analysis commands** with your AI assistant
-2. **Experiment with image manipulation** - flipping, filtering, enhancement
-3. **Test movement detection** with dynamic scenes
-4. **Explore object counting** with different objects
-
-### 🎮 **For Synthetic Camera Users**
-
-1. **Experiment with image_tools**:
-   - Capture burger images with different settings
-   - Test image analysis with different burger orientations
-   - Try different image processing parameters
-
-2. **Try advanced synthetic scenarios**:
-   - Different burger modes
-   - Various image resolutions
-   - Dynamic image generation
-
-### 📷 **For RealSense Camera Users**
-
-1. **Explore depth information**:
-   - Analyze depth images
-   - Measure distances to objects
-   - Create 3D scene understanding
-
-2. **Advanced computer vision**:
-   - Object detection and tracking
-   - Hand gesture recognition
-   - Room mapping and navigation
-
-### 🚀 Advanced Exploration
-
-1. **Connect to other cameras**:
-   - USB webcams
-   - Other ROS-compatible cameras
-   - Simulation environments (Gazebo, Isaac Sim)
-
-2. **Implement custom image processing**:
-   - Edge detection
-   - Color filtering
-   - Object tracking
-   - Face detection
-   - SLAM integration
-
-3. **Integrate with other ROS systems**:
-   - Navigation stacks
-   - Manipulation systems
-   - Robot control systems
-
-### 📚 Learning Resources
+## Learning Resources
 
 - [ROS2 Image Processing Tutorials](https://docs.ros.org/en/humble/Tutorials/Intermediate/Image_Processing/)
 - [OpenCV with ROS2](https://docs.ros.org/en/humble/Tutorials/Intermediate/Image_Processing/)
 - [Computer Vision with ROS](https://wiki.ros.org/cv_bridge)
 - [Image Transport Tutorials](https://docs.ros.org/en/humble/Tutorials/Intermediate/Image_Processing/)
-
-
----
-
-**Happy image processing!** 📸🤖
-
-This tutorial has shown you how to use natural language to interact with camera systems through the ROS MCP Server. You can now apply these same principles to real robots, surveillance systems, or any ROS-based image processing pipeline!
-This tutorial has shown you how to use natural language to interact with camera systems through the ROS MCP Server. You can now apply these same principles to real robots, surveillance systems, or any ROS-based image processing pipeline!
-This tutorial has shown you how to use natural language to interact with camera systems through the ROS MCP Server. You can now apply these same principles to real robots, surveillance systems, or any ROS-based image processing pipeline!
