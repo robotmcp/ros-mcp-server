@@ -2013,7 +2013,7 @@ def get_actions() -> dict:
     """
     # Check if required service is available
     required_services = ["/rosapi/action_servers"]
-    
+
     with ws_manager:
         # Get available services to check compatibility
         services_message = {
@@ -2021,9 +2021,9 @@ def get_actions() -> dict:
             "service": "/rosapi/services",
             "type": "rosapi/Services",
             "args": {},
-            "id": "check_services_for_get_actions"
+            "id": "check_services_for_get_actions",
         }
-        
+
         services_response = ws_manager.request(services_message)
         if not services_response or not isinstance(services_response, dict):
             return {
@@ -2031,13 +2031,13 @@ def get_actions() -> dict:
                 "compatibility": {
                     "issue": "Cannot determine available services",
                     "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available"
-                }
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
             }
-        
+
         available_services = services_response.get("values", {}).get("services", [])
         missing_services = [svc for svc in required_services if svc not in available_services]
-        
+
         if missing_services:
             return {
                 "warning": "Action listing not supported by this rosbridge/rosapi version",
@@ -2046,8 +2046,8 @@ def get_actions() -> dict:
                     "missing_services": missing_services,
                     "required_services": required_services,
                     "available_services": [s for s in available_services if "action" in s],
-                    "suggestion": "This rosbridge version doesn't support action listing services"
-                }
+                    "suggestion": "This rosbridge version doesn't support action listing services",
+                },
             }
 
     # rosbridge service call to get action list
@@ -2106,7 +2106,7 @@ def get_action_type(action: str) -> dict:
 
     # Check if required service is available
     required_services = ["/rosapi/interfaces"]
-    
+
     with ws_manager:
         # Get available services to check compatibility
         services_message = {
@@ -2114,9 +2114,9 @@ def get_action_type(action: str) -> dict:
             "service": "/rosapi/services",
             "type": "rosapi/Services",
             "args": {},
-            "id": "check_services_for_get_action_type"
+            "id": "check_services_for_get_action_type",
         }
-        
+
         services_response = ws_manager.request(services_message)
         if not services_response or not isinstance(services_response, dict):
             return {
@@ -2125,13 +2125,13 @@ def get_action_type(action: str) -> dict:
                 "compatibility": {
                     "issue": "Cannot determine available services",
                     "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available"
-                }
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
             }
-        
+
         available_services = services_response.get("values", {}).get("services", [])
         missing_services = [svc for svc in required_services if svc not in available_services]
-        
+
         if missing_services:
             return {
                 "warning": "Action type resolution not supported by this rosbridge/rosapi version",
@@ -2141,8 +2141,8 @@ def get_action_type(action: str) -> dict:
                     "missing_services": missing_services,
                     "required_services": required_services,
                     "available_services": [s for s in available_services if "interface" in s],
-                    "suggestion": "This rosbridge version doesn't support interface listing services"
-                }
+                    "suggestion": "This rosbridge version doesn't support interface listing services",
+                },
             }
 
     # Since there's no direct action_type service, we'll derive it from known patterns
@@ -2198,8 +2198,8 @@ def get_action_type(action: str) -> dict:
             "issue": "Failed to retrieve interfaces from rosapi",
             "required_services": ["/rosapi/interfaces"],
             "suggestion": "Ensure rosbridge is running and rosapi is available",
-            "note": "Action type resolution requires /rosapi/interfaces service"
-        }
+            "note": "Action type resolution requires /rosapi/interfaces service",
+        },
     }
 
 
@@ -2227,10 +2227,10 @@ def get_action_details(action_type: str) -> dict:
     # Check if required action detail services are available
     required_services = [
         "/rosapi/action_goal_details",
-        "/rosapi/action_result_details", 
-        "/rosapi/action_feedback_details"
+        "/rosapi/action_result_details",
+        "/rosapi/action_feedback_details",
     ]
-    
+
     with ws_manager:
         # Get available services to check compatibility
         services_message = {
@@ -2238,9 +2238,9 @@ def get_action_details(action_type: str) -> dict:
             "service": "/rosapi/services",
             "type": "rosapi/Services",
             "args": {},
-            "id": "check_services_for_action_details"
+            "id": "check_services_for_action_details",
         }
-        
+
         services_response = ws_manager.request(services_message)
         if not services_response or not isinstance(services_response, dict):
             return {
@@ -2249,13 +2249,13 @@ def get_action_details(action_type: str) -> dict:
                 "compatibility": {
                     "issue": "Cannot determine available services",
                     "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available"
-                }
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
             }
-        
+
         available_services = services_response.get("values", {}).get("services", [])
         missing_services = [svc for svc in required_services if svc not in available_services]
-        
+
         if missing_services:
             return {
                 "error": f"Action details for {action_type} not found",
@@ -2269,10 +2269,10 @@ def get_action_details(action_type: str) -> dict:
                         "Use get_actions() to list available actions",
                         "Use get_action_type() to get action type from action name",
                         "Action details may not be exposed by this rosbridge/rosapi version",
-                        "Consider subscribing to action topics directly for live message inspection"
+                        "Consider subscribing to action topics directly for live message inspection",
                     ],
-                    "note": "Action detail services (/rosapi/action_*_details) are not part of standard rosapi"
-                }
+                    "note": "Action detail services (/rosapi/action_*_details) are not part of standard rosapi",
+                },
             }
 
     result = {"action_type": action_type, "goal": {}, "result": {}, "feedback": {}}
@@ -2555,7 +2555,7 @@ def inspect_all_actions() -> dict:
     """
     # Check if required action services are available
     required_services = ["/rosapi/action_servers"]
-    
+
     with ws_manager:
         # Get available services to check compatibility
         services_message = {
@@ -2563,9 +2563,9 @@ def inspect_all_actions() -> dict:
             "service": "/rosapi/services",
             "type": "rosapi/Services",
             "args": {},
-            "id": "check_services_for_inspect_actions"
+            "id": "check_services_for_inspect_actions",
         }
-        
+
         services_response = ws_manager.request(services_message)
         if not services_response or not isinstance(services_response, dict):
             return {
@@ -2573,13 +2573,13 @@ def inspect_all_actions() -> dict:
                 "compatibility": {
                     "issue": "Cannot determine available services",
                     "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available"
-                }
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
             }
-        
+
         available_services = services_response.get("values", {}).get("services", [])
         missing_services = [svc for svc in required_services if svc not in available_services]
-        
+
         if missing_services:
             return {
                 "error": "Action inspection not supported by this rosbridge/rosapi version",
@@ -2591,10 +2591,10 @@ def inspect_all_actions() -> dict:
                     "suggestions": [
                         "This rosbridge version doesn't support action inspection services",
                         "Use get_actions() to list available actions",
-                        "Consider upgrading rosbridge or using a different implementation"
+                        "Consider upgrading rosbridge or using a different implementation",
                     ],
-                    "note": "Action inspection requires /rosapi/action_servers service"
-                }
+                    "note": "Action inspection requires /rosapi/action_servers service",
+                },
             }
 
     # First get all actions
