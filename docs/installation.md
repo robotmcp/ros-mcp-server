@@ -15,23 +15,43 @@ Below are detailed instructions for each of these steps.
 ---
 # 1. Install the MCP server (On the host machine where the LLM will be running)
 
-Install using pipx (recommended for isolated installation):
+## Install using uvx (recommended for isolated installation):
+
+### 1.1 Install uv 
+<details>
+<summary><strong>Linux, Mac, or WSL</strong></summary>
 
 ```bash
-# Install pipx if you don't have it
-pip install pipx
+# Use the following command in windows powershell
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
-# Install ros-mcp using pipx
-pipx install ros-mcp
+</details>
+
+<details>
+<summary><strong>Windows</strong></summary>
+
+```powershell
+# Use the following command in windows powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install ps1 | iex"
+```
+
+</details>
+
+Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors
+
+### 1.2 Test run ROS-MCP using uvx
+
+```bash
+# Test that the ROS-MCP server can be accessed in the venv
+uvx ros-mcp --help
 ```
 <details>
-<summary><strong>Why pipx?</strong></summary>
+<summary><strong>Why use uvx?</strong></summary>
 
-**Benefits of pipx:**
+**Benefits of uvx:**
 - Isolated installation in its own virtual environment
-- Won't conflict with other Python packages
-- Easy to uninstall: `pipx uninstall ros-mcp`
-- Automatic PATH management
+- Automatically downloads and installs all dependencies
 
 </details>
 
@@ -45,6 +65,7 @@ For users who prefer traditional pip installation:
 pip install ros-mcp
 ```
 > **⚠️ Important**: This package requires pip version 23.0 or higher. Check your pip version with `pip --version` and upgrade if needed:
+> **⚠️ Important**: This package requires python version 3.10 or higher. Check your python version with `python3 --version` and upgrade if needed:
 ```bash
 python3 -m pip install --upgrade pip
 ```
@@ -52,21 +73,20 @@ python3 -m pip install --upgrade pip
 ### Option B: Install from Source
 For developers or advanced users who need to modify the source code, see [Installation from Source](installation-from-source.md).
 
-### Option C: Install from Source using pipx
-For developers who want to install from source but still use pipx for isolation:
+### Option C: Install from Source using pip
+For developers who want to install from source but still use pip:
 
 ```bash
 # Clone the repository
 git clone https://github.com/robotmcp/ros-mcp-server.git
 cd ros-mcp-server
 
-# Install from source using pipx
-pipx install .
+# Install from source using pip
+pip install .
 ```
 
-> **Note**: This also works with regular pip: `pip install .`
-
 > **⚠️ Important**: This package requires pip version 23.0 or higher. Check your pip version with `pip --version` and upgrade if needed:
+> **⚠️ Important**: This package requires python version 3.10 or higher. Check your python version with `python3 --version` and upgrade if needed:
 ```bash
 python3 -m pip install --upgrade pip
 ```
@@ -99,7 +119,7 @@ Any LLM client that supports MCP can be used. We use **Claude Desktop** for test
 <details>
 <summary><strong>Windows (Using WSL)</strong></summary>
 
-This will have Claude running on Windows and the MCP server running on WSL. We assume that you have cloned the repository and installed UV on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US) 
+This will have Claude running on Windows and the MCP server running on WSL. We assume that you have installed UV on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US) 
 
 - Download from [claude.ai](https://claude.ai/download)
 
