@@ -22,6 +22,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate version matches tag
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PYPROJECT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml)
+          SERVER_VERSION=$(grep -oP '"version":\s*"\K[^"]+' server.json | head -1)
+          SERVER_PKG_VERSION=$(grep -oP '"version":\s*"\K[^"]+' server.json | tail -1)
+          
+          ERRORS=0
+          [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ] && echo "pyproject.toml: $PYPROJECT_VERSION != $TAG_VERSION" && ERRORS=1
+          [ "$SERVER_VERSION" != "$TAG_VERSION" ] && echo "server.json: $SERVER_VERSION != $TAG_VERSION" && ERRORS=1
+          [ "$SERVER_PKG_VERSION" != "$TAG_VERSION" ] && echo "server.json package: $SERVER_PKG_VERSION != $TAG_VERSION" && ERRORS=1
+          
+          if [ $ERRORS -eq 1 ]; then
+            echo "Please update all version fields to $TAG_VERSION before creating the tag."
+            exit 1
+          fi
+          
+          echo "All versions match: $TAG_VERSION"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
