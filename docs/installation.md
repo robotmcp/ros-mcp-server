@@ -15,7 +15,7 @@ Below are detailed instructions for each of these steps.
 
 ---
 
-# On The Host Machine (where your LLM will run)
+# On The Host Machine (Where Your LLM Will Run)
 
 The ROS MCP server is capable of connecting any LLM client that supports the MCP protocol, and can also do so via multiple transport protocols (stdio, stremable http, etc.)
 
@@ -334,7 +334,7 @@ claude-desktop
 
 ---
 
-# On the target robot (Where ROS will be running)
+# On The Target Robot (Where ROS Will Be Running)
 <details>
 <summary><strong>ROS 1</strong></summary>
 
@@ -465,14 +465,12 @@ Here are some frequently encountered issues and their solutions:
 **Symptoms**: The ros-mcp-server doesn't appear in your LLM client's tool list.
 
 **Solutions**:
-1. **Check file paths**: Ensure all paths in your configuration are absolute and correct
-2. **Restart client**: Completely shut down and restart your LLM client
-3. **Check logs**: Look for error messages in your LLM client's logs
-4. **Test manually**: Try running the MCP server manually to check for errors:
+1. **Restart client**: Completely shut down and restart your LLM client
+2. **Check logs**: Look for error messages in your LLM client's logs
+3. **Test manually**: Try running the MCP server manually to check for errors:
 
 ```bash
-cd /<ABSOLUTE_PATH>/ros-mcp-server
-uv run server.py
+uvx ros-mcp
 ```
 
 </details>
@@ -503,15 +501,11 @@ curl -I http://localhost:9090
 
 **Solutions**:
 1. **Check WSL distribution**: Ensure you're using the correct WSL distribution name
-2. **Verify uv path**: Check that the uv path in WSL is correct:
+2. **Test manually**: Try running the MCP server manually in WSL:
 
 ```bash
-# In WSL
-which uv
+uvx ros-mcp
 ```
-
-3. **Test WSL connectivity**: Ensure Windows can reach WSL services
-4. **Check WSL networking**: For HTTP transport, use `0.0.0.0` instead of `127.0.0.1`
 
 </details>
 
@@ -552,7 +546,7 @@ curl http://localhost:9000
 <details>
 <summary><strong>If you're still having issues:</strong></summary>
 
-1. **Check the logs**: Look for error messages in your LLM client and MCP server logs
+1. **Check the logs**: Look for error messages in your LLM client and MCP server logs. Running the logs through an LLM (ChatGPT or Claude) can greatly help debugging!
 2. **Test with turtlesim**: Try the [turtlesim tutorial](../examples/1_turtlesim/README.md) to verify basic functionality
 3. **Open an issue**: Create an issue on the [GitHub repository](https://github.com/robotmcp/ros-mcp-server/issues) with:
    - Your operating system
@@ -583,7 +577,7 @@ curl -I http://localhost:9090
 
 Test MCP server manually
 ```bash
-ros-mcp --transport=stdio
+uvx ros-mcp --transport=stdio
 ```
 
 Check running processes
