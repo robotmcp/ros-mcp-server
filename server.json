@@ -6,13 +6,21 @@
     "url": "https://github.com/robotmcp/ros-mcp-server",
     "source": "github"
   },
+<<<<<<< HEAD
   "version": "2.1.8",
+=======
+  "version": "2.2.0",
+>>>>>>> develop
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "ros-mcp",
+<<<<<<< HEAD
       "version": "2.1.8",
+=======
+      "version": "2.2.0",
+>>>>>>> develop
       "transport": {
         "type": "stdio",
         "command": "ros-mcp",

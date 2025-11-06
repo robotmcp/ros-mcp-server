@@ -14,7 +14,7 @@ from PIL import Image as PILImage
 
 from utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
 from utils.network_utils import ping_ip_and_port
-from utils.websocket_manager import WebSocketManager, parse_image, parse_json
+from utils.websocket_manager import WebSocketManager, parse_input
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IPor set using the LLM.
@@ -40,6 +40,31 @@ mcp = FastMCP("ros-mcp-server")
 ws_manager = WebSocketManager(
     ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0
 )  # Increased default timeout for ROS operations
+
+
+def convert_expects_image_hint(expects_image: str) -> bool | None:
+    """
+    Convert string-based expects_image hint to boolean for internal use.
+
+    Args:
+        expects_image (str): String hint about whether to expect image data
+            - "true": prioritize image parsing
+            - "false": skip image detection for faster processing
+            - "auto": auto-detect based on message fields (default)
+            - any other value: treated as "auto"
+
+    Returns:
+        bool | None: Converted hint for parse_input function
+            - True: prioritize image parsing
+            - False: skip image detection
+            - None: auto-detect
+    """
+    if expects_image == "true":
+        return True
+    elif expects_image == "false":
+        return False
+    else:  # "auto" or any other value
+        return None
 
 
 @mcp.tool(
@@ -513,13 +538,16 @@ def inspect_all_topics() -> dict:
         "Example:\n"
         "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
         "subscribe_once(topic='/slow_topic', msg_type='my_package/SlowMsg', timeout=None)  # Specify timeout only if topic publishes infrequently\n"
-        "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=None, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate"
+        "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=None, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
+        "subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image='true')  # Hint that this is an image for faster processing\n"
+        "subscribe_once(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', expects_image='false')  # Skip image detection for non-image data"
     )
 )
 def subscribe_once(
     topic: str = "",
     msg_type: str = "",
-    timeout: float | None = None,
+    expects_image: str = "auto",
+    timeout: float = ws_manager.default_timeout,
     queue_length: int | None = None,
     throttle_rate_ms: int | None = None,
 ) -> dict:
@@ -532,6 +560,10 @@ def subscribe_once(
         timeout (float | None): Timeout in seconds. If None, uses the default timeout.
         queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
         throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+        expects_image (str): Hint about whether to expect image data.
+            - "true": prioritize image parsing (use for sensor_msgs/Image topics)
+            - "false": skip image detection for faster processing (use for non-image topics)
+            - "auto": auto-detect based on message fields (default)
 
     Returns:
         dict:
@@ -582,13 +614,14 @@ def subscribe_once(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
-            if "Image" in msg_type:
-                msg_data = parse_image(response)
-            else:
-                msg_data = parse_json(response)
+            # Convert string hint to boolean for parse_input
+            expects_image_bool = convert_expects_image_hint(expects_image)
+
+            # Parse input with expects_image hint
+            msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
             if not msg_data:
-                continue  # non-JSON or empty
+                continue  # parsing failed or empty
 
             # Check for status errors from rosbridge
             if msg_data.get("op") == "status" and msg_data.get("level") == "error":
@@ -599,9 +632,14 @@ def subscribe_once(
                 # Unsubscribe before returning the message
                 unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
                 ws_manager.send(unsubscribe_msg)
-                if "Image" in msg_type:
+                # Return appropriate message based on whether image was actually parsed
+                if was_parsed_as_image:
+                    # Exclude the 'data' field from image messages as it's too large
+                    msg_content = msg_data.get("msg", {})
+                    filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
                     return {
-                        "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it"
+                        "msg": filtered_msg,
+                        "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
                     }
                 else:
                     return {"msg": msg_data.get("msg", {})}
@@ -693,7 +731,9 @@ def publish_once(topic: str = "", msg_type: str = "", msg: dict = {}) -> dict:
         "Subscribe to a topic for a duration and collect messages.\n"
         "Example:\n"
         "subscribe_for_duration(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', duration=5, max_messages=10)\n"
-        "subscribe_for_duration(topic='/high_rate_topic', msg_type='sensor_msgs/Image', duration=10, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate"
+        "subscribe_for_duration(topic='/high_rate_topic', msg_type='sensor_msgs/Image', duration=10, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
+        "subscribe_for_duration(topic='/camera/image_raw', msg_type='sensor_msgs/Image', duration=5, expects_image='true')  # Hint that this is an image for faster processing\n"
+        "subscribe_for_duration(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', duration=5, expects_image='false')  # Skip image detection for non-image data"
     )
 )
 def subscribe_for_duration(
@@ -703,6 +743,7 @@ def subscribe_for_duration(
     max_messages: int = 100,
     queue_length: int | None = None,
     throttle_rate_ms: int | None = None,
+    expects_image: str = "auto",
 ) -> dict:
     """
     Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages.
@@ -714,6 +755,10 @@ def subscribe_for_duration(
         max_messages (int): Maximum number of messages to collect before stopping
         queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
         throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+        expects_image (str): Hint about whether to expect image data.
+            - "true": prioritize image parsing (use for sensor_msgs/Image topics)
+            - "false": skip image detection for faster processing (use for non-image topics)
+            - "auto": auto-detect based on message fields (default)
 
     Returns:
         dict:
@@ -765,9 +810,14 @@ def subscribe_for_duration(
             if response is None:
                 continue  # idle timeout: no frame this tick
 
-            msg_data = parse_json(response)
+            # Convert string hint to boolean for parse_input
+            expects_image_bool = convert_expects_image_hint(expects_image)
+
+            # Parse input with expects_image hint
+            msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
+
             if not msg_data:
-                continue  # non-JSON or empty
+                continue  # parsing failed or empty
 
             # Check for status errors from rosbridge
             if msg_data.get("op") == "status" and msg_data.get("level") == "error":
@@ -776,7 +826,19 @@ def subscribe_for_duration(
 
             # Check for published messages matching our topic
             if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
-                collected_messages.append(msg_data.get("msg", {}))
+                # Add message based on whether it was actually parsed as image
+                if was_parsed_as_image:
+                    # Exclude the 'data' field from image messages as it's too large
+                    msg_content = msg_data.get("msg", {})
+                    filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
+                    collected_messages.append(
+                        {
+                            "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
+                            "msg": filtered_msg,
+                        }
+                    )
+                else:
+                    collected_messages.append(msg_data.get("msg", {}))
 
         # Unsubscribe when done
         unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
@@ -2011,6 +2073,45 @@ def get_actions() -> dict:
         dict: Contains list of all active actions,
             or a message string if no actions are found.
     """
+    # Check if required service is available
+    required_services = ["/rosapi/action_servers"]
+
+    with ws_manager:
+        # Get available services to check compatibility
+        services_message = {
+            "op": "call_service",
+            "service": "/rosapi/services",
+            "type": "rosapi/Services",
+            "args": {},
+            "id": "check_services_for_get_actions",
+        }
+
+        services_response = ws_manager.request(services_message)
+        if not services_response or not isinstance(services_response, dict):
+            return {
+                "warning": "Cannot check service availability",
+                "compatibility": {
+                    "issue": "Cannot determine available services",
+                    "required_services": required_services,
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
+            }
+
+        available_services = services_response.get("values", {}).get("services", [])
+        missing_services = [svc for svc in required_services if svc not in available_services]
+
+        if missing_services:
+            return {
+                "warning": "Action listing not supported by this rosbridge/rosapi version",
+                "compatibility": {
+                    "issue": "Required action services are not available",
+                    "missing_services": missing_services,
+                    "required_services": required_services,
+                    "available_services": [s for s in available_services if "action" in s],
+                    "suggestion": "This rosbridge version doesn't support action listing services",
+                },
+            }
+
     # rosbridge service call to get action list
     message = {
         "op": "call_service",
@@ -2065,6 +2166,47 @@ def get_action_type(action: str) -> dict:
     if not action or not action.strip():
         return {"error": "Action name cannot be empty"}
 
+    # Check if required service is available
+    required_services = ["/rosapi/interfaces"]
+
+    with ws_manager:
+        # Get available services to check compatibility
+        services_message = {
+            "op": "call_service",
+            "service": "/rosapi/services",
+            "type": "rosapi/Services",
+            "args": {},
+            "id": "check_services_for_get_action_type",
+        }
+
+        services_response = ws_manager.request(services_message)
+        if not services_response or not isinstance(services_response, dict):
+            return {
+                "warning": "Cannot check service availability",
+                "action": action,
+                "compatibility": {
+                    "issue": "Cannot determine available services",
+                    "required_services": required_services,
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
+            }
+
+        available_services = services_response.get("values", {}).get("services", [])
+        missing_services = [svc for svc in required_services if svc not in available_services]
+
+        if missing_services:
+            return {
+                "warning": "Action type resolution not supported by this rosbridge/rosapi version",
+                "action": action,
+                "compatibility": {
+                    "issue": "Required services are not available",
+                    "missing_services": missing_services,
+                    "required_services": required_services,
+                    "available_services": [s for s in available_services if "interface" in s],
+                    "suggestion": "This rosbridge version doesn't support interface listing services",
+                },
+            }
+
     # Since there's no direct action_type service, we'll derive it from known patterns
     # or use a mapping approach for common actions
 
@@ -2111,7 +2253,16 @@ def get_action_type(action: str) -> dict:
             "suggestion": "This action might not be available or use a different naming pattern",
         }
 
-    return {"error": f"Failed to get type for action {action}"}
+    return {
+        "error": f"Failed to get type for action {action}",
+        "action": action,
+        "compatibility": {
+            "issue": "Failed to retrieve interfaces from rosapi",
+            "required_services": ["/rosapi/interfaces"],
+            "suggestion": "Ensure rosbridge is running and rosapi is available",
+            "note": "Action type resolution requires /rosapi/interfaces service",
+        },
+    }
 
 
 @mcp.tool(
@@ -2134,6 +2285,57 @@ def get_action_details(action_type: str) -> dict:
     # Validate input
     if not action_type or not action_type.strip():
         return {"error": "Action type cannot be empty"}
+
+    # Check if required action detail services are available
+    required_services = [
+        "/rosapi/action_goal_details",
+        "/rosapi/action_result_details",
+        "/rosapi/action_feedback_details",
+    ]
+
+    with ws_manager:
+        # Get available services to check compatibility
+        services_message = {
+            "op": "call_service",
+            "service": "/rosapi/services",
+            "type": "rosapi/Services",
+            "args": {},
+            "id": "check_services_for_action_details",
+        }
+
+        services_response = ws_manager.request(services_message)
+        if not services_response or not isinstance(services_response, dict):
+            return {
+                "error": "Failed to check service availability",
+                "action_type": action_type,
+                "compatibility": {
+                    "issue": "Cannot determine available services",
+                    "required_services": required_services,
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
+            }
+
+        available_services = services_response.get("values", {}).get("services", [])
+        missing_services = [svc for svc in required_services if svc not in available_services]
+
+        if missing_services:
+            return {
+                "error": f"Action details for {action_type} not found",
+                "action_type": action_type,
+                "compatibility": {
+                    "issue": "Required action detail services are not available",
+                    "missing_services": missing_services,
+                    "required_services": required_services,
+                    "available_services": [s for s in available_services if "action" in s],
+                    "suggestions": [
+                        "Use get_actions() to list available actions",
+                        "Use get_action_type() to get action type from action name",
+                        "Action details may not be exposed by this rosbridge/rosapi version",
+                        "Consider subscribing to action topics directly for live message inspection",
+                    ],
+                    "note": "Action detail services (/rosapi/action_*_details) are not part of standard rosapi",
+                },
+            }
 
     result = {"action_type": action_type, "goal": {}, "result": {}, "feedback": {}}
 
@@ -2413,6 +2615,50 @@ def inspect_all_actions() -> dict:
         dict: Contains detailed information about all actions,
             including action names, types, and server information.
     """
+    # Check if required action services are available
+    required_services = ["/rosapi/action_servers"]
+
+    with ws_manager:
+        # Get available services to check compatibility
+        services_message = {
+            "op": "call_service",
+            "service": "/rosapi/services",
+            "type": "rosapi/Services",
+            "args": {},
+            "id": "check_services_for_inspect_actions",
+        }
+
+        services_response = ws_manager.request(services_message)
+        if not services_response or not isinstance(services_response, dict):
+            return {
+                "error": "Failed to check service availability",
+                "compatibility": {
+                    "issue": "Cannot determine available services",
+                    "required_services": required_services,
+                    "suggestion": "Ensure rosbridge is running and rosapi is available",
+                },
+            }
+
+        available_services = services_response.get("values", {}).get("services", [])
+        missing_services = [svc for svc in required_services if svc not in available_services]
+
+        if missing_services:
+            return {
+                "error": "Action inspection not supported by this rosbridge/rosapi version",
+                "compatibility": {
+                    "issue": "Required action services are not available",
+                    "missing_services": missing_services,
+                    "required_services": required_services,
+                    "available_services": [s for s in available_services if "action" in s],
+                    "suggestions": [
+                        "This rosbridge version doesn't support action inspection services",
+                        "Use get_actions() to list available actions",
+                        "Consider upgrading rosbridge or using a different implementation",
+                    ],
+                    "note": "Action inspection requires /rosapi/action_servers service",
+                },
+            }
+
     # First get all actions
     actions_message = {
         "op": "call_service",
@@ -2735,8 +2981,12 @@ def _encode_image_to_imagecontent(image):
 
 @mcp.tool(
     description=(
-        "First, subscribe to an Image topic using 'subscribe_once' to save an image.\n"
-        "Then, use this tool to analyze the saved image\n"
+        "Analyze a previously received image that was saved by any ROS operation.\n"
+        "Images can be received from:\n"
+        "- Any topic containing image data (not just topics with 'Image' in the name)\n"
+        "- Service responses containing image data\n"
+        "- subscribe_once() or subscribe_for_duration() operations\n"
+        "Use this tool to analyze the saved image after receiving it from any source.\n"
     )
 )
 def analyze_previously_received_image():
@@ -2744,8 +2994,13 @@ def analyze_previously_received_image():
     Analyze the previously received image saved at ./camera/received_image.jpeg
 
     This tool loads the previously saved image from './camera/received_image.jpeg'
-    (which must have been created by 'parse_image' or 'subscribe_once'), and converts
+    (which can be created by any ROS operation that receives image data), and converts
     it into an MCP-compatible ImageContent format so that the LLM can interpret it.
+
+    Images can be received from:
+    - Any Topic containing image data
+    - Any Service responses containing image data
+    - subscribe_once() or subscribe_for_duration() operations
     """
     path = "./camera/received_image.jpeg"
     if not os.path.exists(path):

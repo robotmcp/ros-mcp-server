@@ -27,30 +27,34 @@ def generate_launch_description():
         launch_arguments={"port": LaunchConfiguration("port")}.items(),
     )
 
-    # cam2image (synthetic image since burger_mode=true)
-    cam2image = Node(
-        package="image_tools",
-        executable="cam2image",
-        name="cam2image",
-        parameters=[{"burger_mode": True}],
+    # Realsense camera driver
+    realsense_launch = IncludeLaunchDescription(
+        AnyLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("realsense2_camera"),
+                "launch",
+                "rs_launch.py",
+            )
+        )
     )
 
-    # showimage (display the image)
-    showimage = Node(
+    # showimage for realsense (color)
+    showimage_real = Node(
         package="image_tools",
         executable="showimage",
-        name="showimage",
+        name="showimage_real",
+        remappings=[("/image", "/camera/camera/color/image_raw")],
     )
 
-    # image_transport republisher (raw → compressed)
-    republish = Node(
+    # republish compressed for realsense color stream
+    republish_real = Node(
         package="image_transport",
         executable="republish",
-        name="republish",
+        name="republish_real",
         arguments=["raw"],
         remappings=[
-            ("in", "/image"),
-            ("out", "/image/compressed"),
+            ("in", "/camera/camera/color/image_raw"),
+            ("out", "/camera/camera/color/image_raw/compressed"),
         ],
     )
 
@@ -58,8 +62,8 @@ def generate_launch_description():
         [
             port_arg,
             rosbridge_launch,
-            cam2image,
-            showimage,
-            republish,
+            realsense_launch,
+            showimage_real,
+            republish_real,
         ]
     )
