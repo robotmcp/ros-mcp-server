@@ -100,7 +100,7 @@ jobs:
           echo "Get the latest release version"
           LATEST_VERSION=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | jq -r '.tag_name')
           echo "Installing MCP Publisher version: $LATEST_VERSION"
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${LATEST_VERSION#v}_${OS}_${ARCH}.tar.gz" \
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${OS}_${ARCH}.tar.gz" \
           | tar xz mcp-publisher
 
       - name: Login to MCP Registry
