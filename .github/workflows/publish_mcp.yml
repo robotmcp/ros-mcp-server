@@ -11,20 +11,24 @@ jobs:
   mcp-registry:
     name: Publish to MCP Registry
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
-      id-token: write
+      id-token: write  # REQUIRED for MCP Registry GitHub OIDC login
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Install MCP Publisher
         run: |
-          set -e
+          set -euo pipefail
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
+          echo "Get the latest release version"
           LATEST_VERSION=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | jq -r '.tag_name')
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${OS}_${ARCH}.tar.gz" | tar xz mcp-publisher
+          echo "Installing MCP Publisher version: $LATEST_VERSION"
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${LATEST_VERSION#v}_${OS}_${ARCH}.tar.gz" \
+          | tar xz mcp-publisher
 
       - name: Login to MCP Registry
         run: ./mcp-publisher login github-oidc

@@ -1526,11 +1526,7 @@ wheels = [
 
 [[package]]
 name = "ros-mcp"
-<<<<<<< HEAD
-version = "2.1.8"
-=======
 version = "2.2.0"
->>>>>>> develop
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
