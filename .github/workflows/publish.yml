@@ -2,6 +2,9 @@ name: Publish (PyPI + MCP Registry)
 
 on:
   workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
 
 concurrency:
   group: publish-${{ github.ref }}
@@ -11,6 +14,7 @@ jobs:
   pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
       id-token: write  # REQUIRED for PyPI Trusted Publishing (OIDC)
@@ -18,25 +22,46 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate version matches tag
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          set -euo pipefail
+          
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          PYPROJECT_VERSION=$(grep -oP '^version = "\K[^"]+' pyproject.toml)
+          SERVER_VERSION=$(grep -oP '"version":\s*"\K[^"]+' server.json | head -1)
+          SERVER_PKG_VERSION=$(grep -oP '"version":\s*"\K[^"]+' server.json | tail -1)
+          
+          ERRORS=0
+          [ "$PYPROJECT_VERSION" != "$TAG_VERSION" ] && echo "pyproject.toml: $PYPROJECT_VERSION != $TAG_VERSION" && ERRORS=1
+          [ "$SERVER_VERSION" != "$TAG_VERSION" ] && echo "server.json: $SERVER_VERSION != $TAG_VERSION" && ERRORS=1
+          [ "$SERVER_PKG_VERSION" != "$TAG_VERSION" ] && echo "server.json package: $SERVER_PKG_VERSION != $TAG_VERSION" && ERRORS=1
+          
+          if [ $ERRORS -eq 1 ]; then
+            echo "Please update all version fields to $TAG_VERSION before creating the tag."
+            exit 1
+          fi
+          
+          echo "All versions match: $TAG_VERSION"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.10"
 
       - name: Install uv
         run: pipx install uv
 
-      # --- Optional checks (keep for now; can be moved to PR CI later) ---
-      - name: Sync deps
+      - name: Sync dependencies
         run: uv sync
 
-      - name: Ruff lint
+      - name: Run ruff lint
         run: uvx ruff check .
 
-      - name: Ruff format check
+      - name: Run ruff format check
         run: uvx ruff format --check .
 
-      - name: Run tests (if present)
+      - name: Run tests
         run: |
           if [ -d tests ]; then
             uv run pytest -q
@@ -44,21 +69,18 @@ jobs:
             echo "No tests/ directory; skipping."
           fi
 
-      # --- Build artifacts for PyPI ---
-      - name: Build sdist & wheel
+      - name: Build package
         run: uv build
 
-      # --- Publish using Trusted Publishing (no tokens) ---
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: dist
-          # For a dress rehearsal, you can set:
-          # repository-url: https://test.pypi.org/legacy/
 
   registry:
     name: Publish to MCP Registry
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: pypi
     permissions:
       contents: read
@@ -67,23 +89,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Small delay to allow PyPI metadata to propagate
-      - name: Wait briefly
+      - name: Wait for PyPI metadata propagation
         run: sleep 20
 
       - name: Install MCP Publisher
         run: |
-          set -e
+          set -euo pipefail
           OS=$(uname -s | tr '[:upper:]' '[:lower:]')
           ARCH=$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/')
           echo "Get the latest release version"
           LATEST_VERSION=$(curl -s https://api.github.com/repos/modelcontextprotocol/registry/releases/latest | jq -r '.tag_name')
           echo "Installing MCP Publisher version: $LATEST_VERSION"
-          curl -L "https://github.com/modelcontextprotocol/registry/releases/download/${LATEST_VERSION}/mcp-publisher_${LATEST_VERSION#v}_${OS}_${ARCH}.tar.gz" \
+          curl -L "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_${OS}_${ARCH}.tar.gz" \
           | tar xz mcp-publisher
 
-      - name: Login to MCP Registry (OIDC)
+      - name: Login to MCP Registry
         run: ./mcp-publisher login github-oidc
 
-      - name: Publish server.json to MCP Registry
+      - name: Publish to MCP Registry
         run: ./mcp-publisher publish
