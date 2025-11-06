@@ -3,11 +3,12 @@
 > ⚠️ **Prerequisite**: You need either ROS installed locally on your machine OR access over the network to a robot/computer with ROS installed. This MCP server connects to ROS systems on a robot, so a running ROS environment is required.
 
 Installation includes the following steps:
-- Install the MCP server using uvx
-- Install and configure the Language Model Client
+- On the Host Machine (Where the LLM will run)
+  - Install the ROS-MCP server
   - Install any language model client (We demonstrate with Claude Desktop)
-  - Configure the client to run the MCP server and connect automatically on launch.
-- Install and launch Rosbridge
+  - Configure the client to run the MCP server  automatically on launch.
+- On the Robot (Where ROS will be running)
+  - Install and launch Rosbridge
 
 
 Below are detailed instructions for each of these steps. 
@@ -332,11 +333,12 @@ claude-desktop
 
 ---
 
-# 3. Install and run rosbridge (On the target robot where ROS will be running)
+# On the target robot (Where ROS will be running)
 <details>
 <summary><strong>ROS 1</strong></summary>
 
-## 3.1. Install `rosbridge_server`
+## 3. Install and run rosbridge
+### 3.1. Install `rosbridge_server`
 
 This package is required for MCP to interface with ROS or ROS 2 via WebSocket. It needs to be installed on the same machine that is running ROS.
 
@@ -353,7 +355,7 @@ sudo apt install ros-${ROS_DISTRO}-rosbridge-server
 ```
 </details>
 
-## 3.2. Launch rosbridge in your ROS environment:
+### 3.2. Launch rosbridge in your ROS environment:
 
 
 ```bash
@@ -366,8 +368,8 @@ roslaunch rosbridge_server rosbridge_websocket.launch
 <details>
 <summary><strong>ROS 2</strong></summary>
 
-
-## 3.1. Install `rosbridge_server`
+## 3. Install and run rosbridge
+### 3.1. Install `rosbridge_server`
 
 This package is required for MCP to interface with ROS or ROS 2 via WebSocket. It needs to be installed on the same machine that is running ROS.
 
@@ -384,8 +386,7 @@ sudo apt install ros-${ROS_DISTRO}-rosbridge-server
 ```
 </details>
 
-
-## 3.2. Launch rosbridge in your ROS environment:
+### 3.2. Launch rosbridge in your ROS environment:
 
 
 ```bash
@@ -399,10 +400,14 @@ ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 ---
 
 
-# 4. You're ready to go!
+# You're ready to go!
+
 You can test out your server with any robot that you have running. Just tell your AI to connect to the robot using its target IP address. (Default is localhost, so you don't need to tell it to connect if the MCP server is installed on the same machine as your ROS)
 
-✅ **Tip:** If you don't currently have any robots running, turtlesim is considered the 'hello world' robot for ROS to experiment with. It does not have any simulation dependencies such as Gazebo or IsaacSim. 
+✅ **Tip:** If you don't currently have any robots running, turtlesim is considered the 'hello world' robot for ROS to experiment with. It does not have any simulation dependencies such as Gazebo or IsaacSim.
+
+<details>
+<summary><strong>Testing with turtlesim</strong></summary>
 
 For a complete step-by-step tutorial on using turtlesim with the MCP server and for more information on ROS and turtlesim, see our [Turtlesim Tutorial](../examples/1_turtlesim/README.md).
 
@@ -417,6 +422,7 @@ rosrun turtlesim turtlesim_node
 ros2 run turtlesim turtlesim_node
 ```
 
+</details>
 
 <details>
 <summary><strong>Example Commands</strong></summary>
@@ -445,52 +451,10 @@ What topics and services do you see on the robot?
 
 ---
 
-# 5. Alternate Clients (ChatGPT, Gemini, Cursor)
-<details>
-<summary><strong>Examples and setup instructions for other LLM Hosts and Clients</strong></summary>
-
-## 5.1. Cursor IDE
-For detailed Cursor setup instructions, see our [Cursor Tutorial](../examples/7_cursor/README.md).
-
-## 5.2. ChatGPT
-For detailed ChatGPT setup instructions, see our [ChatGPT Tutorial](../examples/6_chatgpt/README.md).
-
-## 5.3. Google Gemini
-For detailed Gemini setup instructions, see our [Gemini Tutorial](../examples/2_gemini/README.md).
-
-## 5.4. Custom MCP Client
-You can also use the MCP server directly in your Python code. 
-<details>
-<summary>Here is a python example of how to integrate it programmatically</summary>
-
-```python
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
-
-async def main():
-    server_params = StdioServerParameters(
-        command="uv",
-        args=["--directory", "/path/to/ros-mcp-server", "run", "server.py"]
-    )
-    
-    async with stdio_client(server_params) as (read, write):
-        async with ClientSession(read, write) as session:
-            # Use the MCP server
-            result = await session.call_tool("get_topics", {})
-            print(result)
-```
-
-</details>
-
-</details>
-
-
----
-
-# 6. Troubleshooting
+# Troubleshooting
 
 <details>
-<summary><strong>6.1. Common Issues</strong></summary>
+<summary><strong>Common Issues</strong></summary>
 
 Here are some frequently encountered issues and their solutions:
 
@@ -603,7 +567,7 @@ curl http://localhost:9000
 </details>
 
 <details>
-<summary><strong>6.2. Debug Commands</strong></summary>
+<summary><strong>Debug Commands</strong></summary>
 
 Test ROS connectivity
 ```bash

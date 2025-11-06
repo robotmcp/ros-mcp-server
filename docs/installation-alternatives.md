@@ -1,6 +1,6 @@
 # Alternate Installation and Configuration Options
 
-This document covers alternative methods for installing the ROS-MCP server and configuring it with different transport options.
+This document covers alternative methods for installing the ROS-MCP server, configuring it with different transport options, and using it with different LLM clients.
 
 ---
 
@@ -91,4 +91,41 @@ Then configure Claude Desktop to connect to the HTTP server (same for all platfo
 - **Pros**: Network accessible, multiple clients can connect
 - **Cons**: Requires network configuration, MCP server needs to be run independently.
 - **Use case**: Remote robots, team environments, web-based clients
+
+---
+
+## Alternate Clients
+
+### Cursor IDE
+For detailed Cursor setup instructions, see our [Cursor Tutorial](../examples/7_cursor/README.md).
+
+### ChatGPT
+For detailed ChatGPT setup instructions, see our [ChatGPT Tutorial](../examples/6_chatgpt/README.md).
+
+### Google Gemini
+For detailed Gemini setup instructions, see our [Gemini Tutorial](../examples/2_gemini/README.md).
+
+### Custom MCP Client
+You can also use the MCP server directly in your Python code. 
+<details>
+<summary>Here is a python example of how to integrate it programmatically</summary>
+
+```python
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+async def main():
+    server_params = StdioServerParameters(
+        command="uv",
+        args=["--directory", "/path/to/ros-mcp-server", "run", "server.py"]
+    )
+    
+    async with stdio_client(server_params) as (read, write):
+        async with ClientSession(read, write) as session:
+            # Use the MCP server
+            result = await session.call_tool("get_topics", {})
+            print(result)
+```
+
+</details>
 
