@@ -13,32 +13,32 @@ Installation includes the following steps:
 Below are detailed instructions for each of these steps. 
 
 ---
-# 1. Install the MCP server (On the host machine where the LLM will be running)
 
-## Install using uvx (recommended for isolated installation):
+# On The Host Machine (where your LLM will run)
 
-### 1.1 Install uv 
+The ROS MCP server is capable of connecting any LLM client that supports the MCP protocol, and can also do so via multiple transport protocols (stdio, stremable http, etc.)
+
+ For the primary installation guide, we demonstrate using **Claude Desktop** and the default stdio transport layer. We use uvx for installation and management of dependencies.
+ 
+ We and also have examples for different LLM clients (Cursor, Gemini, and ChatGPT) and other transport protocols (streamable http)
+
+
+For alternate clients, transport protocols, and installation methods, see [Alternate Installation and Configuration Options](installation-alternatives.md#alternative-installation-options).
+
+---
+
 <details>
-<summary><strong>Linux, Mac, or WSL</strong></summary>
+<summary><strong>Linux (Ubuntu)</strong></summary>
+
+## 1. Install the MCP server
+
+### 1.1 Install uv
 
 ```bash
-# Use the following command in windows powershell
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-</details>
-
-<details>
-<summary><strong>Windows</strong></summary>
-
-```powershell
-# Use the following command in windows powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install ps1 | iex"
-```
-
-</details>
-
-Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors
+Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors.
 
 ### 1.2 Test run ROS-MCP using uvx
 
@@ -46,26 +46,8 @@ Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/instal
 # Test that the ROS-MCP server can be accessed in the venv
 uvx ros-mcp --help
 ```
-<details>
-<summary><strong>Why use uvx?</strong></summary>
 
-**Benefits of uvx:**
-- Isolated installation in its own virtual environment
-- Automatically downloads and installs all dependencies
-
-</details>
-
-For alternative installation methods (pip, source installation), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternative-installation-options).
-
----
-
-# 2. Install and configure a Language Model Client 
-
-Any LLM client that supports MCP can be used. We use **Claude Desktop** for testing and development.
-
-
-<details>
-<summary><strong>Linux (Ubuntu)</strong></summary>
+## 2. Install and configure a Language Model Client
 
 ### 2.1 Download
 - Follow the installation instructions from the community-supported [claude-desktop-debian](https://github.com/aaddrick/claude-desktop-debian)
@@ -93,12 +75,53 @@ Any LLM client that supports MCP can be used. We use **Claude Desktop** for test
 }
 ```
 
-For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
+### 2.3 Test the connection
+- Launch Claude Desktop and check connection status. 
+- The ros-mcp-server should be visible in your list of tools.
+
+<p align="center">
+  <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/connected_mcp.png" width="500"/>
+</p>
+
+<details>
+<summary><strong> Troubleshooting </strong></summary>
+
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, try completely shutting down Claude Desktop using the commands below and then restarting it. This could be a Claude Desktop caching issue.
+```bash
+# Completely terminate Claude Desktop processes
+pkill -f claude-desktop
+# Or alternatively
+killall claude-desktop
+
+# Restart Claude Desktop
+claude-desktop
+```
+
+</details>
 
 </details>
 
 <details>
 <summary><strong>MacOS</strong></summary>
+
+## 1. Install the MCP server
+
+### 1.1 Install uv
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors.
+
+### 1.2 Test run ROS-MCP using uvx
+
+```bash
+# Test that the ROS-MCP server can be accessed in the venv
+uvx ros-mcp --help
+```
+
+## 2. Install and configure a Language Model Client
 
 ### 2.1 Download
 - Download from [claude.ai](https://claude.ai/download)
@@ -126,12 +149,53 @@ For alternative configuration options (HTTP transport), see [Alternate Installat
 }
 ```
 
-For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
+### 2.3 Test the connection
+- Launch Claude Desktop and check connection status. 
+- The ros-mcp-server should be visible in your list of tools.
+
+<p align="center">
+  <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/connected_mcp.png" width="500"/>
+</p>
+
+<details>
+<summary><strong> Troubleshooting </strong></summary>
+
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, try completely shutting down Claude Desktop using the commands below and then restarting it. This could be a Claude Desktop caching issue.
+```bash
+# Completely terminate Claude Desktop processes
+pkill -f claude-desktop
+# Or alternatively
+killall claude-desktop
+
+# Restart Claude Desktop
+claude-desktop
+```
+
+</details>
 
 </details>
 
 <details>
 <summary><strong>Windows (Using WSL)</strong></summary>
+
+## 1. Install the MCP server
+
+### 1.1 Install uv
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors.
+
+### 1.2 Test run ROS-MCP using uvx
+
+```bash
+# Test that the ROS-MCP server can be accessed in the venv
+uvx ros-mcp --help
+```
+
+## 2. Install and configure a Language Model Client
 
 ### 2.1 Download
 - Download from [claude.ai](https://claude.ai/download)
@@ -165,12 +229,55 @@ This will have Claude running on Windows and the MCP server running on WSL. We a
 }
 ```
 
-For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
+
+### 2.3 Test the connection
+- Launch Claude Desktop and check connection status. 
+- The ros-mcp-server should be visible in your list of tools.
+
+<p align="center">
+  <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/connected_mcp.png" width="500"/>
+</p>
+
+<details>
+<summary><strong> Troubleshooting </strong></summary>
+
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, try completely shutting down Claude Desktop using the commands below and then restarting it. This could be a Claude Desktop caching issue.
+```bash
+# Completely terminate Claude Desktop processes
+pkill -f claude-desktop
+# Or alternatively
+killall claude-desktop
+
+# Restart Claude Desktop
+claude-desktop
+```
+
+</details>
 
 </details>
 
 <details>
 <summary><strong>Windows (Using PowerShell)</strong></summary>
+
+## 1. Install the MCP server
+
+### 1.1 Install uv
+
+```powershell
+# Use the following command in windows powershell
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install ps1 | iex"
+```
+
+Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors.
+
+### 1.2 Test run ROS-MCP using uvx
+
+```powershell
+# Test that the ROS-MCP server can be accessed in the venv
+uvx ros-mcp --help
+```
+
+## 2. Install and configure a Language Model Client
 
 ### 2.1 Download
 - Download from [claude.ai](https://claude.ai/download)
@@ -197,11 +304,7 @@ This will have Claude and the MCP server running within Windows.
 }
 ```
 
-For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
-
-</details>
-
-## 2.2. Test the connection
+### 2.3 Test the connection
 - Launch Claude Desktop and check connection status. 
 - The ros-mcp-server should be visible in your list of tools.
 
@@ -225,6 +328,7 @@ claude-desktop
 
 </details>
 
+</details>
 
 ---
 
