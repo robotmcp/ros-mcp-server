@@ -14,7 +14,7 @@ For this example, the TurtleBot3 Burger version with Ubuntu 22.04 and ROS2 Humbl
 
 For more details, please refer to the [TurtleBot3 Documentation](https://emanual.robotis.com/docs/en/platform/turtlebot3/overview/).
 
-<img src="../images/turtlebot3_burger.png" width="300">
+<img src="images/turtlebot3_image.png" width="300">
 
 ## Quick Start
 
@@ -76,14 +76,15 @@ You're now ready to interact with the TurtleBot3 via the ROS MCP server. Follow 
 
 ### **Example 1**: Connect to Robot
 
-<img src="../images/turtlebot3_connect.png" width="500">
+<img src="images/turtlebot3_connect.png" width="500">
 
 ### **Example 2**: Check Available Topics
 
-<img src="../images/turtlebot3_gettopics_1.png" width="500">
-<img src="../images/turtlebot3_gettopics_2.png" width="500">
+<img src="images/turtlebot3_gettopics_1.png" width="500">
+<img src="images/turtlebot3_gettopics_2.png" width="500">
 
 ### **Example 3**: Move the Robot Back and Forth
+<img src="images/turtlebot3_example3.gif" width="500">
 
 
 ## **Next Steps**
