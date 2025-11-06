@@ -1,18 +1,18 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-29/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-10-17/server.schema.json",
   "name": "io.github.robotmcp/ros-mcp-server",
   "description": "Connect AI models like Claude & ChatGPT with ROS robots using MCP",
   "repository": {
     "url": "https://github.com/robotmcp/ros-mcp-server",
     "source": "github"
   },
-  "version": "2.2.0",
+  "version": "2.2.1",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "ros-mcp",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "transport": {
         "type": "stdio",
         "command": "ros-mcp",

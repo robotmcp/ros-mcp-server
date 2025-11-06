@@ -82,12 +82,9 @@ The MCP server is version-agnostic (ROS1 or ROS2) and works with any MCP-compati
 
 ### Installation  
 
-Follow the [installation guide](docs/installation.md) for step-by-step instructions:  
-1. Clone the repository  
-2. Install `uv` and `rosbridge`  
-3. Install Claude Desktop (or any MCP-enabled client)  
-4. Configure your client to connect to the ROS MCP Server  
-5. Start `rosbridge` on the target robot  
+Follow the [installation guide](docs/installation.md) for step-by-step instructions to install, run, and troubleshoot the ROS-MCP server.  
+
+For developers, we also have instructions for [installation from source](docs/installation-from-source.md)  
 
 ---
 
