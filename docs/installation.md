@@ -6,9 +6,9 @@ Installation includes the following steps:
 - On the Host Machine (Where the LLM will run)
   - Install the ROS-MCP server
   - Install any language model client (We demonstrate with Claude Desktop)
-  - Configure the client to run the MCP server  automatically on launch.
+  - Configure the client to run the MCP server automatically on launch.
 - On the Robot (Where ROS will be running)
-  - Install and launch Rosbridge
+  - Install and launch rosbridge
 
 
 Below are detailed instructions for each of these steps. 
@@ -17,11 +17,11 @@ Below are detailed instructions for each of these steps.
 
 # On The Host Machine (Where Your LLM Will Run)
 
-The ROS MCP server is capable of connecting any LLM client that supports the MCP protocol, and can also do so via multiple transport protocols (stdio, stremable http, etc.)
+The ROS MCP server is capable of connecting any LLM client that supports the MCP protocol, and can also do so via multiple transport protocols (stdio, streamable http, etc.)
 
- For the primary installation guide, we demonstrate using **Claude Desktop** and the default stdio transport layer. We use uvx for installation and management of dependencies.
- 
- We and also have examples for different LLM clients (Cursor, Gemini, and ChatGPT) and other transport protocols (streamable http)
+For the primary installation guide, we demonstrate using **Claude Desktop** and the default stdio transport layer. We use uvx for installation and management of dependencies.
+
+We also have examples for different LLM clients (Cursor, Gemini, and ChatGPT) and other transport protocols (streamable http)
 
 
 For alternate clients, transport protocols, and installation methods, see [Alternate Installation and Configuration Options](installation-alternatives.md#alternative-installation-options).
@@ -202,7 +202,7 @@ uvx ros-mcp --help
 ### 2.1 Download
 - Download from [claude.ai](https://claude.ai/download)
 
-This will have Claude running on Windows and the MCP server running on WSL. We assume that you have installed UV on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US)
+This will have Claude running on Windows and the MCP server running on WSL. We assume that you have installed uv on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US)
 
 ### 2.2 Configure
 - Locate and edit the `claude_desktop_config.json` file:
@@ -403,7 +403,7 @@ ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 
 # You're ready to go!
 
-You can test out your server with any robot that you have running. Just tell your AI to connect to the robot using its target IP address. (Default is localhost, so you don't need to tell it to connect if the MCP server is installed on the same machine as your ROS)
+You can test out your server with any robot that you have running. Just tell your AI to connect to the robot using its target IP address. (Default is localhost, so you don't need to tell it to connect if the MCP server is installed on the same machine as your ROS.)
 
 ✅ **Tip:** If you don't currently have any robots running, turtlesim is considered the 'hello world' robot for ROS to experiment with. It does not have any simulation dependencies such as Gazebo or IsaacSim.
 
@@ -518,10 +518,10 @@ uvx ros-mcp
 1. **Check command line arguments**: Ensure the correct transport, host, and port are specified:
    ```bash
    # Check available options
-   python server.py --help
+   uvx ros-mcp --help
    
    # Example with custom settings
-   python server.py --transport http --host 0.0.0.0 --port 8080
+   uvx ros-mcp --transport http --host 0.0.0.0 --port 8080
    ```
 
 2. **Check environment variables** (legacy): Ensure MCP_TRANSPORT, MCP_HOST, and MCP_PORT are set correctly
