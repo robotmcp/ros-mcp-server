@@ -27,6 +27,7 @@ The ROS MCP server is capable of connecting any LLM client that supports the MCP
 For alternate clients, transport protocols, and installation methods, see [Alternate Installation and Configuration Options](installation-alternatives.md#alternative-installation-options).
 
 ---
+Expand the OS below for installation instructions
 
 <details>
 <summary><strong>Linux (Ubuntu)</strong></summary>
@@ -449,9 +450,9 @@ What topics and services do you see on the robot?
 
 </details>
 
----
 
-# Troubleshooting
+
+## Troubleshooting
 
 <details>
 <summary><strong>Common Issues</strong></summary>
