@@ -3,7 +3,7 @@
 > ⚠️ **Prerequisite**: You need either ROS installed locally on your machine OR access over the network to a robot/computer with ROS installed. This MCP server connects to ROS systems on a robot, so a running ROS environment is required.
 
 Installation includes the following steps:
-- Install the MCP server using pip
+- Install the MCP server using uvx
 - Install and configure the Language Model Client
   - Install any language model client (We demonstrate with Claude Desktop)
   - Configure the client to run the MCP server and connect automatically on launch.
@@ -55,43 +55,7 @@ uvx ros-mcp --help
 
 </details>
 
-<details>
-<summary><strong>Alternative Installation Options</strong></summary>
-
-### Option A: Install using pip
-For users who prefer traditional pip installation:
-
-```bash
-pip install ros-mcp
-```
-> **⚠️ Important**: This package requires pip version 23.0 or higher. Check your pip version with `pip --version` and upgrade if needed:
-> **⚠️ Important**: This package requires python version 3.10 or higher. Check your python version with `python3 --version` and upgrade if needed:
-```bash
-python3 -m pip install --upgrade pip
-```
-
-### Option B: Install from Source
-For developers or advanced users who need to modify the source code, see [Installation from Source](installation-from-source.md).
-
-### Option C: Install from Source using pip
-For developers who want to install from source but still use pip:
-
-```bash
-# Clone the repository
-git clone https://github.com/robotmcp/ros-mcp-server.git
-cd ros-mcp-server
-
-# Install from source using pip
-pip install .
-```
-
-> **⚠️ Important**: This package requires pip version 23.0 or higher. Check your pip version with `pip --version` and upgrade if needed:
-> **⚠️ Important**: This package requires python version 3.10 or higher. Check your python version with `python3 --version` and upgrade if needed:
-```bash
-python3 -m pip install --upgrade pip
-```
-
-</details>
+For alternative installation methods (pip, source installation), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternative-installation-options).
 
 ---
 
@@ -100,36 +64,13 @@ python3 -m pip install --upgrade pip
 Any LLM client that supports MCP can be used. We use **Claude Desktop** for testing and development.
 
 
-
-## 2.1. Download Claude Desktop 
 <details>
 <summary><strong>Linux (Ubuntu)</strong></summary>
 
+### 2.1 Download
 - Follow the installation instructions from the community-supported [claude-desktop-debian](https://github.com/aaddrick/claude-desktop-debian)
 
-</details>
-
-<details>
-<summary><strong>MacOS</strong></summary>
-
-- Download from [claude.ai](https://claude.ai/download)
-
-</details>
-
-<details>
-<summary><strong>Windows (Using WSL)</strong></summary>
-
-This will have Claude running on Windows and the MCP server running on WSL. We assume that you have installed UV on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US) 
-
-- Download from [claude.ai](https://claude.ai/download)
-
-</details>
-
-
-## 2.2. Configure Claude Desktop to launch the MCP server
-<details>
-<summary><strong>Linux (Ubuntu)</strong></summary>
-
+### 2.2 Configure
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -145,19 +86,24 @@ This will have Claude running on Windows and the MCP server running on WSL. We a
       "command": "bash",
       "args": [
         "-lc", 
-        "ros-mcp --transport=stdio"
+        "uvx ros-mcp --transport=stdio"
       ]
     }
   }
 }
 ```
 
-</details>
+For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
 
+</details>
 
 <details>
 <summary><strong>MacOS</strong></summary>
 
+### 2.1 Download
+- Download from [claude.ai](https://claude.ai/download)
+
+### 2.2 Configure
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -173,19 +119,26 @@ This will have Claude running on Windows and the MCP server running on WSL. We a
       "command": "zsh",
       "args": [
         "-lc", 
-        "ros-mcp --transport=stdio"
+        "uvx ros-mcp --transport=stdio"
       ]
     }
   }
 }
 ```
 
-</details>
+For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
 
+</details>
 
 <details>
 <summary><strong>Windows (Using WSL)</strong></summary>
 
+### 2.1 Download
+- Download from [claude.ai](https://claude.ai/download)
+
+This will have Claude running on Windows and the MCP server running on WSL. We assume that you have installed UV on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US)
+
+### 2.2 Configure
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -205,74 +158,50 @@ This will have Claude running on Windows and the MCP server running on WSL. We a
           "Ubuntu-22.04", 
           "bash", 
           "-lc", 
-          "ros-mcp --transport=stdio"
+          "uvx ros-mcp --transport=stdio"
         ]
     }
   }
 }
 ```
 
+For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
+
 </details>
 
----
-
 <details>
-<summary><strong> Alternate Configuration - HTTP Transport</strong></summary>
+<summary><strong>Windows (Using PowerShell)</strong></summary>
 
-The above configurations sets up the MCP server using the default STDIO transport layer, which launches the server as a plugin automatically on launching Claude. 
+### 2.1 Download
+- Download from [claude.ai](https://claude.ai/download)
 
-It is also possible to configure the MCP server using the http transport layer, which configures Claude to connect to the MCP server when it is launched as a standalone application. 
+This will have Claude and the MCP server running within Windows.
 
-For HTTP transport, the configuration is the same across all platforms. First start the MCP server manually:
-
-**Linux/macOS/Windows(WSL):**
+### 2.2 Configure
+- Locate and edit the `claude_desktop_config.json` file:
+- (If the file does not exist, create it)
 ```bash
-cd /<ABSOLUTE_PATH>/ros-mcp-server
-# Using command line arguments (recommended)
-ros-mcp --transport streamable-http --host 127.0.0.1 --port 9000
-
-# Or using environment variables (legacy)
-export MCP_TRANSPORT=streamable-http
-export MCP_HOST=127.0.0.1
-export MCP_PORT=9000
-uv run server.py
+~/.config/Claude/claude_desktop_config.json
 ```
 
-Then configure Claude Desktop to connect to the HTTP server (same for all platforms):
+- Add the following to the `"mcpServers"` section of the JSON file:
 
 ```json
 {
   "mcpServers": {
-    "ros-mcp-server-http": {
-      "name": "ROS-MCP Server (http)",
-      "transport": "http",
-      "url": "http://127.0.0.1:9000/mcp"
+    "ros-mcp-server": {
+      "command": "uvx",
+      "args": ["ros-mcp", "--transport=stdio"]
     }
   }
 }
 ```
 
-</details>
-
-<details>
-<summary> Comparison between default (STDIO) and HTTP Transport</summary>
-
-#### STDIO Transport (Default)
-- **Best for**: Local development, single-user setups
-- **Pros**: Simple setup, no network configuration needed
-- **Cons**: MCP server and LLM/MCP client need to be running on the local machine.
-- **Use case**: Running MCP server directly with your LLM client
-
-#### HTTP/Streamable-HTTP Transport
-- **Best for**: Remote access, multiple clients, production deployments
-- **Pros**: Network accessible, multiple clients can connect
-- **Cons**: Requires network configuration, MCP server needs to be run independently.
-- **Use case**: Remote robots, team environments, web-based clients
+For alternative configuration options (HTTP transport), see [Alternate Installation and Configuration Options](installation-alternatives.md#alternate-configuration---http-transport).
 
 </details>
 
-
-## 2.3. Test the connection
+## 2.2. Test the connection
 - Launch Claude Desktop and check connection status. 
 - The ros-mcp-server should be visible in your list of tools.
 
