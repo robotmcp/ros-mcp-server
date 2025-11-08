@@ -16,6 +16,14 @@ For more details, please refer to the [TurtleBot3 Documentation](https://emanual
 
 <img src="images/turtlebot3_image.png" width="300">
 
+- **Specification**
+    - **OS** : Ubuntu 22.04
+    - **ROS** : ROS2 Humble
+    - **TurtleBot3 Model** : Burger
+    - **LiDAR** : LDS-01
+    - **Computer** : Raspberry Pi 3 Model B+ (1GB RAM)
+    - **Motor Controller** : OpenCR 1.0 (Firmware v0.2.1)
+
 ## Quick Start
 
 ### 1. Network Setup
