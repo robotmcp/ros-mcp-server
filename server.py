@@ -2928,6 +2928,215 @@ def cancel_action_goal(action_name: str, goal_id: str) -> dict:
 
 ## ############################################################################################## ##
 ##
+##                       BEHAVIOR TREES
+##
+## ############################################################################################## ##
+
+# Initialize behavior tree manager (lazy initialization on first use)
+bt_manager = None
+
+
+def _get_bt_manager():
+    """Get or create the behavior tree manager instance."""
+    global bt_manager
+    if bt_manager is None:
+        from utils.behavior_tree_manager import BehaviorTreeManager
+        bt_manager = BehaviorTreeManager(ws_manager)
+    return bt_manager
+
+
+@mcp.tool(
+    description=(
+        "Validate a behavior tree definition without executing it. Works only with ROS 2.\n"
+        "Checks JSON syntax and tree structure (composites, actions, services).\n"
+        "Example:\n"
+        "validate_behavior_tree(tree_definition='{\"type\": \"sequence\", \"name\": \"PickAndPlace\", \"children\": [...]}')"
+    )
+)
+def validate_behavior_tree(tree_definition: str) -> dict:
+    """
+    Validate a behavior tree definition without executing it.
+
+    This tool checks:
+    - JSON syntax validity
+    - Required fields for each node type
+    - Tree structure consistency
+    - Action and service node configurations
+
+    Args:
+        tree_definition (str): JSON string containing the behavior tree definition.
+                              See behavior_tree_manager.py for schema details.
+
+    Returns:
+        dict: Validation result with 'valid' boolean and optional 'error' message.
+              Example: {"valid": True, "message": "Tree definition is valid"}
+              Or: {"valid": False, "error": "There is some error in the file passed"}
+    """
+    try:
+        manager = _get_bt_manager()
+        result = manager.validate_tree_definition(tree_definition)
+        return result
+    except Exception as e:
+        return {"valid": False, "error": f"Validation failed: {str(e)}"}
+
+
+@mcp.tool(
+    description=(
+        "Execute a behavior tree that composes ROS Actions and Services. Works only with ROS 2.\n"
+        "The tree is built from a JSON definition and executed tick-by-tick.\n"
+        "Supports sequence, selector, and parallel composites.\n"
+        "Example:\n"
+        "execute_behavior_tree(\n"
+        "  tree_definition='{\"type\": \"sequence\", \"name\": \"PickAndPlace\", \"children\": [...]}',\n"
+        "  max_ticks=100,\n"
+        "  tick_rate=10.0\n"
+        ")"
+    )
+)
+def execute_behavior_tree(
+    tree_definition: str, max_ticks: int = 100, tick_rate: float = 10.0
+) -> dict:
+    """
+    Execute a behavior tree that composes ROS Actions and Services.
+
+    This tool:
+    1. Validates the tree definition
+    2. Builds the behavior tree structure
+    3. Executes the tree tick-by-tick until completion or timeout
+    4. Returns execution results with status log
+
+    Tree Definition Schema:
+    {
+        "type": "sequence|selector|parallel",
+        "name": "TreeName",
+        "children": [
+            {
+                "type": "action",
+                "name": "NavigateToPose",
+                "action_name": "/navigate_to_pose",
+                "action_type": "nav2_msgs/action/NavigateToPose",
+                "goal": {"pose": {...}},
+                "timeout": 30.0
+            },
+            {
+                "type": "service",
+                "name": "SetGripper",
+                "service_name": "/set_gripper",
+                "service_type": "std_srvs/srv/SetBool",
+                "request": {"data": true},
+                "timeout": 5.0
+            }
+        ]
+    }
+
+    Args:
+        tree_definition (str): JSON string containing the behavior tree definition
+        max_ticks (int): Maximum number of ticks before stopping (default: 100)
+        tick_rate (float): Ticks per second (default: 10.0)
+
+    Returns:
+        dict: Execution results containing:
+            - success: Boolean indicating if tree completed
+            - final_status: SUCCESS, FAILURE, or RUNNING
+            - ticks: Number of ticks executed
+            - status_log: List of status updates per tick
+            - error: Error message if execution failed
+    """
+    try:
+        manager = _get_bt_manager()
+
+        # First build the tree
+        build_result = manager.build_tree(tree_definition)
+        if not build_result["success"]:
+            return {
+                "success": False,
+                "error": f"Failed to build tree: {build_result.get('error', 'unknown error')}",
+            }
+
+        # Execute the tree
+        result = manager.execute_tree(max_ticks=max_ticks, tick_rate=tick_rate)
+        return result
+
+    except Exception as e:
+        return {"success": False, "error": f"Execution failed: {str(e)}"}
+
+
+@mcp.tool(
+    description=(
+        "Get the current status of behavior tree execution. Works only with ROS 2.\n"
+        "Returns execution state, tree status, and latest status log entry.\n"
+        "Example:\n"
+        "get_behavior_tree_status()"
+    )
+)
+def get_behavior_tree_status() -> dict:
+    """
+    Get the current status of behavior tree execution.
+
+    Returns:
+        dict: Status information containing:
+            - execution_status: 'idle', 'ready', 'running', 'completed', 'timeout', or 'error'
+            - tree_status: Current py_trees status (SUCCESS, FAILURE, RUNNING, INVALID)
+            - status_log_size: Number of logged status updates
+            - latest_log: Most recent status log entry with tick number and status
+
+    Example response:
+    {
+        "execution_status": "running",
+        "tree_status": "RUNNING",
+        "status_log_size": 15,
+        "latest_log": {
+            "tick": 15,
+            "status": "RUNNING",
+            "timestamp": 1699876543.21
+        }
+    }
+    """
+    try:
+        manager = _get_bt_manager()
+        return manager.get_status()
+    except Exception as e:
+        return {"error": f"Failed to get status: {str(e)}"}
+
+
+@mcp.tool(
+    description=(
+        "Get ASCII visualization of the current behavior tree structure. Works only with ROS 2.\n"
+        "Shows tree hierarchy with current status of each node.\n"
+        "Example:\n"
+        "visualize_behavior_tree()"
+    )
+)
+def visualize_behavior_tree() -> dict:
+    """
+    Get ASCII visualization of the current behavior tree.
+
+    Returns:
+        dict: Contains 'visualization' key with ASCII tree diagram showing:
+            - Tree structure with indentation
+            - Node types and names
+            - Current status of each node
+
+    Example output:
+    {
+        "visualization": "
+        [-] PickAndPlace
+            --> NavigateToPose [SUCCESS]
+            --> PickObject [RUNNING]
+                --> GraspPose [RUNNING]
+        "
+    }
+    """
+    try:
+        manager = _get_bt_manager()
+        visualization = manager.get_tree_visualization()
+        return {"visualization": visualization}
+    except Exception as e:
+        return {"error": f"Failed to visualize tree: {str(e)}"}
+
+
+## ############################################################################################## ##
+##
 ##                       NETWORK DIAGNOSTICS
 ##
 ## ############################################################################################## ##
