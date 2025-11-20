@@ -114,6 +114,16 @@ open -a XQuartz
 xhost +localhost
 ```
 
+Set environment variables to forward the X server
+
+```bash
+# Tells Qt-based GUI apps to avoid the MIT-SHM shared-memory extension when talking to the X server
+export QT_X11_NO_MITSHM=1
+
+# Points Dockerized GUI apps to the host XQuartz display when using Docker Desktop networking
+export DISPLAY=host.docker.internal:0
+```
+
 ### Display Issues (Windows/PowerShell)
 For Windows users, make sure you install an X Server (X410) and set the DISPLAY:
 
