@@ -4,14 +4,25 @@ FROM osrf/ros:humble-desktop
 ENV ROS_DISTRO=humble
 SHELL ["/bin/bash", "-c"]
 
-# Install turtlesim and rosbridge packages
+# Install turtlesim, rosbridge, and workspace build tools
 RUN apt-get update && apt-get install -y \
+    python3-colcon-common-extensions \
     ros-humble-turtlesim \
     ros-humble-rosbridge-suite \
     && rm -rf /var/lib/apt/lists/*
 
-# Auto-source ROS environment in container shell
-RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+# Copy the ROS 2 workspace that contains the turtlesim action package
+COPY ros2_ws /ros2_ws
+
+# Build the workspace so the custom actions are available at runtime
+RUN source /opt/ros/${ROS_DISTRO}/setup.bash && \
+    cd /ros2_ws && \
+    colcon build --symlink-install && \
+    rm -rf /ros2_ws/log
+
+# Auto-source ROS environment and the custom workspace in every shell
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc && \
+    echo "source /ros2_ws/install/setup.bash" >> ~/.bashrc
 
 # Set working directory
 WORKDIR /ros2_ws

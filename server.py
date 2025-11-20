@@ -2213,7 +2213,10 @@ def get_action_type(action: str) -> dict:
     # Known action type mappings
     action_type_map = {
         "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
-        # Add more mappings as needed
+        "/turtle1/drive_distance": "turtlesim_custom_actions/action/DriveDistance",
+        "/turtle1/goto_pose": "turtlesim_custom_actions/action/GoToPose",
+        "/turtle1/set_pen": "turtlesim_custom_actions/action/SetPen",
+        "/turtle1/teleport_absolute": "turtlesim_custom_actions/action/TeleportAbsolute",
     }
 
     # Check if it's a known action
@@ -2686,7 +2689,10 @@ def inspect_all_actions() -> dict:
             # Known action type mappings for common actions
             action_type_map = {
                 "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
-                # Add more mappings as needed based on common ROS actions
+                "/turtle1/drive_distance": "turtlesim_custom_actions/action/DriveDistance",
+                "/turtle1/goto_pose": "turtlesim_custom_actions/action/GoToPose",
+                "/turtle1/set_pen": "turtlesim_custom_actions/action/SetPen",
+                "/turtle1/teleport_absolute": "turtlesim_custom_actions/action/TeleportAbsolute",
             }
 
             if action in action_type_map:

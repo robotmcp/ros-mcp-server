@@ -1,0 +1,26 @@
+# Absolute pose target inside the turtlesim world
+float32 x
+float32 y
+float32 theta
+
+# Tolerances for position and rotation convergence (meters, radians)
+float32 position_tolerance
+float32 angle_tolerance
+
+# Controller gains (meters/s, radians/s)
+float32 linear_speed
+float32 angular_speed
+---
+bool success
+string message
+float32 final_x
+float32 final_y
+float32 final_theta
+float32 error_distance
+float32 error_theta
+---
+float32 remaining_distance
+float32 remaining_angle
+float32 current_x
+float32 current_y
+float32 current_theta

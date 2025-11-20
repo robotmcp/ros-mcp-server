@@ -1,0 +1,11 @@
+# Matches turtlesim/srv/SetPen semantics
+uint8 r
+uint8 g
+uint8 b
+uint32 width
+bool pen_on
+---
+bool success
+string message
+---
+string state

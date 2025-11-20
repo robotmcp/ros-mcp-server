@@ -1,0 +1,18 @@
+# Distance to travel relative to the turtle's current pose (meters in turtlesim scale)
+float32 distance
+# Optional override for the forward speed (positive for forward, negative for reverse)
+float32 speed
+---
+# Result
+bool success
+string message
+float32 final_x
+float32 final_y
+float32 final_theta
+---
+# Feedback
+float32 remaining_distance
+float32 traveled_distance
+float32 current_x
+float32 current_y
+float32 current_theta

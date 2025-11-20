@@ -13,8 +13,17 @@ services:
       - ./launch_turtlesim.launch.py:/ros2_ws/launch/launch_turtlesim.launch.py:ro
       # Linux X11 socket (only works on Linux)
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./docker/scripts:/ros2_ws/scripts:ro
+      - ./docker/ros2_ws/src:/ros2_ws/src:rw
     ports:
       - "9090:9090"
     stdin_open: true
     tty: true
-    command: ["ros2", "launch", "/ros2_ws/launch/launch_turtlesim.launch.py"]
+    # command: ["ros2", "launch", "/ros2_ws/launch/launch_turtlesim.launch.py"]
+    command:
+      - bash
+      - -lc
+      - |
+          source /opt/ros/humble/setup.bash
+          source /ros2_ws/install/setup.bash
+          ros2 launch /ros2_ws/launch/launch_turtlesim.launch.py

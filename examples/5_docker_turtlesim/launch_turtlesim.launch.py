@@ -30,6 +30,15 @@ def generate_launch_description():
         "log_level", default_value="info", description="Log level for nodes"
     )
 
+    # Custom action server bringup so MCP can call turtlesim-specific actions
+    action_server_node = Node(
+        package="turtlesim_custom_actions",
+        executable="turtlesim_action_bringup.py",
+        name="turtlesim_action_bringup",
+        output="screen",
+        arguments=["--ros-args", "--log-level", LaunchConfiguration("log_level")],
+    )
+
     # Turtlesim node
     turtlesim_node = Node(
         package="turtlesim",
@@ -85,6 +94,7 @@ def generate_launch_description():
             address_arg,
             log_level_arg,
             log_info,
+            action_server_node,
             rosbridge_node,
             rosapi_node,
             turtlesim_node,

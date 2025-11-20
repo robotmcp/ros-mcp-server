@@ -1,0 +1,15 @@
+# Desired world pose
+float32 x
+float32 y
+float32 theta
+
+# Optionally clear the drawing buffer after teleporting
+bool clear_background
+---
+bool success
+string message
+float32 final_x
+float32 final_y
+float32 final_theta
+---
+string phase
