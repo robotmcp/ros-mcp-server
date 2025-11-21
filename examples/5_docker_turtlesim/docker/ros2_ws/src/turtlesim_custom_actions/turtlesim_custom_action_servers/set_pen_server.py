@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
+import time
 
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -36,9 +36,9 @@ class SetPenActionServer(Node):
         # Execution is quick, so cancellation is effectively immediate.
         return CancelResponse.ACCEPT
 
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         goal = goal_handle.request
-        await self._wait_for_service(self._set_pen_cli, "SetPen")
+        self._wait_for_service(self._set_pen_cli, "SetPen")
 
         request = SetPenSrv.Request()
         request.r = goal.r
@@ -48,7 +48,7 @@ class SetPenActionServer(Node):
         request.off = not goal.pen_on
 
         future = self._set_pen_cli.call_async(request)
-        await future
+        self._wait_for_future(future)
 
         feedback = SetPen.Feedback()
         feedback.state = (
@@ -58,7 +58,8 @@ class SetPenActionServer(Node):
 
         # Optional nicety: if pen is being turned back on, clear the board first.
         if goal.pen_on and self._clear_cli.service_is_ready():
-            self._clear_cli.call_async(Empty.Request())
+            clear_future = self._clear_cli.call_async(Empty.Request())
+            self._wait_for_future(clear_future)
 
         result = SetPen.Result()
         result.success = True
@@ -67,10 +68,14 @@ class SetPenActionServer(Node):
         goal_handle.succeed()
         return result
 
-    async def _wait_for_service(self, client, name: str) -> None:
+    def _wait_for_service(self, client, name: str) -> None:
         while not client.wait_for_service(timeout_sec=0.5):
             self.get_logger().warn(f"Waiting for {name} service...")
-            await asyncio.sleep(0.1)
+            time.sleep(0.1)
+
+    def _wait_for_future(self, future) -> None:
+        while rclpy.ok() and not future.done():
+            rclpy.spin_once(self, timeout_sec=0.1)
 
 
 def main(args=None):

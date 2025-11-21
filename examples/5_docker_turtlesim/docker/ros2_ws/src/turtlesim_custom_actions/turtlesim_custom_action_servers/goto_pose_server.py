@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
 import time
 
@@ -46,7 +45,7 @@ class GoToPoseActionServer(Node):
         self.get_logger().info("GoToPose goal canceled by client")
         return CancelResponse.ACCEPT
 
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         goal = goal_handle.request
         position_tolerance = goal.position_tolerance or 0.05
         angle_tolerance = goal.angle_tolerance or 0.05
@@ -61,13 +60,13 @@ class GoToPoseActionServer(Node):
 
         last_feedback_time = time.monotonic()
         self.get_logger().info(
-            "GoToPose target (%.2f, %.2f, %.2f)", goal.x, goal.y, goal.theta
+            f"Executing goto_pose goal to x={goal.x:.2f}, y={goal.y:.2f}, theta={goal.theta:.2f}"
         )
 
         while rclpy.ok():
             current_pose = self.pose_tracker.pose
             if current_pose is None:
-                await asyncio.sleep(0.05)
+                time.sleep(0.05)
                 continue
 
             dx = goal.x - current_pose.x
@@ -114,7 +113,7 @@ class GoToPoseActionServer(Node):
                 goal_handle.publish_feedback(feedback)
                 last_feedback_time = time.monotonic()
 
-            await asyncio.sleep(0.05)
+            time.sleep(0.05)
 
         publish_stop(self, self.cmd_pub)
         final_pose = self.pose_tracker.pose or start_pose

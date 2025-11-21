@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import math
+import time
 
 import rclpy
 from rclpy.action import ActionServer, CancelResponse, GoalResponse
@@ -39,9 +39,9 @@ class TeleportAbsoluteActionServer(Node):
         # Teleport happens instantly; nothing to cancel.
         return CancelResponse.REJECT
 
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         goal = goal_handle.request
-        await self._wait_for_service(self._teleport_cli, "TeleportAbsolute")
+        self._wait_for_service(self._teleport_cli, "TeleportAbsolute")
 
         request = TeleportAbsoluteSrv.Request()
         request.x = goal.x
@@ -50,12 +50,13 @@ class TeleportAbsoluteActionServer(Node):
 
         goal_handle.publish_feedback(self._feedback("teleporting"))
         future = self._teleport_cli.call_async(request)
-        await future
+        self._wait_for_future(future)
 
         if goal.clear_background:
-            await self._wait_for_service(self._clear_cli, "clear")
+            self._wait_for_service(self._clear_cli, "clear")
             goal_handle.publish_feedback(self._feedback("clearing"))
-            await self._clear_cli.call_async(Empty.Request())
+            clear_future = self._clear_cli.call_async(Empty.Request())
+            self._wait_for_future(clear_future)
 
         final_pose = self.pose_tracker.wait_for_pose(timeout=2.0)
 
@@ -70,10 +71,14 @@ class TeleportAbsoluteActionServer(Node):
         goal_handle.succeed()
         return result
 
-    async def _wait_for_service(self, client, name: str) -> None:
+    def _wait_for_service(self, client, name: str) -> None:
         while not client.wait_for_service(timeout_sec=0.5):
             self.get_logger().warn(f"Waiting for {name} service...")
-            await asyncio.sleep(0.1)
+            time.sleep(0.1)
+
+    def _wait_for_future(self, future) -> None:
+        while rclpy.ok() and not future.done():
+            rclpy.spin_once(self, timeout_sec=0.1)
 
     def _feedback(self, phase: str) -> TeleportAbsolute.Feedback:
         feedback = TeleportAbsolute.Feedback()

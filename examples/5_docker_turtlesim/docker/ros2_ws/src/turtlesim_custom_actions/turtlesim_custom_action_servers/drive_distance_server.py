@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 
 import rclpy
@@ -40,7 +39,7 @@ class DriveDistanceActionServer(Node):
         self.get_logger().info("Received request to cancel DriveDistance goal")
         return CancelResponse.ACCEPT
 
-    async def execute_callback(self, goal_handle):
+    def execute_callback(self, goal_handle):
         goal = goal_handle.request
         target_distance = abs(goal.distance)
         direction = 1.0 if goal.distance >= 0 else -1.0
@@ -61,7 +60,7 @@ class DriveDistanceActionServer(Node):
         while rclpy.ok():
             current_pose = self.pose_tracker.pose
             if current_pose is None:
-                await asyncio.sleep(0.05)
+                time.sleep(0.05)
                 continue
 
             traveled = pose_distance(start_pose, current_pose)
@@ -92,7 +91,7 @@ class DriveDistanceActionServer(Node):
                 )
 
             self.cmd_pub.publish(create_twist(commanded_speed, 0.0))
-            await asyncio.sleep(loop_period)
+            time.sleep(loop_period)
 
         publish_stop(self, self.cmd_pub)
         final_pose = self.pose_tracker.pose or start_pose
