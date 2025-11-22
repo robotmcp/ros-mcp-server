@@ -1,4 +1,4 @@
-# Example 11: Tugbot Warehouse Simulation (Ignition Gazebo)
+# Example 10: Tugbot Warehouse Simulation (Ignition Gazebo)
 
 This example demonstrates how to control a **Tugbot mobile robot** inside a warehouse environment using **Ignition Gazebo (Fortress)** and the **ROS-MCP Server**.
 
