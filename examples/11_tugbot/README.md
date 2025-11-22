@@ -58,7 +58,6 @@ This project uses `uv` for environment management. Because ROS nodes (like `rosb
 We have provided a custom launch file (`tugbot_sim.launch.py`) that starts Ignition Gazebo, the ROS-GZ Bridge, the Rosbridge Websocket, and the ROS API node simultaneously.
 
 ```bash
-# Terminal 1
 source /opt/ros/humble/setup.bash
 source .venv/bin/activate
 
@@ -70,13 +69,7 @@ ros2 launch examples/11_tugbot/tugbot_sim.launch.py
 
 ### 2\. Start the MCP Server
 
-Run the MCP server in inspection mode or connect it to your MCP client (Claude Desktop/Goose/etc).
-
-```bash
-# Terminal 2
-source .venv/bin/activate
-ros-mcp
-```
+Use the [robot-mcp-client](https://github.com/robotmcp/robot-mcp-client) or any of the MCP Desktop clients (Claude Desktop/Goose/etc).
 
 ## 🤖 Sample Prompts & Use Cases
 
