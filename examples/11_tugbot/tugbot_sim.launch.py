@@ -58,6 +58,7 @@ def generate_launch_description():
             gazebo_sim,
             bridge,
             rosbridge_node,
-            rosapi_node,  # <--- Don't forget to add this here!
+            rosapi_node,
+
         ]
     )
