@@ -59,6 +59,5 @@ def generate_launch_description():
             bridge,
             rosbridge_node,
             rosapi_node,
-
         ]
     )
