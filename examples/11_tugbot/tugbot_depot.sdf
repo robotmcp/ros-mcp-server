@@ -1,0 +1,405 @@
+<?xml version='1.0' encoding='ASCII'?>
+<sdf version='1.7'>
+  <world name='world_demo'>
+    <physics name='1ms' type='ignored'>
+      <max_step_size>0.01</max_step_size>
+      <real_time_factor>1</real_time_factor>
+    </physics>
+    <plugin name='ignition::gazebo::systems::Physics' filename='libignition-gazebo-physics-system.so'/>
+    <plugin name='ignition::gazebo::systems::UserCommands' filename='libignition-gazebo-user-commands-system.so'/>
+    <plugin name='ignition::gazebo::systems::SceneBroadcaster' filename='libignition-gazebo-scene-broadcaster-system.so'/>
+    <plugin name='ignition::gazebo::systems::Imu' filename='ignition-gazebo-imu-system'/>
+    <plugin name='ignition::gazebo::systems::Sensors' filename='ignition-gazebo-sensors-system'>
+      <render_engine>ogre2</render_engine>
+    </plugin>
+    <scene>
+      <ambient>1 1 1 1</ambient>
+      <background>0.3 0.7 0.9 1</background>
+      <shadows>0</shadows>
+      <grid>1</grid>
+    </scene>
+
+    <model name='ground_plane'>
+      <static>1</static>
+      <link name='link'>
+        <collision name='collision'>
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>1 1</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode/>
+            </friction>
+            <bounce/>
+            <contact/>
+          </surface>
+        </collision>
+      </link>
+      <pose>0 0 0 0 0 0</pose>
+    </model>
+
+    <include>
+      <uri>
+        https://fuel.ignitionrobotics.org/1.0/OpenRobotics/models/Depot
+      </uri>
+      <pose>7.19009 1.09982 0 0 0 0</pose>
+    </include>
+
+    <model name='depot_collision'>
+      <static>1</static>
+      <pose>7.19009 1.09982 0 0 0 0</pose>
+      <link name='collision_link'>
+        <pose>0 0 0 0 0 0</pose>
+        <collision name='wall1'>
+          <pose>0 -7.6129 4.5 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>30.167 0.08 9</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='wall2'>
+          <pose>0 7.2875 4.5 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>30.167 0.08 9</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='wall3'>
+          <pose>-15 0 4.5 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.08 15.360 9</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='wall4'>
+          <pose>15 0 4.5 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.08 15.360 9</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes1'>
+          <pose>0.22268 -4.7268 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes2'>
+          <pose>3.1727 -4.7268 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes3'>
+          <pose>5.95268 -4.7268 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes4'>
+          <pose>8.55887 -4.7268 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes5'>
+          <pose>11.326 -4.7268 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes6'>
+          <pose>0.22268 -2.37448 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes7'>
+          <pose>3.1727 -2.37448 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes8'>
+          <pose>5.95268 -2.37448 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes9'>
+          <pose>8.55887 -2.37448 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes10'>
+          <pose>11.326 -2.37448 0.68506 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='boxes11'>
+          <pose>-1.2268 4.1557 0.68506 0 0 -1.02799893</pose>
+          <geometry>
+            <box>
+              <size>1.288 1.422 1.288</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='pilar1'>
+          <pose>-7.5402 3.6151 1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.465 0.465 2</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='pilar2'>
+          <pose>7.4575 3.6151 1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.465 0.465 2</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='pilar3'>
+          <pose>-7.5402 -3.8857 1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.465 0.465 2</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='pilar4'>
+          <pose>7.4575 -3.8857 1 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.465 0.465 2</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='pallet_mover1'>
+          <pose>-0.6144 -2.389 0.41838 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.363 0.440 0.719</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='pallet_mover2'>
+          <pose>-1.6004 4.8225 0.41838 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>0.363 0.244 0.719</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='stairs'>
+          <pose>13.018 3.1652 0.25 0 0 0</pose>
+          <geometry>
+            <box>
+              <size>1.299 0.6 0.5</size>
+            </box>
+          </geometry>
+        </collision>
+        <collision name='shelfs1'>
+          <pose>1.4662 -0.017559 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs2'>
+          <pose>2.6483 -0.017559 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs3'>
+          <pose>5.3247 -0.017559 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs4'>
+          <pose>6.5063 -0.017559 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs5'>
+          <pose>9.0758 -0.017559 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs6'>
+          <pose>10.258 -0.017559 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs7'>
+          <pose>1.4662 2.5664 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs8'>
+          <pose>2.6483 2.5664 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs9'>
+          <pose>5.3247 2.5664 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs10'>
+          <pose>6.5063 2.5664 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs11'>
+          <pose>9.0758 2.5664 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs12'>
+          <pose>10.258 2.5664 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs13'>
+          <pose>1.4662 5.1497 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs14'>
+          <pose>2.6483 5.1497 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs15'>
+          <pose>5.3247 5.1497 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs16'>
+          <pose>6.5063 5.1497 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs17'>
+          <pose>9.0758 5.1497 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+        <collision name='shelfs18'>
+          <pose>10.258 5.1497 0.5 0 0 0</pose>
+          <geometry>
+            <cylinder>
+              <radius>0.03</radius>
+              <length>1</length>
+            </cylinder>
+          </geometry>
+        </collision>
+      </link>
+    </model>
+
+    <include>
+      <uri>
+        https://fuel.ignitionrobotics.org/1.0/MovAi/models/Tugbot
+      </uri>
+      <name>tugbot</name>
+      <pose>2.75268 1.0014 0.132279 0 0 0</pose>
+    </include>
+  </world>
+</sdf>
