@@ -657,7 +657,7 @@ def subscribe_once(
         "publish_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', msg={'linear': {'x': 1.0}})"
     )
 )
-def publish_once(topic: str = "", msg_type: str = "", msg: dict = {}) -> dict:
+def publish_once(topic: str = "", msg_type: str = "", msg: dict = None) -> dict:
     """
     Publish a single message to a ROS topic via rosbridge.
 
@@ -670,8 +670,10 @@ def publish_once(topic: str = "", msg_type: str = "", msg: dict = {}) -> dict:
         dict:
             - {"success": True} if sent without errors
             - {"error": "<error message>"} if connection/send failed
-            - If rosbridge responds (usually it doesn’t for publish), parsed JSON or error info
+            - If rosbridge responds (usually it doesn't for publish), parsed JSON or error info
     """
+    if msg is None:
+        msg = {}
     # Validate critical args before attempting publish
     if not topic or not msg_type or msg == {}:
         return {
@@ -862,8 +864,8 @@ def subscribe_for_duration(
 def publish_for_durations(
     topic: str = "",
     msg_type: str = "",
-    messages: List[Dict[str, Any]] = [],
-    durations: List[float] = [],
+    messages: List[Dict[str, Any]] = None,
+    durations: List[float] = None,
 ) -> dict:
     """
     Publish a sequence of messages to a given ROS topic with delays in between.
@@ -884,6 +886,10 @@ def publish_for_durations(
             }
             OR {"error": "<error message>"} if something failed
     """
+    if messages is None:
+        messages = []
+    if durations is None:
+        durations = []
     # Validate critical args before publishing
     if not topic or not msg_type or messages == [] or durations == []:
         return {
