@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import copy
 import io
 import json
 import os
@@ -2731,32 +2732,14 @@ def inspect_all_actions() -> dict:
         }
 
 
-@mcp.tool(
-    description=(
-        "Send a goal to a ROS action server. Works only with ROS 2.\n"
-        "Example:\n"
-        "send_action_goal('/turtle1/rotate_absolute', 'turtlesim/action/RotateAbsolute', {'theta': 1.57})"
-    )
-)
-async def send_action_goal(
+async def _send_action_goal_impl(
     action_name: str,
     action_type: str,
     goal: dict,
     timeout: float | None = None,
     ctx: Context | None = None,
 ) -> dict:
-    """
-    Send a goal to a ROS action server. Works only with ROS 2.
-
-    Args:
-        action_name (str): The name of the action to call (e.g., '/turtle1/rotate_absolute')
-        action_type (str): The type of the action (e.g., 'turtlesim/action/RotateAbsolute')
-        goal (dict): The goal message to send
-        timeout (float, optional): Timeout for action completion in seconds. Default is None (uses default timeout).
-
-    Returns:
-        dict: Contains action response including goal_id, status, and result.
-    """
+    """Implementation shared by the tool and behavior-tree executor."""
     # Validate inputs
     if not action_name or not action_name.strip():
         return {"error": "Action name cannot be empty"}
@@ -2793,15 +2776,21 @@ async def send_action_goal(
             }
 
         # Wait for action completion - handle both action_result and action_feedback
-        actual_timeout = timeout if timeout is not None else 10.0  # Default 10 seconds
         start_time = time.time()
+        timeout_seconds = timeout
         last_feedback = None  # Store the last feedback message
         feedback_count = 0  # Count feedback messages received
 
-        while time.time() - start_time < actual_timeout:
+        while True:
             elapsed_time = time.time() - start_time
+            if timeout_seconds is not None and elapsed_time >= timeout_seconds:
+                break
 
-            response = ws_manager.receive(timeout=actual_timeout - elapsed_time)
+            remaining = None
+            if timeout_seconds is not None:
+                remaining = max(timeout_seconds - elapsed_time, 0.0)
+
+            response = ws_manager.receive(timeout=remaining)
 
             if response:
                 try:
@@ -2812,13 +2801,16 @@ async def send_action_goal(
                         # Report completion
                         if ctx:
                             try:
-                                completion_msg = f"Action completed successfully (received {feedback_count} feedback messages)"
+                                completion_msg = (
+                                    f"Action completed successfully (received {feedback_count} feedback messages)"
+                                )
                                 await ctx.report_progress(
-                                    progress=feedback_count, total=None, message=completion_msg
+                                    progress=feedback_count,
+                                    total=None,
+                                    message=completion_msg,
                                 )
                             except Exception:
                                 pass
-
                         return {
                             "action": action_name,
                             "action_type": action_type,
@@ -2837,9 +2829,13 @@ async def send_action_goal(
                         if ctx:
                             try:
                                 feedback_values = msg_data.get("values", {})
-                                feedback_msg = f"Action feedback #{feedback_count}: {str(feedback_values)[:100]}..."
+                                feedback_msg = (
+                                    f"Action feedback #{feedback_count}: {str(feedback_values)[:100]}..."
+                                )
                                 await ctx.report_progress(
-                                    progress=feedback_count, total=None, message=feedback_msg
+                                    progress=feedback_count,
+                                    total=None,
+                                    message=feedback_msg,
                                 )
                             except Exception:
                                 pass
@@ -2853,12 +2849,18 @@ async def send_action_goal(
             await asyncio.sleep(0.1)
 
         # Timeout - return last feedback if available
+        timeout_msg = (
+            f"after {timeout_seconds} seconds"
+            if timeout_seconds is not None
+            else "before reporting completion"
+        )
+
         if ctx and feedback_count > 0:
             try:
                 await ctx.report_progress(
                     progress=feedback_count,
                     total=None,
-                    message=f"Action timed out after {actual_timeout} seconds (received {feedback_count} feedback messages)",
+                    message=f"Action timed out {timeout_msg} (received {feedback_count} feedback messages)",
                 )
             except Exception:
                 pass
@@ -2868,15 +2870,39 @@ async def send_action_goal(
             "action_type": action_type,
             "success": False,
             "goal_id": goal_id,
-            "error": f"Action timed out after {actual_timeout} seconds",
+            "error": f"Action timed out {timeout_msg}",
         }
 
         if last_feedback:
-            result["success"] = True
             result["last_feedback"] = last_feedback.get("values", {})
             result["note"] = "Action timed out, but partial progress was made"
 
         return result
+
+
+@mcp.tool(
+    description=(
+        "Send a goal to a ROS action server. Works only with ROS 2.\n"
+        "Example:\n"
+        "send_action_goal('/turtle1/rotate_absolute', 'turtlesim/action/RotateAbsolute', {'theta': 1.57})"
+    )
+)
+async def send_action_goal(
+    action_name: str,
+    action_type: str,
+    goal: dict,
+    timeout: float | None = None,
+    ctx: Context | None = None,
+) -> dict:
+    """Tool wrapper that delegates to the shared implementation."""
+
+    return await _send_action_goal_impl(
+        action_name=action_name,
+        action_type=action_type,
+        goal=goal,
+        timeout=timeout,
+        ctx=ctx,
+    )
 
 
 @mcp.tool(
@@ -2929,6 +2955,476 @@ def cancel_action_goal(action_name: str, goal_id: str) -> dict:
         "goal_id": goal_id,
         "success": True,
         "note": "Cancel request sent successfully. Action may still be executing.",
+    }
+
+
+## ############################################################################################## ##
+##
+##                       BEHAVIOR TREE EXECUTION
+##
+## ############################################################################################## ##
+
+from utils.behavior_trees import (
+    _generate_tree_id,
+    _count_actions,
+    validate_tree_definition,
+    _generate_ascii_tree,
+    _add_node_lines,
+    _ensure_behavior_tree_library_loaded,
+    get_behavior_tree_cache,
+    get_behavior_tree_library,
+    get_behavior_tree_library_errors,
+)
+
+# Global cache references for behavior trees
+_behavior_tree_cache = get_behavior_tree_cache()
+_behavior_tree_library = get_behavior_tree_library()
+_behavior_tree_library_errors = get_behavior_tree_library_errors()
+
+
+async def _execute_action_node(
+    node: dict,
+    ctx: Context | None,
+    node_path: str,
+) -> dict:
+    """
+    Execute a single ROS action directly via rosbridge.
+
+    Args:
+        node: Action node dict with action_name, action_type, goal, timeout
+        ctx: Context for progress reporting
+        node_path: Human-readable path for debugging (e.g., "root.children[0]")
+
+    Returns:
+        dict: Execution result with success status
+    """
+    try:
+        action_name = node["action_name"]
+        action_type = node["action_type"]
+        goal = node["goal"]
+        timeout = node.get("timeout", 30.0)
+
+        result = await _send_action_goal_impl(
+            action_name=action_name,
+            action_type=action_type,
+            goal=goal,
+            timeout=timeout,
+            ctx=ctx,
+        )
+
+        success = bool(result.get("success"))
+
+        tree_result: dict = {
+            "success": success,
+            "node_type": "action",
+            "action_name": action_name,
+            "node_path": node_path,
+            "result": result,
+        }
+
+        if not success:
+            tree_result["error"] = result.get("error", "Action failed")
+
+        return tree_result
+
+    except Exception as e:
+        return {
+            "success": False,
+            "node_type": "action",
+            "action_name": node.get("action_name", "unknown"),
+            "node_path": node_path,
+            "error": str(e)
+        }
+
+
+async def _execute_sequence(
+    node: dict,
+    ctx: Context | None,
+    node_path: str
+) -> dict:
+    """
+    Execute children sequentially, stop on first failure.
+
+    Args:
+        node: Sequence node dict with children list
+        ctx: Context for progress reporting
+        node_path: Human-readable path for debugging
+
+    Returns:
+        dict: Execution result with children results
+    """
+    children = node.get("children", [])
+    results = []
+
+    # Handle empty sequence (valid, but no-op)
+    if len(children) == 0:
+        return {
+            "success": True,
+            "node_type": "sequence",
+            "node_path": node_path,
+            "children_results": []
+        }
+
+    for i, child in enumerate(children):
+        child_path = f"{node_path}.children[{i}]"
+
+        # Report progress
+        if ctx:
+            child_type = child.get("type", "unknown")
+            child_name = child.get("name", f"{child_type}_{i}")
+            await ctx.report_progress(
+                progress=i,
+                total=len(children),
+                message=f"Executing {child_name} ({i+1}/{len(children)})"
+            )
+
+        # Execute child
+        result = await _execute_tree_node(child, ctx, child_path)
+        results.append(result)
+
+        # Stop on failure (sequence semantics)
+        if not result["success"]:
+            return {
+                "success": False,
+                "node_type": "sequence",
+                "node_path": node_path,
+                "children_results": results,
+                "failed_at_index": i,
+                "failed_at_path": child_path
+            }
+
+    # All children succeeded
+    if ctx:
+        await ctx.report_progress(
+            progress=len(children),
+            total=len(children),
+            message=f"Sequence completed successfully"
+        )
+
+    return {
+        "success": True,
+        "node_type": "sequence",
+        "node_path": node_path,
+        "children_results": results
+    }
+
+
+async def _execute_tree_node(
+    node: dict,
+    ctx: Context | None,
+    node_path: str = "root"
+) -> dict:
+    """
+    Recursively execute a tree node.
+
+    Args:
+        node: Tree node (sequence or action)
+        ctx: Context for progress reporting
+        node_path: Human-readable path for debugging (e.g., "root.children[0]")
+
+    Returns:
+        dict: Execution result with success status and node-specific data
+    """
+    node_type = node.get("type", "unknown")
+
+    if node_type == "sequence":
+        return await _execute_sequence(node, ctx, node_path)
+    elif node_type == "action":
+        return await _execute_action_node(node, ctx, node_path)
+    else:
+        return {
+            "success": False,
+            "node_type": node_type,
+            "node_path": node_path,
+            "error": f"Unknown node type: {node_type}"
+        }
+
+
+@mcp.tool(
+    description=(
+        "Visualize and cache a behavior tree for later execution. "
+        "This tool validates the tree structure, generates an ASCII visualization, "
+        "and stores the tree in memory with a unique ID that can be used with "
+        "execute_behavior_tree to run the tree."
+    )
+)
+def visualize_behavior_tree(
+    tree_definition: dict,
+    tree_name: str = "Main"
+) -> dict:
+    """
+    Generate ASCII visualization of a behavior tree and cache it.
+
+    This tool stores the tree in memory and returns a tree_id that can be
+    used with execute_behavior_tree to run the tree without passing the
+    full definition again.
+
+    Tree Definition Format:
+    {
+        "type": "sequence",
+        "name": "seq_main",  // Optional human-readable name
+        "children": [
+            {
+                "type": "action",
+                "name": "goto_target",  // Optional human-readable name
+                "action_name": "/turtle1/goto_pose",  // ROS action name
+                "action_type": "turtlesim_custom_actions/action/GoToPose",
+                "goal": {"x": 5.0, "y": 5.0, "theta": 0.0, ...},
+                "timeout": 10.0  // Optional, defaults to 30.0
+            },
+            ...
+        ]
+    }
+
+    Supported Node Types (Phase 1):
+    - "sequence": Execute children in order, stop on first failure
+    - "action": Execute a single ROS action
+
+    Args:
+        tree_definition (dict): Tree structure dict
+        tree_name (str): Human-readable name for the root node (default: "Main")
+
+    Returns:
+        dict: {
+            "tree_id": str,           // Unique ID for cached tree
+            "visualization": str,      // ASCII tree display
+            "action_count": int,       // Number of actions in tree
+            "valid": bool,             // Whether tree passed validation
+            "validation_errors": list  // Any validation issues
+        }
+
+    Example:
+        result = visualize_behavior_tree(
+            tree_definition={
+                "type": "sequence",
+                "name": "seq_main",
+                "children": [
+                    {
+                        "type": "action",
+                        "name": "goto_target",
+                        "action_name": "/turtle1/goto_pose",
+                        "action_type": "turtlesim_custom_actions/action/GoToPose",
+                        "goal": {"x": 5.0, "y": 5.0, "theta": 0.0,
+                                 "position_tolerance": 0.1, "angle_tolerance": 0.1,
+                                 "linear_speed": 1.0, "angular_speed": 1.0},
+                        "timeout": 10.0
+                    }
+                ]
+            },
+            tree_name="turtle_task"
+        )
+        # Returns tree_id, visualization, etc.
+        # Use tree_id with execute_behavior_tree to run it
+    """
+    # Work on a deep copy so future modifications by the caller do not
+    # mutate the cached plan that was validated and visualized.
+    cached_tree = copy.deepcopy(tree_definition)
+
+    # Validate tree
+    is_valid, error_msg = validate_tree_definition(cached_tree)
+
+    # Generate visualization
+    visualization = _generate_ascii_tree(cached_tree, tree_name)
+
+    # Count actions
+    action_count = _count_actions(cached_tree)
+
+    # Generate ID and cache (even if invalid, for inspection)
+    tree_id = _generate_tree_id()
+    _behavior_tree_cache[tree_id] = {
+        "tree_definition": cached_tree,
+        "tree_name": tree_name,
+        "created_at": time.time(),
+        "visualization": visualization,
+        "valid": is_valid
+    }
+
+    return {
+        "tree_id": tree_id,
+        "visualization": visualization,
+        "action_count": action_count,
+        "valid": is_valid,
+        "validation_errors": [] if is_valid else [error_msg]
+    }
+
+
+@mcp.tool(
+    description=(
+        "Execute a cached behavior tree by ID. "
+        "Use visualize_behavior_tree first to get a tree_id, then pass that "
+        "ID to this tool to execute the tree. "
+        "Currently supports sequence control flow only (executes actions in order, stops on first failure)."
+    )
+)
+async def execute_behavior_tree(
+    tree_id: str,
+    ctx: Context | None = None
+) -> dict:
+    """
+    Execute a behavior tree that was previously visualized and cached.
+
+    Use visualize_behavior_tree first to get a tree_id, then pass that
+    ID to this tool to execute the tree.
+
+    The tree will execute according to its control flow:
+    - Sequence nodes: Execute children in order, stop on first failure
+    - Action nodes: Execute ROS action and return result
+
+    Progress will be reported via Context if provided.
+
+    Args:
+        tree_id (str): ID returned from visualize_behavior_tree
+        ctx (Context | None): Optional Context for progress reporting
+
+    Returns:
+        dict: {
+            "success": bool,              // Overall execution success
+            "node_type": str,             // Type of root node
+            "children_results": list,     // Results from each action (for sequences)
+            "failed_at_index": int,       // Index of failed child (if failed)
+            "failed_at_path": str,        // Path to failed node (if failed)
+            "execution_summary": str      // Human-readable summary
+        }
+
+    Example:
+        # First, visualize and get tree_id
+        vis_result = visualize_behavior_tree(tree_def, "my_task")
+        tree_id = vis_result["tree_id"]
+
+        # Then execute
+        exec_result = execute_behavior_tree(tree_id)
+        if exec_result["success"]:
+            print("Tree executed successfully!")
+        else:
+            print(f"Failed at: {exec_result['failed_at_path']}")
+    """
+    _ensure_behavior_tree_library_loaded()
+
+    # Retrieve from cache
+    if tree_id not in _behavior_tree_cache:
+        available_ids = list(_behavior_tree_cache.keys())
+        return {
+            "success": False,
+            "error": f"Tree ID '{tree_id}' not found in cache. Please visualize the tree first.",
+            "available_tree_ids": available_ids
+        }
+
+    cached = _behavior_tree_cache[tree_id]
+    tree_definition = cached["tree_definition"]
+    tree_name = cached["tree_name"]
+
+    # Check if tree was valid
+    if not cached.get("valid", True):
+        return {
+            "success": False,
+            "error": f"Tree '{tree_id}' has validation errors. Please fix the tree and visualize again."
+        }
+
+    action_count = _count_actions(tree_definition)
+
+    # Execute tree
+    if ctx:
+        await ctx.report_progress(
+            progress=0,
+            total=1,
+            message=f"Starting execution of behavior tree: {tree_name}"
+        )
+
+    result = await _execute_tree_node(tree_definition, ctx, node_path="root")
+
+    # Add execution summary
+    if result["success"]:
+        result["execution_summary"] = f"Behavior tree '{tree_name}' completed successfully. Executed {action_count} action(s)."
+    else:
+        failed_path = result.get("failed_at_path", "unknown")
+        error_msg = result.get("error", "Action failed")
+        result["execution_summary"] = f"Behavior tree '{tree_name}' failed at {failed_path}: {error_msg}"
+
+    result["tree_id"] = tree_id
+    result["tree_name"] = tree_name
+
+    if ctx:
+        await ctx.report_progress(
+            progress=1,
+            total=1,
+            message=result["execution_summary"]
+        )
+
+    return result
+
+
+@mcp.tool(
+    description="List the built-in behavior tree templates available for quick execution."
+)
+def list_behavior_trees() -> dict:
+    """
+    List metadata for all built-in behavior tree templates.
+
+    Returns:
+        dict: {
+            "behavior_trees": [...],
+            "errors": [...]
+        }
+    """
+    _ensure_behavior_tree_library_loaded()
+
+    trees = sorted(
+        _behavior_tree_library.values(),
+        key=lambda entry: entry.get("name", "").lower(),
+    )
+
+    return {
+        "behavior_trees": [
+            {
+                "library_id": entry["library_id"],
+                "name": entry["name"],
+                "description": entry.get("description", ""),
+                "tags": entry.get("tags", []),
+                "action_count": entry.get("action_count", 0),
+                "cached_tree_id": entry.get("cached_tree_id"),
+                "valid": entry.get("valid", False),
+                "visualization": entry.get("visualization", ""),
+                "validation_errors": entry.get("validation_errors", []),
+            }
+            for entry in trees
+        ],
+        "errors": list(_behavior_tree_library_errors),
+    }
+
+
+@mcp.tool(
+    description="Fetch the full definition for a built-in behavior tree by its library_id."
+)
+def get_behavior_tree_definition(library_id: str) -> dict:
+    """
+    Retrieve the full definition for a behavior tree from the built-in library.
+
+    Args:
+        library_id (str): Identifier returned from list_behavior_trees()
+
+    Returns:
+        dict: Metadata, visualization, and tree definition.
+    """
+    _ensure_behavior_tree_library_loaded()
+
+    entry = _behavior_tree_library.get(library_id)
+    if not entry:
+        return {
+            "error": f"Behavior tree '{library_id}' not found in library.",
+            "available_ids": list(_behavior_tree_library.keys()),
+        }
+
+    return {
+        "library_id": entry["library_id"],
+        "name": entry["name"],
+        "description": entry.get("description", ""),
+        "tags": entry.get("tags", []),
+        "action_count": entry.get("action_count", 0),
+        "cached_tree_id": entry.get("cached_tree_id"),
+        "valid": entry.get("valid", False),
+        "visualization": entry.get("visualization", ""),
+        "validation_errors": entry.get("validation_errors", []),
+        "tree_definition": copy.deepcopy(entry.get("tree_definition", {})),
     }
 
 

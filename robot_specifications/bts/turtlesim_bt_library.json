@@ -1,0 +1,189 @@
+{
+  "version": 1,
+  "trees": [
+    {
+      "id": "simple_move_drive",
+      "name": "Simple Move and Drive",
+      "description": "Navigate to position (5,5) then drive forward 2 meters.",
+      "tags": ["turtlesim", "demo"],
+      "tree": {
+        "type": "sequence",
+        "name": "seq_move_drive",
+        "children": [
+          {
+            "type": "action",
+            "name": "goto_target",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 5.0,
+              "y": 5.0,
+              "theta": 0.0,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          },
+          {
+            "type": "action",
+            "name": "drive_forward",
+            "action_name": "/turtle1/drive_distance",
+            "action_type": "turtlesim_custom_actions/action/DriveDistance",
+            "goal": {
+              "distance": 2.0,
+              "speed": 1.0
+            },
+            "timeout": 5.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "draw_square",
+      "name": "Draw Square",
+      "description": "Draw a 2x2 meter square using GoToPose actions.",
+      "tags": ["turtlesim", "pattern"],
+      "tree": {
+        "type": "sequence",
+        "name": "seq_draw_square",
+        "children": [
+          {
+            "type": "action",
+            "name": "corner_1",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 3.0,
+              "y": 3.0,
+              "theta": 0.0,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          },
+          {
+            "type": "action",
+            "name": "corner_2",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 5.0,
+              "y": 3.0,
+              "theta": 1.5708,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          },
+          {
+            "type": "action",
+            "name": "corner_3",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 5.0,
+              "y": 5.0,
+              "theta": 3.14159,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          },
+          {
+            "type": "action",
+            "name": "corner_4",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 3.0,
+              "y": 5.0,
+              "theta": -1.5708,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          },
+          {
+            "type": "action",
+            "name": "close_square",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 3.0,
+              "y": 3.0,
+              "theta": 0.0,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          }
+        ]
+      }
+    },
+    {
+      "id": "navigate_change_pen",
+      "name": "Navigate and Change Pen",
+      "description": "Go to the center, change the pen color to red, then draw a line.",
+      "tags": ["turtlesim", "pen-control"],
+      "tree": {
+        "type": "sequence",
+        "name": "seq_nav_pen",
+        "children": [
+          {
+            "type": "action",
+            "name": "goto_center",
+            "action_name": "/turtle1/goto_pose",
+            "action_type": "turtlesim_custom_actions/action/GoToPose",
+            "goal": {
+              "x": 5.5,
+              "y": 5.5,
+              "theta": 0.0,
+              "position_tolerance": 0.1,
+              "angle_tolerance": 0.1,
+              "linear_speed": 1.0,
+              "angular_speed": 1.0
+            },
+            "timeout": 10.0
+          },
+          {
+            "type": "action",
+            "name": "set_red_pen",
+            "action_name": "/turtle1/set_pen",
+            "action_type": "turtlesim_custom_actions/action/SetPen",
+            "goal": {
+              "r": 255,
+              "g": 0,
+              "b": 0,
+              "width": 3,
+              "off": false
+            },
+            "timeout": 2.0
+          },
+          {
+            "type": "action",
+            "name": "draw_line",
+            "action_name": "/turtle1/drive_distance",
+            "action_type": "turtlesim_custom_actions/action/DriveDistance",
+            "goal": {
+              "distance": 3.0,
+              "speed": 1.0
+            },
+            "timeout": 5.0
+          }
+        ]
+      }
+    }
+  ]
+}
