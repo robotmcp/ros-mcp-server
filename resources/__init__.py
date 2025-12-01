@@ -8,4 +8,3 @@ def register_all_resources(mcp, ws_manager):
     """Register all resources with the MCP server instance."""
     register_robot_spec_resources(mcp)
     register_ros_metadata_resources(mcp, ws_manager)
-

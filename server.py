@@ -12,6 +12,7 @@ from fastmcp import Context, FastMCP
 from fastmcp.utilities.types import Image
 from PIL import Image as PILImage
 
+from resources import register_all_resources
 from utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
 from utils.network_utils import ping_ip_and_port
 from utils.websocket_manager import WebSocketManager, parse_input
@@ -41,9 +42,9 @@ ws_manager = WebSocketManager(
     ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0
 )  # Increased default timeout for ROS operations
 
-# Register MCP resources
-from resources import register_all_resources
+
 register_all_resources(mcp, ws_manager)
+
 
 def convert_expects_image_hint(expects_image: str) -> bool | None:
     """
