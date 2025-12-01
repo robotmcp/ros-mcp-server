@@ -41,6 +41,9 @@ ws_manager = WebSocketManager(
     ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0
 )  # Increased default timeout for ROS operations
 
+# Register MCP resources
+from resources import register_all_resources
+register_all_resources(mcp, ws_manager)
 
 def convert_expects_image_hint(expects_image: str) -> bool | None:
     """
