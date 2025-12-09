@@ -13,7 +13,12 @@ from fastmcp.utilities.types import Image
 from PIL import Image as PILImage
 
 from utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
-from utils.map_utils import get_map_info_list_util, get_map_info_util, write_map_location_util, draw_map_axes_util
+from utils.map_utils import (
+    draw_map_axes_util,
+    get_map_info_list_util,
+    get_map_info_util,
+    write_map_location_util,
+)
 from utils.network_utils import ping_ip_and_port
 from utils.websocket_manager import WebSocketManager, parse_input
 
@@ -3164,11 +3169,10 @@ def get_verified_maps_list() -> dict:
         "Add or update a semantic location in a specific map YAML file under "
         "map_specifications (e.g., hospital.yaml, office.yaml). "
         "Use this after determining the correct map name via get_verified_maps_info / get_verified_maps_list."
-    
     )
 )
 def write_map_location(
-    map_name : str,
+    map_name: str,
     name: str,
     description: str,
     x: float,
@@ -3197,7 +3201,7 @@ def write_map_location(
         "Analyze a previously received occupancy grid map after it has been processed into a visual overlay image."
         "Map data may come from nav_msgs/OccupancyGrid topics, services, or from subscribe_once() / subscribe_for_duration() operations. "
         "Always applies draw_map_axes() to generate an annotated overlay with axes and grid lines."
-        "During analysis, treat the drawn axes as the true world-frame origin (0,0)." 
+        "During analysis, treat the drawn axes as the true world-frame origin (0,0)."
         "Use the grid spacing provided by draw_map_axes() and count grid cells accurately to convert pixel positions into precise real-world coordinates."
         "Use this tool after receiving a map to inspect the processed overlay of the latest environment."
         "In an OccupancyGrid map, white represents free navigable space, black represents obstacles like walls, and gray represents unexplored areas that should not be considered in the analysis."
@@ -3240,7 +3244,6 @@ def analyze_previously_received_map():
         return {"error": "No image found at ./map/received_map_overlay.png"}
     img = PILImage.open(path)
     return _encode_image_to_imagecontent(img)
-
 
 
 def main():

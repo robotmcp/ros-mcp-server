@@ -109,7 +109,8 @@ def load_map_config(map_name: str, specs_dir: str) -> dict:
 
     with file_path.open("r") as file:
         return yaml.safe_load(file) or {}
-    
+
+
 def get_map_info_util(name: str) -> dict:
     """
     Get the map information in a more accessible format.
@@ -171,9 +172,10 @@ def get_map_info_list_util() -> dict:
     except Exception as e:
         return {"error": f"Failed to read map specifications directory: {str(e)}"}
 
+
 def write_map_location_util(
-    map_name: str,   # e.g. "hospital", "office"
-    name: str,       # e.g. "AED"
+    map_name: str,  # e.g. "hospital", "office"
+    name: str,  # e.g. "AED"
     description: str,
     x: float,
     y: float,
@@ -198,18 +200,14 @@ def write_map_location_util(
         specs_dir = Path(__file__).parent.parent / "map_specifications"
 
         if not specs_dir.exists():
-            return {
-                "error": f"Map specifications directory not found: {specs_dir}"
-            }
+            return {"error": f"Map specifications directory not found: {specs_dir}"}
 
         # Build the YAML file path for the selected map
         safe_map_name = map_name.replace(" ", "_")
         map_file = specs_dir / f"{safe_map_name}.yaml"
 
         if not map_file.exists():
-            return {
-                "error": f"Map file not found: {map_file}"
-            }
+            return {"error": f"Map file not found: {map_file}"}
 
         # Load existing YAML
         with map_file.open("r", encoding="utf-8") as f:

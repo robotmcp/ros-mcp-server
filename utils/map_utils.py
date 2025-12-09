@@ -1,11 +1,12 @@
-from pathlib import Path
-import os
-import cv2
-import sys
 import math
-from typing import Dict, Any
+import os
+import sys
+from pathlib import Path
+from typing import Any, Dict
 
-import yaml    
+import cv2
+import yaml
+
 
 def load_map_config(map_name: str, specs_dir: str) -> dict:
     """
@@ -28,7 +29,8 @@ def load_map_config(map_name: str, specs_dir: str) -> dict:
 
     with file_path.open("r") as file:
         return yaml.safe_load(file) or {}
-    
+
+
 def get_map_info_util(name: str) -> dict:
     """
     Get the map information in a more accessible format.
@@ -90,10 +92,10 @@ def get_map_info_list_util() -> dict:
     except Exception as e:
         return {"error": f"Failed to read map specifications directory: {str(e)}"}
 
-    
+
 def write_map_location_util(
-    map_name: str,   # e.g. "hospital", "office"
-    name: str,       # e.g. "AED"
+    map_name: str,  # e.g. "hospital", "office"
+    name: str,  # e.g. "AED"
     description: str,
     x: float,
     y: float,
@@ -118,9 +120,7 @@ def write_map_location_util(
         specs_dir = Path(__file__).parent.parent / "map_specifications"
 
         if not specs_dir.exists():
-            return {
-                "error": f"Map specifications directory not found: {specs_dir}"
-            }
+            return {"error": f"Map specifications directory not found: {specs_dir}"}
 
         # 2) Build the YAML file path for the selected map
         #    Example: hospital -> map_specifications/hospital.yaml
@@ -128,9 +128,7 @@ def write_map_location_util(
         map_file = specs_dir / f"{safe_map_name}.yaml"
 
         if not map_file.exists():
-            return {
-                "error": f"Map file not found: {map_file}"
-            }
+            return {"error": f"Map file not found: {map_file}"}
 
         # 3) Load existing YAML
         with map_file.open("r", encoding="utf-8") as f:
@@ -184,7 +182,7 @@ def write_map_location_util(
 
     except Exception as e:
         return {"error": f"Failed to write semantic location: {str(e)}"}
-    
+
 
 def draw_map_axes_util(
     map_message: Dict[str, Any],
@@ -238,7 +236,7 @@ def draw_map_axes_util(
             return {"error": "Invalid map_message: expected a dict or a dict with a 'msg' field."}
 
         info = msg.get("info", {})
-        
+
         # Use fixed path as you designed earlier
         map_image_path = os.path.join("./map", "received_map.png")
 
@@ -288,7 +286,6 @@ def draw_map_axes_util(
         # Clamp within image boundaries
         origin_u = max(0, min(width - 1, origin_u))
         origin_v = max(0, min(height - 1, origin_v))
-
 
         # Choose a "nice" grid spacing in meters so that the number of lines is reasonable.
         # Target ~10-20 grid cells across the shortest side.
@@ -407,4 +404,3 @@ def draw_map_axes_util(
 
     except Exception as e:
         return {"error": f"Exception while drawing axes and grid: {e}"}
-

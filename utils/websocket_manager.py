@@ -285,7 +285,9 @@ def _decode_image_data(
 
 
 def parse_input(
-    raw: Union[str, bytes] | None, expects_image: bool | None = None, msg_type: str| None = None,
+    raw: Union[str, bytes] | None,
+    expects_image: bool | None = None,
+    msg_type: str | None = None,
 ) -> tuple[dict | None, bool]:
     """
     Parse input data with optional image hint for optimized handling.
@@ -312,7 +314,7 @@ def parse_input(
     parsed_data = parse_json(raw)
     if parsed_data is None:
         return None, False
-    
+
     if msg_type and msg_type.endswith("OccupancyGrid"):
         # Try dedicated map handling (convert to image, drop data)
         mapped = _handle_map_hint(parsed_data)
@@ -327,8 +329,8 @@ def parse_input(
         return _handle_json_hint(parsed_data)
     else:
         return _handle_auto_detection(raw, parsed_data)
-    
-    
+
+
 def _handle_map_hint(parsed_data: dict) -> dict | None:
     """
     Handle OccupancyGrid-like messages by converting the map data into a PNG image
