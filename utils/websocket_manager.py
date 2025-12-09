@@ -135,6 +135,80 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
     return _handle_raw_image(data_b64, height, width, encoding, msg, result)
 
 
+def parse_map(parsed_data: dict) -> dict | None:
+    """
+    Convert a nav_msgs/OccupancyGrid message (already parsed as JSON)
+    into a PNG image and update the message to reference the image path.
+
+    Args:
+        parsed_data (dict): Parsed JSON from rosbridge.
+
+    Returns:
+        dict | None: Updated parsed_data with:
+            - 'msg.data' removed
+            - 'msg.map_image_path' set
+            or None if conversion failed.
+    """
+    # Extract the inner message
+    msg = parsed_data.get("msg", {})
+    info = msg.get("info", {})
+    width = info.get("width")
+    height = info.get("height")
+    data = msg.get("data")
+
+    # Validate OccupancyGrid fields
+    if width is None or height is None or data is None:
+        print("[Map] Missing width, height, or data in OccupancyGrid.", file=sys.stderr)
+        return None
+
+    if not isinstance(data, list):
+        print("[Map] OccupancyGrid data is not a list.", file=sys.stderr)
+        return None
+
+    # Convert list to numpy array and reshape
+    grid = np.array(data, dtype=np.int16)
+    expected_size = int(width) * int(height)
+    if grid.size != expected_size:
+        print(f"[Map] Size mismatch: got {grid.size}, expected {expected_size}.", file=sys.stderr)
+        return None
+
+    grid = grid.reshape((height, width))
+
+    # Map occupancy values to grayscale:
+    # -1 (unknown)   → 127
+    # 0 (free)       → 255
+    # 100 (occupied) → 0
+    img = np.zeros_like(grid, dtype=np.uint8)
+    img[grid == -1] = 127
+    img[grid == 0] = 255
+    img[grid == 100] = 0
+
+    img = cv2.flip(img, 0)
+
+    # Ensure output directory exists
+    os.makedirs("./map", exist_ok=True)
+
+    # Save the image as PNG
+    map_path = os.path.join("./map", "received_map.png")
+    success = cv2.imwrite(map_path, img)
+    if not success:
+        print(f"[Map] Failed to save OccupancyGrid image at {map_path}", file=sys.stderr)
+        return None
+
+    print(f"[Map] Saved OccupancyGrid image at {map_path}", file=sys.stderr)
+
+    # Update the original parsed_data:
+    # - remove large data array
+    # - add image path
+    msg_copy = msg.copy()
+    msg_copy.pop("data", None)
+    msg_copy["map_image_path"] = map_path
+
+    updated = parsed_data.copy()
+    updated["msg"] = msg_copy
+    return updated
+
+
 def _handle_compressed_image(data_b64: str, result: dict) -> dict | None:
     """Handle compressed image data (JPEG/PNG already encoded)."""
     path = "./camera/received_image_compressed.jpeg"
@@ -211,7 +285,7 @@ def _decode_image_data(
 
 
 def parse_input(
-    raw: Union[str, bytes] | None, expects_image: bool | None = None
+    raw: Union[str, bytes] | None, expects_image: bool | None = None, msg_type: str| None = None,
 ) -> tuple[dict | None, bool]:
     """
     Parse input data with optional image hint for optimized handling.
@@ -238,6 +312,13 @@ def parse_input(
     parsed_data = parse_json(raw)
     if parsed_data is None:
         return None, False
+    
+    if msg_type and msg_type.endswith("OccupancyGrid"):
+        # Try dedicated map handling (convert to image, drop data)
+        mapped = _handle_map_hint(parsed_data)
+        if mapped is not None:
+            # Map was processed successfully; no image parsing involved
+            return mapped, False
 
     # 3. Handle explicit hints
     if expects_image is True:
@@ -246,6 +327,22 @@ def parse_input(
         return _handle_json_hint(parsed_data)
     else:
         return _handle_auto_detection(raw, parsed_data)
+    
+    
+def _handle_map_hint(parsed_data: dict) -> dict | None:
+    """
+    Handle OccupancyGrid-like messages by converting the map data into a PNG image
+    and stripping the large 'data' field from the message.
+
+    Args:
+        parsed_data (dict): Parsed JSON data from rosbridge.
+
+    Returns:
+        dict | None: Updated parsed data with map image path,
+                     or None if parsing as a map failed.
+    """
+    mapped = parse_map(parsed_data)
+    return mapped
 
 
 def _handle_image_hint(raw: Union[str, bytes], parsed_data: dict) -> tuple[dict | None, bool]:

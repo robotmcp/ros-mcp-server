@@ -1,0 +1,20 @@
+# Semantic Map Template
+# This file defines the semantic information of the environment so that the robot can recognize important locations and navigate between them.
+
+# - locations: A list of key points that the robot should be aware of
+#     · name: Name of the location
+#     · description: Brief description of the location
+#     · pose: Position and orientation within the map frame
+#         - x, y: 2D position in the map coordinate system
+#         - yaw: Orientation in radians (0 points along the positive X-axis)
+
+name: YOUR_MAP_NAME
+alias: YOUR_MAP_ALIAS # Optional alias for easier reference
+type: 2D_OccupancyGrid # Map format (e.g., 2D_OccupancyGrid)
+locations:
+  - name: Origin
+    description: Origin of your map
+    pose:
+      x: 0.0
+      y: 0.0
+      yaw: 0.0

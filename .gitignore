@@ -180,5 +180,8 @@ pyrightconfig.json
 # camera
 camera/*
 
+# map
+map/*
+
 # tests
 tests/
