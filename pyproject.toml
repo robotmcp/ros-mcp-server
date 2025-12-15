@@ -29,7 +29,7 @@ dev = [
 ]
 
 [project.scripts]
-ros-mcp = "server:main"
+ros-mcp = "ros_mcp.server:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -37,8 +37,7 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-py-modules = ["server"]
-packages = ["utils", "config", "robot_specifications"]
+packages = ["ros_mcp", "ros_mcp.tools", "ros_mcp.utils", "config", "robot_specifications"]
 
 [tool.setuptools.package-data]
 robot_specifications = ["*.yaml"]
