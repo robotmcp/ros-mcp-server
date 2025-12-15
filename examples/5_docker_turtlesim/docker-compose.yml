@@ -7,10 +7,14 @@ services:
     environment:
       - DISPLAY=${DISPLAY}
       - ROS_DISTRO=humble
+      - QT_X11_NO_MITSHM=1
     volumes:
+      # Mount launch file into the container
+      - ./launch_turtlesim.launch.py:/ros2_ws/launch/launch_turtlesim.launch.py:ro
+      # Linux X11 socket (only works on Linux)
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
-      - ./docker/scripts:/ros2_ws/scripts:ro
-    network_mode: host
+    ports:
+      - "9090:9090"
     stdin_open: true
     tty: true
-    command: bash -c "/ros2_ws/scripts/launch_turtlesim.sh"
+    command: ["ros2", "launch", "/ros2_ws/launch/launch_turtlesim.launch.py"]

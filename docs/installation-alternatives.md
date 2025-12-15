@@ -105,6 +105,21 @@ For detailed ChatGPT setup instructions, see our [ChatGPT Tutorial](../examples/
 ### Google Gemini
 For detailed Gemini setup instructions, see our [Gemini Tutorial](../examples/2_gemini/README.md).
 
+### Robot MCP Client (Terminal-based)
+A lightweight terminal-based client for interacting with the MCP server without desktop LLM applications. See the [Robot-MCP](https://github.com/robotmcp/robot-mcp-client) client for installation and usage instructions.
+
+Currently the [Robot-MCP](https://github.com/robotmcp/robot-mcp-client) client supports the following LLMs, running natively on the terminal:
+
+- OpenAI: GPT-4.1
+- Anthropic: Claude Sonnet 4.5
+- Google Gemini: Gemini 2.5 Flash Lite
+- Groq (open-source models):
+  - Llama 4 Scout 17B
+  - Llama 3.1 8B Instant
+  - Llama 3.3 70B Versatile
+  - OpenAI GPT-OSS 120B
+
+
 ### Custom MCP Client
 You can also use the MCP server directly in your Python code. 
 <details>
