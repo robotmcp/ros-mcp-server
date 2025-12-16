@@ -20,7 +20,7 @@ def get_services_impl(ws_manager: WebSocketManager) -> dict:
     message = {
         "op": "call_service",
         "service": "/rosapi/services",
-        "type": "rosapi/Services",
+        "type": "rosapi_msgs/srv/Services",
         "args": {},
         "id": "get_services_request_1",
     }
@@ -63,7 +63,7 @@ def get_service_type_impl(ws_manager: WebSocketManager, service: str) -> dict:
     message = {
         "op": "call_service",
         "service": "/rosapi/service_type",
-        "type": "rosapi/ServiceType",
+        "type": "rosapi_msgs/srv/ServiceType",
         "args": {"service": service},
         "id": f"get_service_type_request_{service.replace('/', '_')}",
     }
@@ -112,7 +112,7 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
         request_message = {
             "op": "call_service",
             "service": "/rosapi/service_request_details",
-            "type": "rosapi/ServiceRequestDetails",
+            "type": "rosapi_msgs/srv/ServiceRequestDetails",
             "args": {"type": service_type},
             "id": f"get_service_details_request_{service_type.replace('/', '_')}",
         }
@@ -133,7 +133,7 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
         response_message = {
             "op": "call_service",
             "service": "/rosapi/service_response_details",
-            "type": "rosapi/ServiceResponseDetails",
+            "type": "rosapi_msgs/srv/ServiceResponseDetails",
             "args": {"type": service_type},
             "id": f"get_service_details_response_{service_type.replace('/', '_')}",
         }
@@ -153,6 +153,12 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
     # Check if we got any data
     if not result["request"] and not result["response"]:
         return {"error": f"Service type {service_type} not found or has no definition"}
+
+    # Add note about field name format
+    result["note"] = (
+        "Field names shown above are formatted for rosbridge (leading underscores removed). "
+        "Use these exact field names when calling call_service()."
+    )
 
     return result
 
@@ -177,7 +183,7 @@ def get_service_providers_impl(ws_manager: WebSocketManager, service: str) -> di
     message = {
         "op": "call_service",
         "service": "/rosapi/service_node",
-        "type": "rosapi/ServiceNode",
+        "type": "rosapi_msgs/srv/ServiceNode",
         "args": {"service": service},
         "id": f"get_service_providers_request_{service.replace('/', '_')}",
     }
@@ -226,7 +232,7 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
     services_message = {
         "op": "call_service",
         "service": "/rosapi/services",
-        "type": "rosapi/Services",
+        "type": "rosapi_msgs/srv/Services",
         "args": {},
         "id": "inspect_all_services_request_1",
     }
@@ -247,7 +253,7 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
             type_message = {
                 "op": "call_service",
                 "service": "/rosapi/service_type",
-                "type": "rosapi/ServiceType",
+                "type": "rosapi_msgs/srv/ServiceType",
                 "args": {"service": service},
                 "id": f"get_type_{service.replace('/', '_')}",
             }
@@ -263,7 +269,7 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
             provider_message = {
                 "op": "call_service",
                 "service": "/rosapi/service_node",
-                "type": "rosapi/ServiceNode",
+                "type": "rosapi_msgs/srv/ServiceNode",
                 "args": {"service": service},
                 "id": f"get_provider_{service.replace('/', '_')}",
             }
@@ -442,7 +448,11 @@ def register_service_tools(
             "Call a ROS service with specified request data.\n"
             "Example:\n"
             "call_service('/rosapi/topics', 'rosapi/Topics', {})\n"
-            "call_service('/slow_service', 'my_package/SlowService', {}, timeout=10.0)  # Specify timeout only for slow services"
+            "call_service('/slow_service', 'my_package/SlowService', {}, timeout=10.0)  # Specify timeout only for slow services\n"
+            "\n"
+            "IMPORTANT: Field names in the request dict should match the field names shown by get_service_details(), "
+            "which are already formatted for rosbridge (without leading underscores). "
+            "For example, use {'topic': '/image'} not {'_topic': '/image'}."
         )
     )
     def call_service(
