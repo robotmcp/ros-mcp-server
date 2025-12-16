@@ -199,9 +199,7 @@ def register_node_tools(
 ) -> None:
     """Register all node-related tools."""
 
-    @mcp.tool(
-        description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()")
-    )
+    @mcp.tool(description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()"))
     def get_nodes() -> dict:
         """Get list of all currently running ROS nodes."""
         return get_nodes_impl(ws_manager)

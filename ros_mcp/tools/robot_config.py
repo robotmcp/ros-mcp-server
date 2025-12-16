@@ -46,6 +46,7 @@ def get_verified_robots_list_impl() -> dict:
     """
     return get_verified_robots_list_util()
 
+
 def detect_ros_version_impl(ws_manager: WebSocketManager) -> dict:
     # Try ROS2 detection
     ros2_request = {
@@ -56,11 +57,11 @@ def detect_ros_version_impl(ws_manager: WebSocketManager) -> dict:
     }
 
     with ws_manager:
-        response = ws_manager.request(ros2_request)        
+        response = ws_manager.request(ros2_request)
         values = response.get("values") if response else None
         if isinstance(values, dict) and "version" in values:
             return {"version": values.get("version"), "distro": values.get("distro")}
-        
+
         # Fallback to ROS1 detection
         ros1_request = {
             "op": "call_service",
@@ -69,13 +70,14 @@ def detect_ros_version_impl(ws_manager: WebSocketManager) -> dict:
             "args": {"name": "/rosdistro"},
         }
         response = ws_manager.request(ros1_request)
-        
+
         value = response.get("values") if response else None
         if value:
             distro = value.get("value") if isinstance(value, dict) else value
             distro_clean = str(distro).strip('"').replace("\\n", "").replace("\n", "")
             return {"version": "1", "distro": distro_clean}
         return {"error": "Could not detect ROS version"}
+
 
 def register_robot_config_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> None:
     """Register all robot configuration-related tools."""
