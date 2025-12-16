@@ -1451,58 +1451,6 @@ def ping_robot(ip: str, port: int, ping_timeout: float = 2.0, port_timeout: floa
     return ping_ip_and_port(ip, port, ping_timeout, port_timeout)
 
 
-## ############################################################################################## ##
-##
-##                      IMAGE ANALYSIS
-##
-## ############################################################################################## ##
-def _encode_image_to_imagecontent(image):
-    """
-    Encodes a PIL Image to a format compatible with ImageContent.
-
-    Args:
-        image (PIL.Image.Image): The image to encode.
-
-    Returns:
-        ImageContent: JPEG-encoded image wrapped in an ImageContent object.
-    """
-    buffer = io.BytesIO()
-    image.save(buffer, format="JPEG")
-    img_bytes = buffer.getvalue()
-    img_obj = Image(data=img_bytes, format="jpeg")
-    return img_obj.to_image_content()
-
-
-@mcp.tool(
-    description=(
-        "Analyze a previously received image that was saved by any ROS operation.\n"
-        "Images can be received from:\n"
-        "- Any topic containing image data (not just topics with 'Image' in the name)\n"
-        "- Service responses containing image data\n"
-        "- subscribe_once() or subscribe_for_duration() operations\n"
-        "Use this tool to analyze the saved image after receiving it from any source.\n"
-    )
-)
-def analyze_previously_received_image():
-    """
-    Analyze the previously received image saved at ./camera/received_image.jpeg
-
-    This tool loads the previously saved image from './camera/received_image.jpeg'
-    (which can be created by any ROS operation that receives image data), and converts
-    it into an MCP-compatible ImageContent format so that the LLM can interpret it.
-
-    Images can be received from:
-    - Any Topic containing image data
-    - Any Service responses containing image data
-    - subscribe_once() or subscribe_for_duration() operations
-    """
-    path = "./camera/received_image.jpeg"
-    if not os.path.exists(path):
-        return {"error": "No image found at ./camera/received_image.jpeg"}
-    img = PILImage.open(path)
-    return _encode_image_to_imagecontent(img)
-
-
 def parse_arguments():
     """Parse command line arguments for MCP server configuration."""
     parser = argparse.ArgumentParser(

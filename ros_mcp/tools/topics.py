@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 
 from fastmcp import FastMCP
 
-from ros_mcp.tools.utils import convert_expects_image_hint
+from ros_mcp.tools.images import convert_expects_image_hint
 from ros_mcp.utils.websocket_manager import WebSocketManager, parse_input
 
 
