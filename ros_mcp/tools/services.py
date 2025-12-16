@@ -10,7 +10,7 @@ def get_services_impl(ws_manager: WebSocketManager) -> dict:
     Get list of all available ROS services.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
 
     Returns:
         dict: Contains list of all active services,
@@ -28,6 +28,18 @@ def get_services_impl(ws_manager: WebSocketManager) -> dict:
     # Request service list from rosbridge
     with ws_manager:
         response = ws_manager.request(message)
+
+    # Ensure response is a dict
+    if not isinstance(response, dict):
+        return {"error": f"Unexpected response type: {type(response).__name__}"}
+
+    # Check for websocket manager errors (connection/send/receive failures)
+    if "error" in response:
+        return {"error": response["error"]}
+
+    # Check for rosbridge status error messages (timeouts, etc.)
+    if response.get("op") == "status" and response.get("level") == "error":
+        return {"error": response.get("msg", "Unknown rosbridge error")}
 
     # Check for service response errors first
     if response and "result" in response and not response["result"]:
@@ -48,7 +60,7 @@ def get_service_type_impl(ws_manager: WebSocketManager, service: str) -> dict:
     Get the service type for a specific service.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
         service (str): The service name (e.g., '/rosapi/topics')
 
     Returns:
@@ -72,6 +84,15 @@ def get_service_type_impl(ws_manager: WebSocketManager, service: str) -> dict:
     with ws_manager:
         response = ws_manager.request(message)
 
+    # Check for websocket manager errors (connection/send/receive failures)
+    if not isinstance(response, dict) or "error" in response:
+        error_msg = response.get("error", "Unknown error") if isinstance(response, dict) else "Invalid response"
+        return {"error": f"Failed to get service type: {error_msg}"}
+
+    # Check for rosbridge status error messages (timeouts, etc.)
+    if response.get("op") == "status" and response.get("level") == "error":
+        return {"error": response.get("msg", "Unknown rosbridge error")}
+
     # Check for service response errors first
     if response and "result" in response and not response["result"]:
         # Service call failed - return error with details from values
@@ -94,7 +115,7 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
     Get complete service details including request and response structures.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
         service_type (str): The service type (e.g., 'my_package/CustomService')
 
     Returns:
@@ -118,16 +139,22 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
         }
 
         request_response = ws_manager.request(request_message)
-        if request_response and "values" in request_response:
-            typedefs = request_response["values"].get("typedefs", [])
-            if typedefs:
-                for typedef in typedefs:
-                    field_names = typedef.get("fieldnames", [])
-                    field_types = typedef.get("fieldtypes", [])
-                    fields = {}
-                    for name, ftype in zip(field_names, field_types):
-                        fields[name] = ftype
-                    result["request"] = {"fields": fields, "field_count": len(fields)}
+        # Check for errors
+        if isinstance(request_response, dict):
+            if "error" in request_response:
+                return {"error": f"Failed to get request details: {request_response['error']}"}
+            if request_response.get("op") == "status" and request_response.get("level") == "error":
+                return {"error": f"Rosbridge error: {request_response.get('msg', 'Unknown error')}"}
+            if request_response and "values" in request_response:
+                typedefs = request_response["values"].get("typedefs", [])
+                if typedefs:
+                    for typedef in typedefs:
+                        field_names = typedef.get("fieldnames", [])
+                        field_types = typedef.get("fieldtypes", [])
+                        fields = {}
+                        for name, ftype in zip(field_names, field_types):
+                            fields[name] = ftype
+                        result["request"] = {"fields": fields, "field_count": len(fields)}
 
         # Get response details
         response_message = {
@@ -139,8 +166,14 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
         }
 
         response_response = ws_manager.request(response_message)
-        if response_response and "values" in response_response:
-            typedefs = response_response["values"].get("typedefs", [])
+        # Check for errors
+        if isinstance(response_response, dict):
+            if "error" in response_response:
+                return {"error": f"Failed to get response details: {response_response['error']}"}
+            if response_response.get("op") == "status" and response_response.get("level") == "error":
+                return {"error": f"Rosbridge error: {response_response.get('msg', 'Unknown error')}"}
+            if response_response and "values" in response_response:
+                typedefs = response_response["values"].get("typedefs", [])
             if typedefs:
                 for typedef in typedefs:
                     field_names = typedef.get("fieldnames", [])
@@ -162,7 +195,7 @@ def get_service_providers_impl(ws_manager: WebSocketManager, service: str) -> di
     Get list of nodes that provide a specific service.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
         service (str): The service name (e.g., '/rosapi/topics')
 
     Returns:
@@ -186,6 +219,17 @@ def get_service_providers_impl(ws_manager: WebSocketManager, service: str) -> di
     with ws_manager:
         response = ws_manager.request(message)
 
+    # Check for websocket manager errors (connection/send/receive failures)
+    if not isinstance(response, dict):
+        return {"error": f"Invalid response type for service {service}"}
+
+    if "error" in response:
+        return {"error": f"Service call failed: {response['error']}"}
+
+    # Check for rosbridge status error messages (timeouts, etc.)
+    if response.get("op") == "status" and response.get("level") == "error":
+        return {"error": response.get("msg", "Unknown rosbridge error")}
+
     # Return service providers if present (using same logic as inspect_all_services)
     providers = []
 
@@ -199,8 +243,6 @@ def get_service_providers_impl(ws_manager: WebSocketManager, service: str) -> di
             node = response["result"].get("node", "")
             if node:
                 providers = [node]
-        elif "error" in response:
-            return {"error": f"Service call failed: {response['error']}"}
     elif response is False:
         return {"error": f"No response received for service {service}"}
     elif response is True:
@@ -216,7 +258,7 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
     Get comprehensive information about all services including types and providers.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
 
     Returns:
         dict: Contains detailed information about all services,
@@ -234,6 +276,13 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
     with ws_manager:
         services_response = ws_manager.request(services_message)
 
+        # Check for errors
+        if not isinstance(services_response, dict):
+            return {"error": "Failed to get services list: invalid response"}
+        if "error" in services_response:
+            return {"error": f"Failed to get services list: {services_response['error']}"}
+        if services_response.get("op") == "status" and services_response.get("level") == "error":
+            return {"error": f"Rosbridge error: {services_response.get('msg', 'Unknown error')}"}
         if not services_response or "values" not in services_response:
             return {"error": "Failed to get services list"}
 
@@ -254,10 +303,13 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
 
             type_response = ws_manager.request(type_message)
             service_type = ""
-            if type_response and "values" in type_response:
-                service_type = type_response["values"].get("type", "unknown")
-            elif type_response and "error" in type_response:
-                service_errors.append(f"Service {service}: {type_response['error']}")
+            if isinstance(type_response, dict):
+                if type_response.get("op") == "status" and type_response.get("level") == "error":
+                    service_errors.append(f"Service {service}: {type_response.get('msg', 'Unknown error')}")
+                elif "values" in type_response:
+                    service_type = type_response["values"].get("type", "unknown")
+                elif "error" in type_response:
+                    service_errors.append(f"Service {service}: {type_response['error']}")
 
             # Get service provider (using service_node instead of service_providers)
             provider_message = {
@@ -272,8 +324,10 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
             providers = []
 
             # Handle different response formats safely
-            if provider_response and isinstance(provider_response, dict):
-                if "values" in provider_response:
+            if isinstance(provider_response, dict):
+                if provider_response.get("op") == "status" and provider_response.get("level") == "error":
+                    service_errors.append(f"Service {service} provider: {provider_response.get('msg', 'Unknown error')}")
+                elif "values" in provider_response:
                     node = provider_response["values"].get("node", "")
                     if node:
                         providers = [node]
@@ -314,7 +368,7 @@ def call_service_impl(
     Call a ROS service with specified request data.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
         service_name (str): The service name (e.g., '/rosapi/topics')
         service_type (str): The service type (e.g., 'rosapi/Topics')
         request (dict): Service request data as a dictionary
@@ -335,6 +389,23 @@ def call_service_impl(
     # Call the service through rosbridge
     with ws_manager:
         response = ws_manager.request(message, timeout=timeout)
+
+    # Check for websocket manager errors (connection/send/receive failures)
+    if not isinstance(response, dict):
+        return {
+            "service": service_name,
+            "service_type": service_type,
+            "success": False,
+            "error": f"Invalid response type: {type(response).__name__}",
+        }
+
+    if "error" in response:
+        return {
+            "service": service_name,
+            "service_type": service_type,
+            "success": False,
+            "error": response["error"],
+        }
 
     # Check for service response errors first
     if response and "result" in response and not response["result"]:
@@ -391,7 +462,13 @@ def register_service_tools(
 
     @mcp.tool(description=("Get list of all available ROS services.\nExample:\nget_services()"))
     def get_services() -> dict:
-        """Get list of all available ROS services."""
+        """
+        Get list of all available ROS services.
+
+        Returns:
+            dict: Contains list of all active services,
+                or a message string if no services are found.
+        """
         return get_services_impl(ws_manager)
 
     @mcp.tool(
@@ -400,7 +477,16 @@ def register_service_tools(
         )
     )
     def get_service_type(service: str) -> dict:
-        """Get the service type for a specific service."""
+        """
+        Get the service type for a specific service.
+
+        Args:
+            service (str): The service name (e.g., '/rosapi/topics')
+
+        Returns:
+            dict: Contains the service type,
+                or an error message if service doesn't exist.
+        """
         return get_service_type_impl(ws_manager, service)
 
     @mcp.tool(
@@ -411,7 +497,15 @@ def register_service_tools(
         )
     )
     def get_service_details(service_type: str) -> dict:
-        """Get complete service details including request and response structures."""
+        """
+        Get complete service details including request and response structures.
+
+        Args:
+            service_type (str): The service type (e.g., 'my_package/CustomService')
+
+        Returns:
+            dict: Contains complete service definition with request and response structures.
+        """
         return get_service_details_impl(ws_manager, service_type)
 
     @mcp.tool(
@@ -422,7 +516,16 @@ def register_service_tools(
         )
     )
     def get_service_providers(service: str) -> dict:
-        """Get list of nodes that provide a specific service."""
+        """
+        Get list of nodes that provide a specific service.
+
+        Args:
+            service (str): The service name (e.g., '/rosapi/topics')
+
+        Returns:
+            dict: Contains list of nodes providing this service,
+                or an error message if service doesn't exist.
+        """
         return get_service_providers_impl(ws_manager, service)
 
     @mcp.tool(
@@ -433,7 +536,13 @@ def register_service_tools(
         )
     )
     def inspect_all_services() -> dict:
-        """Get comprehensive information about all services including types and providers."""
+        """
+        Get comprehensive information about all services including types and providers.
+
+        Returns:
+            dict: Contains detailed information about all services,
+                including service names, types, and provider nodes.
+        """
         return inspect_all_services_impl(ws_manager)
 
     @mcp.tool(
@@ -447,6 +556,16 @@ def register_service_tools(
     def call_service(
         service_name: str, service_type: str, request: dict, timeout: float | None = None
     ) -> dict:
-        """Call a ROS service with specified request data."""
-        return call_service_impl(ws_manager, service_name, service_type, request, timeout)
+        """
+        Call a ROS service with specified request data.
 
+        Args:
+            service_name (str): The service name (e.g., '/rosapi/topics')
+            service_type (str): The service type (e.g., 'rosapi/Topics')
+            request (dict): Service request data as a dictionary
+            timeout (float | None): Timeout in seconds. If None, uses the default timeout.
+
+        Returns:
+            dict: Contains the service response or error information.
+        """
+        return call_service_impl(ws_manager, service_name, service_type, request, timeout)

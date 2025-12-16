@@ -10,7 +10,7 @@ def get_nodes_impl(ws_manager: WebSocketManager) -> dict:
     Get list of all currently running ROS nodes.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
 
     Returns:
         dict: Contains list of all active nodes,
@@ -48,7 +48,7 @@ def get_node_details_impl(ws_manager: WebSocketManager, node: str) -> dict:
     Get detailed information about a specific node including its publishers, subscribers, and services.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
         node (str): The node name (e.g., '/turtlesim')
 
     Returns:
@@ -116,7 +116,7 @@ def inspect_all_nodes_impl(ws_manager: WebSocketManager) -> dict:
     Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.
 
     Args:
-        ws_manager: WebSocketManager instance to use for connections
+        ws_manager: WebSocketManager instance to use for ROS connections
 
     Returns:
         dict: Contains detailed information about all nodes including:
@@ -199,11 +199,15 @@ def register_node_tools(
 ) -> None:
     """Register all node-related tools."""
 
-    @mcp.tool(
-        description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()")
-    )
+    @mcp.tool(description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()"))
     def get_nodes() -> dict:
-        """Get list of all currently running ROS nodes."""
+        """
+        Get list of all currently running ROS nodes.
+
+        Returns:
+            dict: Contains list of all active nodes,
+                or a message string if no nodes are found.
+        """
         return get_nodes_impl(ws_manager)
 
     @mcp.tool(
@@ -214,7 +218,16 @@ def register_node_tools(
         )
     )
     def get_node_details(node: str) -> dict:
-        """Get detailed information about a specific node including its publishers, subscribers, and services."""
+        """
+        Get detailed information about a specific node including its publishers, subscribers, and services.
+
+        Args:
+            node (str): The node name (e.g., '/turtlesim')
+
+        Returns:
+            dict: Contains detailed node information including publishers, subscribers, and services,
+                or an error message if node doesn't exist.
+        """
         return get_node_details_impl(ws_manager, node)
 
     @mcp.tool(
@@ -225,6 +238,15 @@ def register_node_tools(
         )
     )
     def inspect_all_nodes() -> dict:
-        """Get comprehensive information about all ROS nodes including their publishers, subscribers, and services."""
-        return inspect_all_nodes_impl(ws_manager)
+        """
+        Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.
 
+        Returns:
+            dict: Contains detailed information about all nodes including:
+                - Node names and details
+                - Publishers for each node
+                - Subscribers for each node
+                - Services provided by each node
+                - Connection counts and statistics
+        """
+        return inspect_all_nodes_impl(ws_manager)

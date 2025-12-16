@@ -5,13 +5,12 @@ with a FastMCP instance.
 """
 from fastmcp import FastMCP
 
-from ros_mcp.utils.websocket_manager import WebSocketManager
-
 from ros_mcp.tools.connection import register_connection_tools
 from ros_mcp.tools.nodes import register_node_tools
 from ros_mcp.tools.robot_config import register_robot_config_tools
 from ros_mcp.tools.services import register_service_tools
 from ros_mcp.tools.topics import register_topic_tools
+from ros_mcp.utils.websocket_manager import WebSocketManager
 
 # TODO: Import additional tool categories as they are created:
 # from ros_mcp.tools.parameters import register_parameter_tools
@@ -21,21 +20,20 @@ from ros_mcp.tools.topics import register_topic_tools
 
 def register_ros_tools(
     mcp: FastMCP,
+    ws_manager: WebSocketManager,
     rosbridge_ip: str = "127.0.0.1",
     rosbridge_port: int = 9090,
 ) -> None:
     """Register all ROS MCP tools with the provided FastMCP instance.
     
-    This function creates a WebSocketManager internally and registers all available tools.
+    This function registers all available tools with the provided WebSocketManager.
     
     Args:
         mcp: FastMCP instance to register tools with
+        ws_manager: WebSocketManager instance to use for ROS connections
         rosbridge_ip: IP address of the rosbridge server (default: "127.0.0.1")
         rosbridge_port: Port of the rosbridge server (default: 9090)
     """
-    # Create WebSocket manager for this instance
-    ws_manager = WebSocketManager(rosbridge_ip, rosbridge_port, default_timeout=5.0)
-    
     default_ip = rosbridge_ip
     default_port = rosbridge_port
     

@@ -45,3 +45,9 @@ def _encode_image_to_imagecontent(image):
     img_bytes = buffer.getvalue()
     img_obj = Image(data=img_bytes, format="jpeg")
     return img_obj.to_image_content()
+
+
+
+
+
+
