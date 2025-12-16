@@ -46,6 +46,6 @@ def register_ros_tools(
     register_parameter_tools(mcp, ws_manager)
     register_service_tools(mcp, ws_manager)
     register_topic_tools(mcp, ws_manager)
-    
+
     # TODO: Register additional tool categories as they are created:
     # register_action_tools(mcp, ws_manager)
