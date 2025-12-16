@@ -1,13 +1,13 @@
 """Entry point for ROS MCP Server (modular version).
 
 This module provides a simple entry point that imports and runs the main() function
-from ros_mcp.server. This is the recommended way to run the server.
+from ros_mcp.main. This is the recommended way to run the server.
 
 Usage:
-    python main.py
-    python -m ros_mcp.server
+    python server.py
+    python -m ros_mcp.main
 
-The modular version uses ros_mcp/server.py and ros_mcp/tools.py.
+The modular version uses ros_mcp/main.py and ros_mcp/tools/.
 """
 
 from ros_mcp.main import main

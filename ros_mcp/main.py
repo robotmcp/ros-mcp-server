@@ -11,6 +11,14 @@ from fastmcp import FastMCP
 from ros_mcp.tools import register_ros_tools
 from ros_mcp.utils.websocket_manager import WebSocketManager
 
+# Import resources (from top-level resources package)
+try:
+    from resources import register_all_resources
+except ImportError:
+    # Resources are optional - if not available, define a no-op function
+    def register_all_resources(mcp, ws_manager):
+        pass
+
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IP or set using the LLM.
 ROSBRIDGE_PORT = (
@@ -26,6 +34,9 @@ ws_manager = WebSocketManager(ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0)
 # Register all tools
 register_ros_tools(mcp, ws_manager, rosbridge_ip=ROSBRIDGE_IP, rosbridge_port=ROSBRIDGE_PORT)
 
+# Register all resources
+register_all_resources(mcp, ws_manager)
+
 
 def parse_arguments():
     """Parse command line arguments for MCP server configuration."""
@@ -34,9 +45,10 @@ def parse_arguments():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  python -m ros_mcp.server                                    # Use stdio transport (default)
-  python -m ros_mcp.server --transport http --host 0.0.0.0 --port 9000
-  python -m ros_mcp.server --transport streamable-http --host 127.0.0.1 --port 8080
+  python -m ros_mcp.main                                    # Use stdio transport (default)
+  python -m ros_mcp.main --transport http --host 0.0.0.0 --port 9000
+  python -m ros_mcp.main --transport streamable-http --host 127.0.0.1 --port 8080
+  python server.py                                           # Or use the top-level entry point
         """,
     )
 
