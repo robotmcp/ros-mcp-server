@@ -17,12 +17,7 @@ def register_topic_tools(
 ) -> None:
     """Register all topic-related tools."""
 
-    @mcp.tool(description=(
-            "Get list of all available ROS topics.\n"
-            "Example:\n"
-            "get_topics()"
-        )
-    )
+    @mcp.tool(description=("Get list of all available ROS topics.\nExample:\nget_topics()"))
     def get_topics() -> dict:
         """Get list of all available ROS topics."""
         # rosbridge service call to get topic list
@@ -55,9 +50,7 @@ def register_topic_tools(
 
     @mcp.tool(
         description=(
-            "Get the message type for a specific topic.\n"
-            "Example:\n"
-            "get_topic_type('/cmd_vel')"
+            "Get the message type for a specific topic.\nExample:\nget_topic_type('/cmd_vel')"
         )
     )
     def get_topic_type(topic: str) -> dict:
@@ -242,7 +235,11 @@ def register_topic_tools(
 
         if subscribers_response and "values" in subscribers_response:
             subscribers = subscribers_response["values"].get("subscribers", [])
-            return {"topic": topic, "subscribers": subscribers, "subscriber_count": len(subscribers)}
+            return {
+                "topic": topic,
+                "subscribers": subscribers,
+                "subscriber_count": len(subscribers),
+            }
         else:
             return {"error": f"Failed to get subscribers for topic {topic}"}
 
@@ -598,7 +595,6 @@ def register_topic_tools(
             "status_errors": status_errors,  # Include any errors encountered during collection
         }
 
-
     @mcp.tool(
         description=(
             "Publish a sequence of messages with delays.\n"
@@ -613,9 +609,9 @@ def register_topic_tools(
         messages: list[dict] = [],
         durations: list[float] = [],
     ) -> dict:
-        '''
+        """
             Publish a sequence of messages to a given ROS topic with delays in between.
-            
+
         Args:
             topic (str): ROS topic name (e.g., "/cmd_vel")
             msg_type (str): ROS message type (e.g., "geometry_msgs/msg/Twist")
@@ -625,7 +621,7 @@ def register_topic_tools(
             dict:
                 - {"success": True} if sent without errors
                 - {"error": "<error message>"} if connection/send failed
-        '''
+        """
         # Neutralize the mutable default arguments
         messages = list(messages)
         durations = list(durations)
@@ -677,7 +673,9 @@ def register_topic_tools(
                         try:
                             msg_data = json.loads(response)
                             if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                                errors.append(f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}")
+                                errors.append(
+                                    f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
+                                )
                                 continue
                         except json.JSONDecodeError:
                             pass
@@ -732,12 +730,10 @@ def register_topic_tools(
             return {"error": "topic is required and cannot be empty"}
         if not msg_type or not msg_type.strip():
             return {"error": "msg_type is required and cannot be empty"}
-        
+
         # Validate msg is a dict
         if not isinstance(msg, dict):
-            return {
-                "error": f"Message must be a dict, got: {type(msg).__name__}"
-            }
+            return {"error": f"Message must be a dict, got: {type(msg).__name__}"}
         if msg == {}:
             return {"error": "msg cannot be empty"}
 
@@ -755,7 +751,9 @@ def register_topic_tools(
                 try:
                     msg_data = json.loads(response)
                     if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                        return {"error": f"Advertise failed: {msg_data.get('msg', 'Unknown error')}"}
+                        return {
+                            "error": f"Advertise failed: {msg_data.get('msg', 'Unknown error')}"
+                        }
                 except json.JSONDecodeError:
                     pass  # Non-JSON response is usually fine for advertise
 

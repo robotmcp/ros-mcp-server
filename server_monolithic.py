@@ -41,6 +41,7 @@ ws_manager = WebSocketManager(
     ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0
 )  # Increased default timeout for ROS operations
 
+
 def convert_expects_image_hint(expects_image: str) -> bool | None:
     """
     Convert string-based expects_image hint to boolean for internal use.

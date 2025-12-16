@@ -34,6 +34,7 @@ register_all_resources(mcp, ws_manager)
 # Register all prompts
 # register_all_prompts(mcp)
 
+
 def parse_arguments():
     """Parse command line arguments for MCP server configuration."""
     parser = argparse.ArgumentParser(
