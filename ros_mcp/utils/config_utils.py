@@ -36,8 +36,8 @@ def get_verified_robot_spec_util(name: str) -> dict:
     Returns:
         dict: Parsed robot configuration with robot name as key.
     """
-    # Resolve relative to the project root (one level up from utils)
-    specs_dir = Path(__file__).parent.parent / "robot_specifications"
+    # Resolve relative to the project root (two levels up from utils)
+    specs_dir = Path(__file__).parent.parent.parent / "robot_specifications"
 
     name = name.replace(" ", "_")
     config = load_robot_config(name, str(specs_dir))
@@ -65,8 +65,8 @@ def get_verified_robots_list_util() -> dict:
     Returns:
         dict: List of available robot names that can be used with get_verified_robot_spec_util.
     """
-    # Resolve relative to the project root (one level up from utils)
-    specs_path = Path(__file__).parent.parent / "robot_specifications"
+    # Resolve relative to the project root (two levels up from utils)
+    specs_path = Path(__file__).parent.parent.parent / "robot_specifications"
 
     if not specs_path.exists():
         return {"error": f"Robot specifications directory not found: {specs_path}"}
