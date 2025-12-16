@@ -32,9 +32,9 @@ For each tool:
 
 ## Quick Migration Checklist
 
-- [ ] Create `ros_mcp/tools/` directory structure
+- [X] Create `ros_mcp/tools/` directory structure
 - [ ] Move helper functions to `tools/utils.py`
-- [ ] Move connection tools (already done)
+- [ ] Move connection tools
 - [ ] Move robot config tools
 - [ ] Move topic tools
 - [ ] Move service tools

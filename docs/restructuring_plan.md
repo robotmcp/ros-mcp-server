@@ -1,5 +1,12 @@
 # Repository Restructuring & Tool Migration Plan
 
+> **Note**: This plan is based on the original approach from [merge_plan_mok.md](merge_plan_mok.md), with detailed implementation steps specific to this repository. For a quick reference of tool categories and migration status, see the tool categories table below.
+
+## Related Documents
+
+- **[merge_plan_mok.md](merge_plan_mok.md)**: Original high-level plan from mok (refactor-to-library + submodule approach)
+- **[tools_plan.md](tools_plan.md)**: Quick reference for tool migration (integrated into this document)
+
 ## Goal
 
 Refactor **ros-mcp-server** to be importable as a library, enabling integration into **simple-mcp-ai** (proprietary) using a git submodule approach.
@@ -15,6 +22,20 @@ Refactor **ros-mcp-server** to be importable as a library, enabling integration 
 - **Remaining to move**: 37 tools
 - **Structure**: All tools in monolithic `server.py` (3082 lines)
 
+### Tool Categories Overview
+
+| Category | File | Count | Tools | Status |
+|----------|------|-------|-------|--------|
+| Connection | `tools/connection.py` | 2 | connect_to_robot, ping_robot | ✅ Done |
+| Robot Config | `tools/robot_config.py` | 3 | get_verified_robot_spec, get_verified_robots_list, detect_ros_version | ⏳ Pending |
+| Topics | `tools/topics.py` | 10 | get_topics, get_topic_type, get_message_details, get_topic_publishers, get_topic_subscribers, inspect_all_topics, subscribe_once, publish_once, subscribe_for_duration, publish_for_durations | ⏳ Pending |
+| Services | `tools/services.py` | 6 | get_services, get_service_type, get_service_details, get_service_providers, inspect_all_services, call_service | ⏳ Pending |
+| Nodes | `tools/nodes.py` | 3 | get_nodes, get_node_details, inspect_all_nodes | ⏳ Pending |
+| Parameters | `tools/parameters.py` | 7 | get_parameter, set_parameter, has_parameter, delete_parameter, get_parameters, inspect_all_parameters, get_parameter_details | ⏳ Pending |
+| Actions | `tools/actions.py` | 7 | get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal | ⏳ Pending |
+| Images | `tools/images.py` | 1 | analyze_previously_received_image | ⏳ Pending |
+| Utils | `tools/utils.py` | - | convert_expects_image_hint, _encode_image_to_imagecontent | ⏳ Pending |
+
 ### Target Structure (Recommended: Split by Feature)
 
 ```
@@ -26,12 +47,12 @@ ros-mcp-server/
 │   ├── tools/                   # Tool implementations by category
 │   │   ├── __init__.py         # Main registration function (public API)
 │   │   ├── connection.py       # connect_to_robot, ping_robot (2 tools)
-│   │   ├── robot_config.py     # get_verified_robot_spec, get_verified_robots_list (2 tools)
-│   │   ├── topics.py           # All topic tools (8 tools)
+│   │   ├── robot_config.py     # get_verified_robot_spec, get_verified_robots_list, detect_ros_version (3 tools)
+│   │   ├── topics.py           # All topic tools (10 tools)
 │   │   ├── services.py         # All service tools (6 tools)
 │   │   ├── nodes.py            # All node tools (3 tools)
 │   │   ├── parameters.py       # All parameter tools (7 tools)
-│   │   ├── actions.py          # All action tools (6 tools)
+│   │   ├── actions.py          # All action tools (7 tools)
 │   │   ├── images.py           # analyze_previously_received_image (1 tool)
 │   │   └── utils.py            # Helper functions
 │   └── utils/                  # Utility modules
@@ -94,22 +115,18 @@ For each category, follow this pattern:
 - ✅ `connect_to_robot` - Move to `tools/connection.py`
 - ✅ `ping_robot` - Move to `tools/connection.py`
 
-#### Category 2: Robot Configuration Tools (2 tools)
+#### Category 2: Robot Configuration Tools (3 tools)
 **File**: `tools/robot_config.py`
 
 - `get_verified_robot_spec` - uses `ros_mcp.utils.config_utils`
 - `get_verified_robots_list` - uses `ros_mcp.utils.config_utils`
-
-**Dependencies**: `ros_mcp.utils.config_utils`
-
-#### Category 3: ROS Version Detection (1 tool)
-**File**: `tools/robot_config.py` (or create `detection.py`)
-
 - `detect_ros_version` - uses ws_manager
 
-**Dependencies**: `WebSocketManager`
+**Dependencies**: 
+- `ros_mcp.utils.config_utils`
+- `WebSocketManager`
 
-#### Category 4: Topic Tools (8 tools)
+#### Category 3: Topic Tools (10 tools)
 **File**: `tools/topics.py`
 
 - `get_topics` - uses ws_manager
@@ -120,6 +137,8 @@ For each category, follow this pattern:
 - `inspect_all_topics` - uses ws_manager, calls other topic tools
 - `subscribe_once` - uses ws_manager, parse_input, convert_expects_image_hint, time
 - `publish_once` - uses ws_manager
+- `subscribe_for_duration` - uses ws_manager, parse_input, convert_expects_image_hint, time
+- `publish_for_durations` - uses ws_manager, time
 
 **Dependencies**: 
 - `WebSocketManager`
@@ -129,15 +148,7 @@ For each category, follow this pattern:
 
 **Note**: Helper functions should be in `ros_mcp/utils/__init__.py` or `ros_mcp/tools/utils.py` depending on scope
 
-#### Category 5: Subscription/Publishing Tools (2 tools)
-**File**: `tools/topics.py` (extend existing)
-
-- `subscribe_for_duration` - uses ws_manager, parse_input, convert_expects_image_hint, time
-- `publish_for_durations` - uses ws_manager, time
-
-**Dependencies**: Same as Category 4
-
-#### Category 6: Service Tools (6 tools)
+#### Category 4: Service Tools (6 tools)
 **File**: `tools/services.py`
 
 - `get_services` - uses ws_manager
@@ -149,7 +160,7 @@ For each category, follow this pattern:
 
 **Dependencies**: `WebSocketManager`
 
-#### Category 7: Node Tools (3 tools)
+#### Category 5: Node Tools (3 tools)
 **File**: `tools/nodes.py`
 
 - `get_nodes` - uses ws_manager
@@ -158,7 +169,7 @@ For each category, follow this pattern:
 
 **Dependencies**: `WebSocketManager`
 
-#### Category 8: Parameter Tools (7 tools)
+#### Category 6: Parameter Tools (7 tools)
 **File**: `tools/parameters.py`
 
 - `get_parameter` - uses ws_manager
@@ -171,7 +182,7 @@ For each category, follow this pattern:
 
 **Dependencies**: `WebSocketManager`
 
-#### Category 9: Action Tools (6 tools)
+#### Category 7: Action Tools (7 tools)
 **File**: `tools/actions.py`
 
 - `get_actions` - uses ws_manager
@@ -186,7 +197,7 @@ For each category, follow this pattern:
 - `WebSocketManager`
 - `asyncio` (for send_action_goal)
 
-#### Category 10: Image Analysis Tools (1 tool)
+#### Category 8: Image Analysis Tools (1 tool)
 **File**: `tools/images.py`
 
 - `analyze_previously_received_image` - uses PIL.Image, _encode_image_to_imagecontent
@@ -385,6 +396,33 @@ websocket-client>=1.8.0
 
 Delete `simple_mcp_server/tools.py` (no longer needed)
 
+## Migration Checklist
+
+### Phase 1: Tool Migration Progress
+
+- [X] Create `ros_mcp/tools/` directory structure
+- [X] Move connection tools (2 tools) ✅
+- [ ] Move helper functions to `tools/utils.py`
+- [ ] Move robot config tools (3 tools)
+- [ ] Move topic tools (10 tools)
+- [ ] Move service tools (6 tools)
+- [ ] Move node tools (3 tools)
+- [ ] Move parameter tools (7 tools)
+- [ ] Move action tools (7 tools)
+- [ ] Move image tools (1 tool)
+- [ ] Update `ros_mcp/tools/__init__.py` registration function
+- [ ] Clean up `server.py`
+- [ ] Test all tools
+
+### Migration Pattern
+
+For each tool category:
+
+1. **Extract implementation**: Create `tool_name_impl()` function in appropriate module
+2. **Create registration function**: Each module exports `register_<category>_tools(mcp, ws_manager, ...)`
+3. **Update main registration**: Import and call in `ros_mcp/tools/__init__.py`
+4. **Remove from server.py**: Delete `@mcp.tool` decorated function
+
 ## Verification Checklist
 
 ### After Phase 1 (Tool Migration)
@@ -419,15 +457,15 @@ Delete `simple_mcp_server/tools.py` (no longer needed)
 
 ## Migration Order Summary
 
-1. **Setup**: Create tools directory structure
-2. **Helpers**: Move utility functions to `tools/utils.py`
-3. **Connection**: Already done (connect_to_robot, ping_robot)
-4. **Robot Config**: get_verified_robot_spec, get_verified_robots_list, detect_ros_version
-5. **Topics**: All topic tools (8 tools)
+1. **Setup**: Create tools directory structure ✅
+2. **Connection**: Already done (connect_to_robot, ping_robot) ✅
+3. **Helpers**: Move utility functions to `tools/utils.py`
+4. **Robot Config**: get_verified_robot_spec, get_verified_robots_list, detect_ros_version (3 tools)
+5. **Topics**: All topic tools (10 tools: get_topics, get_topic_type, get_message_details, get_topic_publishers, get_topic_subscribers, inspect_all_topics, subscribe_once, publish_once, subscribe_for_duration, publish_for_durations)
 6. **Services**: All service tools (6 tools)
 7. **Nodes**: All node tools (3 tools)
 8. **Parameters**: All parameter tools (7 tools)
-9. **Actions**: All action tools (6 tools)
-10. **Images**: analyze_previously_received_image
+9. **Actions**: All action tools (7 tools: get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal)
+10. **Images**: analyze_previously_received_image (1 tool)
 11. **Cleanup**: Remove from server.py, update imports
 12. **Integration**: Add submodule, create integration, update main

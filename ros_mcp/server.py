@@ -10,6 +10,7 @@ from typing import Union
 from fastmcp import FastMCP
 
 from ros_mcp.tools import register_ros_tools
+from ros_mcp.utils.websocket_manager import WebSocketManager
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IP or set using the LLM.
@@ -18,8 +19,11 @@ ROSBRIDGE_PORT = 9090  # Rosbridge default is 9090. Replace with your rosbridge 
 # Initialize MCP server
 mcp = FastMCP("ros-mcp-server")
 
+# Initialize WebSocket manager
+ws_manager = WebSocketManager(ROSBRIDGE_IP, ROSBRIDGE_PORT, default_timeout=5.0)
+
 # Register all tools
-register_ros_tools(mcp, rosbridge_ip=ROSBRIDGE_IP, rosbridge_port=ROSBRIDGE_PORT)
+register_ros_tools(mcp, ws_manager, rosbridge_ip=ROSBRIDGE_IP, rosbridge_port=ROSBRIDGE_PORT)
 
 
 def parse_arguments():
