@@ -920,4 +920,3 @@ def register_action_tools(
     def cancel_action_goal(action_name: str, goal_id: str) -> dict:
         """Cancel a specific action goal. Works only with ROS 2."""
         return cancel_action_goal_impl(ws_manager, action_name, goal_id)
-

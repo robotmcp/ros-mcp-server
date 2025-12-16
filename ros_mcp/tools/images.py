@@ -50,7 +50,9 @@ def _encode_image_to_imagecontent(image):
     return img_obj.to_image_content()
 
 
-def analyze_previously_received_image_impl(image_path: str = "./camera/received_image.jpeg") -> dict:
+def analyze_previously_received_image_impl(
+    image_path: str = "./camera/received_image.jpeg",
+) -> dict:
     """
     Analyze the previously received image saved at the specified path.
 
@@ -93,4 +95,3 @@ def register_image_tools(
     def analyze_previously_received_image() -> dict:
         """Analyze the previously received image saved at ./camera/received_image.jpeg"""
         return analyze_previously_received_image_impl()
-

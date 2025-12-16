@@ -2,7 +2,7 @@
 
 import json
 
-from utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket_manager import WebSocketManager
 
 
 def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):

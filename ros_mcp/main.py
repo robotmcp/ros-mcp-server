@@ -11,13 +11,8 @@ from fastmcp import FastMCP
 from ros_mcp.tools import register_ros_tools
 from ros_mcp.utils.websocket_manager import WebSocketManager
 
-# Import resources (from top-level resources package)
-try:
-    from resources import register_all_resources
-except ImportError:
-    # Resources are optional - if not available, define a no-op function
-    def register_all_resources(mcp, ws_manager):
-        pass
+from ros_mcp.resources import register_all_resources
+
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IP or set using the LLM.

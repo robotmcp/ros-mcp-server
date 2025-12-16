@@ -125,6 +125,94 @@ def get_topic_details_impl(ws_manager: WebSocketManager, topic: str) -> dict:
     return result
 
 
+def get_topic_publishers_impl(ws_manager: WebSocketManager, topic: str) -> dict:
+    """
+    Get list of publishers for a specific topic.
+
+    Args:
+        ws_manager: WebSocketManager instance to use for ROS connections
+        topic (str): The topic name (e.g., '/cmd_vel')
+
+    Returns:
+        dict: Contains list of publishers for the topic,
+            or an error message if topic doesn't exist.
+    """
+    # Validate input
+    if not topic or not topic.strip():
+        return {"error": "Topic name cannot be empty"}
+
+    # Get publishers for this topic
+    publishers_message = {
+        "op": "call_service",
+        "service": "/rosapi/publishers",
+        "type": "rosapi/Publishers",
+        "args": {"topic": topic},
+        "id": f"get_publishers_{topic.replace('/', '_')}",
+    }
+
+    with ws_manager:
+        publishers_response = ws_manager.request(publishers_message)
+
+    # Check for service response errors
+    if (
+        publishers_response
+        and "result" in publishers_response
+        and not publishers_response["result"]
+    ):
+        error_msg = publishers_response.get("values", {}).get("message", "Service call failed")
+        return {"error": f"Service call failed: {error_msg}"}
+
+    if publishers_response and "values" in publishers_response:
+        publishers = publishers_response["values"].get("publishers", [])
+        return {"topic": topic, "publishers": publishers, "publisher_count": len(publishers)}
+    else:
+        return {"error": f"Failed to get publishers for topic {topic}"}
+
+
+def get_topic_subscribers_impl(ws_manager: WebSocketManager, topic: str) -> dict:
+    """
+    Get list of subscribers for a specific topic.
+
+    Args:
+        ws_manager: WebSocketManager instance to use for ROS connections
+        topic (str): The topic name (e.g., '/cmd_vel')
+
+    Returns:
+        dict: Contains list of subscribers for the topic,
+            or an error message if topic doesn't exist.
+    """
+    # Validate input
+    if not topic or not topic.strip():
+        return {"error": "Topic name cannot be empty"}
+
+    # Get subscribers for this topic
+    subscribers_message = {
+        "op": "call_service",
+        "service": "/rosapi/subscribers",
+        "type": "rosapi/Subscribers",
+        "args": {"topic": topic},
+        "id": f"get_subscribers_{topic.replace('/', '_')}",
+    }
+
+    with ws_manager:
+        subscribers_response = ws_manager.request(subscribers_message)
+
+    # Check for service response errors
+    if (
+        subscribers_response
+        and "result" in subscribers_response
+        and not subscribers_response["result"]
+    ):
+        error_msg = subscribers_response.get("values", {}).get("message", "Service call failed")
+        return {"error": f"Service call failed: {error_msg}"}
+
+    if subscribers_response and "values" in subscribers_response:
+        subscribers = subscribers_response["values"].get("subscribers", [])
+        return {"topic": topic, "subscribers": subscribers, "subscriber_count": len(subscribers)}
+    else:
+        return {"error": f"Failed to get subscribers for topic {topic}"}
+
+
 def get_topic_type_impl(ws_manager: WebSocketManager, topic: str) -> dict:
     """
     Get the message type for a specific topic.
@@ -752,14 +840,23 @@ def register_topic_tools(
 
     @mcp.tool(
         description=(
-            "Get detailed information about a specific topic including its type, publishers, and subscribers.\n"
-            "Example:\n"
-            "get_topic_details('/cmd_vel')"
+            "Get list of publishers for a specific topic.\n"
+            "Example:\nget_topic_publishers('/cmd_vel')"
         )
     )
-    def get_topic_details(topic: str) -> dict:
-        """Get detailed information about a specific topic including its type, publishers, and subscribers."""
-        return get_topic_details_impl(ws_manager, topic)
+    def get_topic_publishers(topic: str) -> dict:
+        """Get list of publishers for a specific topic."""
+        return get_topic_publishers_impl(ws_manager, topic)
+
+    @mcp.tool(
+        description=(
+            "Get list of subscribers for a specific topic.\n"
+            "Example:\nget_topic_subscribers('/cmd_vel')"
+        )
+    )
+    def get_topic_subscribers(topic: str) -> dict:
+        """Get list of subscribers for a specific topic."""
+        return get_topic_subscribers_impl(ws_manager, topic)
 
     @mcp.tool(
         description=(
