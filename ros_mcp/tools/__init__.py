@@ -10,10 +10,10 @@ from ros_mcp.utils.websocket_manager import WebSocketManager
 from ros_mcp.tools.connection import register_connection_tools
 from ros_mcp.tools.nodes import register_node_tools
 from ros_mcp.tools.robot_config import register_robot_config_tools
+from ros_mcp.tools.services import register_service_tools
 from ros_mcp.tools.topics import register_topic_tools
 
 # TODO: Import additional tool categories as they are created:
-# from ros_mcp.tools.services import register_service_tools
 # from ros_mcp.tools.parameters import register_parameter_tools
 # from ros_mcp.tools.actions import register_action_tools
 # from ros_mcp.tools.images import register_image_tools
@@ -43,10 +43,10 @@ def register_ros_tools(
     register_connection_tools(mcp, ws_manager, default_ip, default_port)
     register_robot_config_tools(mcp, ws_manager)
     register_node_tools(mcp, ws_manager)
+    register_service_tools(mcp, ws_manager)
     register_topic_tools(mcp, ws_manager)
     
     # TODO: Register additional tool categories as they are created:
-    # register_service_tools(mcp, ws_manager)
     # register_parameter_tools(mcp, ws_manager)
     # register_action_tools(mcp, ws_manager)
     # register_image_tools(mcp, ws_manager)
