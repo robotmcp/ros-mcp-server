@@ -1,8 +1,8 @@
 """Utility functions for ROS MCP tools."""
 
 import io
+
 from fastmcp.utilities.types import Image
-from PIL import Image as PILImage
 
 
 def convert_expects_image_hint(expects_image: str) -> bool | None:
@@ -45,9 +45,3 @@ def _encode_image_to_imagecontent(image):
     img_bytes = buffer.getvalue()
     img_obj = Image(data=img_bytes, format="jpeg")
     return img_obj.to_image_content()
-
-
-
-
-
-

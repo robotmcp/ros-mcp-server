@@ -86,7 +86,11 @@ def get_service_type_impl(ws_manager: WebSocketManager, service: str) -> dict:
 
     # Check for websocket manager errors (connection/send/receive failures)
     if not isinstance(response, dict) or "error" in response:
-        error_msg = response.get("error", "Unknown error") if isinstance(response, dict) else "Invalid response"
+        error_msg = (
+            response.get("error", "Unknown error")
+            if isinstance(response, dict)
+            else "Invalid response"
+        )
         return {"error": f"Failed to get service type: {error_msg}"}
 
     # Check for rosbridge status error messages (timeouts, etc.)
@@ -170,8 +174,13 @@ def get_service_details_impl(ws_manager: WebSocketManager, service_type: str) ->
         if isinstance(response_response, dict):
             if "error" in response_response:
                 return {"error": f"Failed to get response details: {response_response['error']}"}
-            if response_response.get("op") == "status" and response_response.get("level") == "error":
-                return {"error": f"Rosbridge error: {response_response.get('msg', 'Unknown error')}"}
+            if (
+                response_response.get("op") == "status"
+                and response_response.get("level") == "error"
+            ):
+                return {
+                    "error": f"Rosbridge error: {response_response.get('msg', 'Unknown error')}"
+                }
             if response_response and "values" in response_response:
                 typedefs = response_response["values"].get("typedefs", [])
             if typedefs:
@@ -305,7 +314,9 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
             service_type = ""
             if isinstance(type_response, dict):
                 if type_response.get("op") == "status" and type_response.get("level") == "error":
-                    service_errors.append(f"Service {service}: {type_response.get('msg', 'Unknown error')}")
+                    service_errors.append(
+                        f"Service {service}: {type_response.get('msg', 'Unknown error')}"
+                    )
                 elif "values" in type_response:
                     service_type = type_response["values"].get("type", "unknown")
                 elif "error" in type_response:
@@ -325,8 +336,13 @@ def inspect_all_services_impl(ws_manager: WebSocketManager) -> dict:
 
             # Handle different response formats safely
             if isinstance(provider_response, dict):
-                if provider_response.get("op") == "status" and provider_response.get("level") == "error":
-                    service_errors.append(f"Service {service} provider: {provider_response.get('msg', 'Unknown error')}")
+                if (
+                    provider_response.get("op") == "status"
+                    and provider_response.get("level") == "error"
+                ):
+                    service_errors.append(
+                        f"Service {service} provider: {provider_response.get('msg', 'Unknown error')}"
+                    )
                 elif "values" in provider_response:
                     node = provider_response["values"].get("node", "")
                     if node:

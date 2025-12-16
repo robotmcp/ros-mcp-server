@@ -110,5 +110,3 @@ def register_connection_tools(
     ) -> dict:
         """Ping an IP address and check if a specific port is open."""
         return ping_robot_impl(ip, port, ping_timeout, port_timeout)
-
-

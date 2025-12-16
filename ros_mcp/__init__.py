@@ -8,4 +8,3 @@ from ros_mcp.tools import register_ros_tools
 from ros_mcp.utils.websocket_manager import WebSocketManager
 
 __all__ = ["main", "mcp", "register_ros_tools", "WebSocketManager"]
-

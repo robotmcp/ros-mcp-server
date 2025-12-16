@@ -2,10 +2,9 @@
 
 This module provides the FastMCP server instance and main() function.
 """
+
 import argparse
-import os
 import sys
-from typing import Union
 
 from fastmcp import FastMCP
 
@@ -14,7 +13,9 @@ from ros_mcp.utils.websocket_manager import WebSocketManager
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IP or set using the LLM.
-ROSBRIDGE_PORT = 9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
+ROSBRIDGE_PORT = (
+    9090  # Rosbridge default is 9090. Replace with your rosbridge port or set using the LLM.
+)
 
 # Initialize MCP server
 mcp = FastMCP("ros-mcp-server")
@@ -95,4 +96,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
