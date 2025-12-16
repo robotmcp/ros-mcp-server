@@ -5,6 +5,69 @@ from fastmcp import FastMCP
 from ros_mcp.utils.websocket import WebSocketManager
 
 
+def _safe_check_parameter_exists(
+    name: str, ws_manager: WebSocketManager
+) -> tuple[bool, str, dict | None]:
+    """
+    Safely check if a parameter exists using get_param (which doesn't crash rosapi_node).
+    Also returns the full response if the parameter exists, to avoid redundant calls.
+
+    Returns:
+        tuple: (exists: bool, reason: str, response: dict | None)
+    """
+    def _is_empty_value(value: str) -> bool:
+        """Check if a parameter value is effectively empty."""
+        if not value:
+            return True
+        # Strip quotes (handles cases like '""' which represents empty string)
+        stripped = value.strip('"').strip("'")
+        return not stripped or stripped == ""
+    
+    message = {
+        "op": "call_service",
+        "service": "/rosapi/get_param",
+        "type": "rosapi_msgs/srv/GetParam",
+        "args": {"name": name},
+        "id": f"check_param_exists_{name.replace('/', '_').replace(':', '_')}",
+    }
+
+    try:
+        with ws_manager:
+            response = ws_manager.request(message)
+
+        if not response:
+            return False, "No response from service", None
+
+        # Check if parameter exists based on response
+        if response and "values" in response:
+            result_data = response["values"]
+            if isinstance(result_data, dict):
+                value = result_data.get("value", "")
+                # Check if value is effectively empty (handles '""' case for non-existent params)
+                if _is_empty_value(value):
+                    reason = result_data.get("reason", "Parameter does not exist")
+                    return False, reason, None
+                # Parameter exists and has a value
+                return True, "", response
+        elif response and "result" in response:
+            result_data = response["result"]
+            if isinstance(result_data, dict):
+                value = result_data.get("value", "")
+                # Check if value is effectively empty
+                if _is_empty_value(value):
+                    reason = result_data.get("reason", "Parameter does not exist")
+                    return False, reason, None
+                # Parameter exists and has a value
+                return True, "", response
+            elif result_data:
+                # Direct result (non-dict) - assume it exists
+                return True, "", response
+
+        return False, "Unexpected response format", None
+    except Exception as e:
+        return False, f"Error checking parameter: {str(e)}", None
+
+
 def register_parameter_tools(
     mcp: FastMCP,
     ws_manager: WebSocketManager,
@@ -22,39 +85,53 @@ def register_parameter_tools(
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
-        message = {
-            "op": "call_service",
-            "service": "/rosapi/get_param",
-            "type": "rosapi_msgs/srv/GetParam",
-            "args": {"name": name},
-            "id": f"get_param_{name.replace('/', '_').replace(':', '_')}",
-        }
-
-        with ws_manager:
-            response = ws_manager.request(message)
-
-        if response and "values" in response:
-            result_data = response["values"]
-            value = result_data.get("value", "")
-            # If we have a value, consider it successful even if successful field says false
-            successful = result_data.get("successful", False) or bool(value)
+        # Check if parameter exists first to avoid unnecessary calls
+        # (This uses get_param which is safe, unlike has_param which crashes)
+        # The response is returned if parameter exists, so we can reuse it
+        exists, reason, response = _safe_check_parameter_exists(name, ws_manager)
+        if not exists:
             return {
                 "name": name,
-                "value": value,
-                "successful": successful,
-                "reason": result_data.get("reason", ""),
+                "value": "",
+                "successful": False,
+                "reason": reason or f"Parameter {name} does not exist",
+                "exists": False,
             }
-        elif response and "result" in response:
-            result_data = response["result"]
-            # Handle both dict and direct value cases
+
+        # We already have the response from the existence check, so process it
+        # Handle string responses (fallback for malformed responses)
+        if isinstance(response, str):
+            return {
+                "name": name,
+                "value": "",
+                "successful": False,
+                "reason": f"Unexpected response format: {response}",
+            }
+
+        # Process the response - parameter exists, so extract the value
+        if response and "values" in response:
+            result_data = response["values"]
             if isinstance(result_data, dict):
                 value = result_data.get("value", "")
                 successful = result_data.get("successful", False) or bool(value)
+                reason = result_data.get("reason", "")
                 return {
                     "name": name,
                     "value": value,
                     "successful": successful,
-                    "reason": result_data.get("reason", ""),
+                    "reason": reason,
+                }
+        elif response and "result" in response:
+            result_data = response["result"]
+            if isinstance(result_data, dict):
+                value = result_data.get("value", "")
+                successful = result_data.get("successful", False) or bool(value)
+                reason = result_data.get("reason", "")
+                return {
+                    "name": name,
+                    "value": value,
+                    "successful": successful,
+                    "reason": reason,
                 }
             else:
                 # Direct value in result
@@ -64,13 +141,14 @@ def register_parameter_tools(
                     "successful": True,
                     "reason": "",
                 }
-        else:
-            error_msg = (
-                response.get("values", {}).get("message", "Service call failed")
-                if response
-                else "No response"
-            )
-            return {"error": f"Failed to get parameter {name}: {error_msg}"}
+
+        # Fallback for unexpected response format
+        error_msg = (
+            response.get("values", {}).get("message", "Service call failed")
+            if response and isinstance(response, dict)
+            else "No response"
+        )
+        return {"error": f"Failed to get parameter {name}: {error_msg}"}
 
     @mcp.tool(
         description=(
@@ -83,6 +161,11 @@ def register_parameter_tools(
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
+        # Check if parameter exists first (set_param can create parameters, but checking
+        # helps avoid issues and provides better error messages)
+        exists, reason, _ = _safe_check_parameter_exists(name, ws_manager)
+        # Note: We continue even if parameter doesn't exist, as set_param can create it
+
         message = {
             "op": "call_service",
             "service": "/rosapi/set_param",
@@ -91,23 +174,41 @@ def register_parameter_tools(
             "id": f"set_param_{name.replace('/', '_').replace(':', '_')}",
         }
 
-        with ws_manager:
-            response = ws_manager.request(message)
-
-        if response and "values" in response:
-            result_data = response["values"]
-            # If we have a response, consider it successful even if successful field says false
-            successful = result_data.get("successful", False) or True
+        try:
+            with ws_manager:
+                response = ws_manager.request(message)
+        except Exception as e:
+            # Catch any exceptions to prevent crashes
             return {
                 "name": name,
                 "value": value,
-                "successful": successful,
-                "reason": result_data.get("reason", ""),
+                "successful": False,
+                "reason": f"Error setting parameter: {str(e)}",
             }
+
+        # Handle string responses (fallback for malformed responses)
+        if isinstance(response, str):
+            return {
+                "name": name,
+                "value": value,
+                "successful": False,
+                "reason": f"Unexpected response format: {response}",
+            }
+
+        if response and "values" in response:
+            result_data = response["values"]
+            if isinstance(result_data, dict):
+                successful = result_data.get("successful", True)  # Default to True if not specified
+                return {
+                    "name": name,
+                    "value": value,
+                    "successful": successful,
+                    "reason": result_data.get("reason", ""),
+                }
         elif response and "result" in response:
             result_data = response["result"]
             if isinstance(result_data, dict):
-                successful = result_data.get("successful", False) or True
+                successful = result_data.get("successful", True)  # Default to True if not specified
                 return {
                     "name": name,
                     "value": value,
@@ -125,7 +226,7 @@ def register_parameter_tools(
         else:
             error_msg = (
                 response.get("values", {}).get("message", "Service call failed")
-                if response
+                if response and isinstance(response, dict)
                 else "No response"
             )
             return {"error": f"Failed to set parameter {name}: {error_msg}"}
@@ -137,58 +238,25 @@ def register_parameter_tools(
         )
     )
     def has_parameter(name: str) -> dict:
-        """Check if a ROS parameter exists. Works only with ROS 2."""
+        """
+        Check if a ROS parameter exists. Works only with ROS 2.
+
+        Note: This uses get_param internally (via _safe_check_parameter_exists) to avoid
+        crashes in rosapi_node when checking for non-existent parameters.
+        """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
-        message = {
-            "op": "call_service",
-            "service": "/rosapi/has_param",
-            "type": "rosapi_msgs/srv/HasParam",
-            "args": {"name": name},
-            "id": f"has_param_{name.replace('/', '_').replace(':', '_')}",
+        # Use safe check function directly to avoid rosapi_node crashes
+        # The /rosapi/has_param service crashes when the parameter doesn't exist
+        exists, reason, _ = _safe_check_parameter_exists(name, ws_manager)
+
+        return {
+            "name": name,
+            "exists": exists,
+            "successful": True,
+            "reason": reason if not exists else "",
         }
-
-        with ws_manager:
-            response = ws_manager.request(message)
-
-        if response and "values" in response:
-            result_data = response["values"]
-            exists = result_data.get("exists", False)
-            # If we got a response with exists field, consider it successful
-            successful = result_data.get("successful", False) or True
-            return {
-                "name": name,
-                "exists": exists,
-                "successful": successful,
-                "reason": result_data.get("reason", ""),
-            }
-        elif response and "result" in response:
-            result_data = response["result"]
-            if isinstance(result_data, dict):
-                exists = result_data.get("exists", False)
-                successful = result_data.get("successful", False) or True
-                return {
-                    "name": name,
-                    "exists": exists,
-                    "successful": successful,
-                    "reason": result_data.get("reason", ""),
-                }
-            else:
-                # Direct boolean result
-                return {
-                    "name": name,
-                    "exists": bool(result_data) if result_data is not None else False,
-                    "successful": True,
-                    "reason": "",
-                }
-        else:
-            error_msg = (
-                response.get("values", {}).get("message", "Service call failed")
-                if response
-                else "No response"
-            )
-            return {"error": f"Failed to check parameter {name}: {error_msg}"}
 
     @mcp.tool(
         description=(
@@ -201,6 +269,16 @@ def register_parameter_tools(
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
+        # Check if parameter exists first to avoid unnecessary calls
+        exists, reason, _ = _safe_check_parameter_exists(name, ws_manager)
+        if not exists:
+            return {
+                "name": name,
+                "successful": False,
+                "reason": reason or f"Parameter {name} does not exist",
+                "exists": False,
+            }
+
         message = {
             "op": "call_service",
             "service": "/rosapi/delete_param",
@@ -209,30 +287,60 @@ def register_parameter_tools(
             "id": f"delete_param_{name.replace('/', '_').replace(':', '_')}",
         }
 
-        with ws_manager:
-            response = ws_manager.request(message)
+        try:
+            with ws_manager:
+                response = ws_manager.request(message)
+        except Exception as e:
+            # Catch any exceptions to prevent crashes
+            return {
+                "name": name,
+                "successful": False,
+                "reason": f"Error deleting parameter: {str(e)}",
+            }
+
+        # Handle string responses (fallback for malformed responses)
+        if isinstance(response, str):
+            return {
+                "name": name,
+                "successful": False,
+                "reason": f"Unexpected response format: {response}",
+            }
 
         if response and "values" in response:
             result_data = response["values"]
-            return {
-                "name": name,
-                "successful": result_data.get("successful", False),
-                "reason": result_data.get("reason", ""),
-            }
-        elif response and "result" in response and response["result"]:
+            if isinstance(result_data, dict):
+                successful = result_data.get("successful", False)
+                reason = result_data.get("reason", "")
+                return {
+                    "name": name,
+                    "successful": successful,
+                    "reason": reason,
+                }
+        elif response and "result" in response:
             result_data = response["result"]
-            return {
-                "name": name,
-                "successful": result_data.get("successful", False),
-                "reason": result_data.get("reason", ""),
-            }
-        else:
-            error_msg = (
-                response.get("values", {}).get("message", "Service call failed")
-                if response
-                else "No response"
-            )
-            return {"error": f"Failed to delete parameter {name}: {error_msg}"}
+            if isinstance(result_data, dict):
+                successful = result_data.get("successful", False)
+                reason = result_data.get("reason", "")
+                return {
+                    "name": name,
+                    "successful": successful,
+                    "reason": reason,
+                }
+            elif result_data:
+                # Direct boolean result
+                return {
+                    "name": name,
+                    "successful": bool(result_data),
+                    "reason": "",
+                }
+
+        # Fallback for unexpected response format
+        error_msg = (
+            response.get("values", {}).get("message", "Service call failed")
+            if response and isinstance(response, dict)
+            else "No response"
+        )
+        return {"error": f"Failed to delete parameter {name}: {error_msg}"}
 
     @mcp.tool(
         description=(
@@ -264,12 +372,24 @@ def register_parameter_tools(
             "id": f"get_parameters_{normalized_node.replace('/', '_')}",
         }
 
-        with ws_manager:
-            response = ws_manager.request(message)
+        try:
+            with ws_manager:
+                response = ws_manager.request(message)
+        except Exception as e:
+            # Catch any exceptions to prevent crashes
+            return {"error": f"Failed to get parameters for node {normalized_node}: {str(e)}"}
+
+        # Handle string responses (fallback for malformed responses)
+        if isinstance(response, str):
+            return {
+                "error": f"Failed to get parameters for node {normalized_node}: Unexpected response format: {response}"
+            }
 
         # Check for timeout or connection errors
         if not response:
-            return {"error": f"Failed to get parameters for node {normalized_node}: No response or timeout from rosbridge"}
+            return {
+                "error": f"Failed to get parameters for node {normalized_node}: No response or timeout from rosbridge"
+            }
 
         # Check for explicit error in response
         if isinstance(response, dict) and "error" in response:
@@ -452,46 +572,75 @@ def register_parameter_tools(
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
-        # Get parameter value
-        value_message = {
-            "op": "call_service",
-            "service": "/rosapi/get_param",
-            "type": "rosapi_msgs/srv/GetParam",
-            "args": {"name": name},
-            "id": f"get_param_details_{name.replace('/', '_').replace(':', '_')}",
-        }
+        # Helper to create error response
+        def _error_response(reason: str) -> dict:
+            return {
+                "name": name,
+                "value": "",
+                "type": "unknown",
+                "exists": False,
+                "description": "",
+                "node": name.split(":")[0] if ":" in name else "",
+                "parameter": name.split(":")[1] if ":" in name else name,
+                "reason": reason,
+            }
 
-        with ws_manager:
-            value_response = ws_manager.request(value_message)
+        # Check if parameter exists first
+        exists, reason, value_response = _safe_check_parameter_exists(name, ws_manager)
+        if not exists:
+            return _error_response(reason or f"Parameter {name} does not exist")
+
+        # If we got a response from the existence check, use it directly
+        # Otherwise, make a new call (shouldn't happen, but safety check)
+        if value_response is None:
+            value_message = {
+                "op": "call_service",
+                "service": "/rosapi/get_param",
+                "type": "rosapi_msgs/srv/GetParam",
+                "args": {"name": name},
+                "id": f"get_param_details_{name.replace('/', '_').replace(':', '_')}",
+            }
+
+            try:
+                with ws_manager:
+                    value_response = ws_manager.request(value_message)
+            except Exception as e:
+                return _error_response(f"Error getting parameter details: {str(e)}")
+
+        # Handle string responses (fallback for malformed responses)
+        if isinstance(value_response, str):
+            return _error_response(f"Unexpected response format: {value_response}")
 
         if not value_response:
-            return {"error": f"Failed to get parameter {name}: No response"}
+            return _error_response("No response from service")
 
         # Handle different response formats
         value_data = None
         param_value = ""
         param_successful = False
+        reason = ""
 
         if "values" in value_response:
             value_data = value_response["values"]
-            param_value = value_data.get("value", "")
-            # If we have a value, consider it successful
-            param_successful = value_data.get("successful", False) or bool(param_value)
+            if isinstance(value_data, dict):
+                param_value = value_data.get("value", "")
+                param_successful = value_data.get("successful", False) or bool(param_value)
+                reason = value_data.get("reason", "")
         elif "result" in value_response:
             result_data = value_response["result"]
             if isinstance(result_data, dict):
                 value_data = result_data
                 param_value = result_data.get("value", "")
                 param_successful = result_data.get("successful", False) or bool(param_value)
+                reason = result_data.get("reason", "")
             else:
                 # Direct value
                 param_value = str(result_data) if result_data is not None else ""
                 param_successful = bool(param_value)
-        else:
-            return {"error": f"Failed to get parameter {name}: Unexpected response format"}
 
+        # Parameter should exist at this point (we checked earlier), but handle edge cases
         if not param_successful and not param_value:
-            return {"error": f"Parameter {name} does not exist"}
+            return _error_response(reason or f"Parameter {name} does not exist")
 
         # Get parameter type
         type_message = {
@@ -502,13 +651,24 @@ def register_parameter_tools(
             "id": f"describe_param_details_{name.replace('/', '_').replace(':', '_')}",
         }
 
-        with ws_manager:
-            type_response = ws_manager.request(type_message)
+        try:
+            with ws_manager:
+                type_response = ws_manager.request(type_message)
+        except Exception as e:
+            # If describe_parameters fails, continue with type inference from value
+            type_response = None
 
         param_type = "unknown"
         param_description = ""
 
-        if type_response and isinstance(type_response, dict):
+        # Handle string responses (fallback for malformed responses)
+        if isinstance(type_response, str):
+            # Continue with type inference from value
+            pass
+        elif type_response is None:
+            # Service call failed, continue with type inference from value
+            pass
+        elif type_response and isinstance(type_response, dict):
             if "values" in type_response:
                 result_data = type_response["values"]
                 if isinstance(result_data, dict):
