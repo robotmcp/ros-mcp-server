@@ -8,11 +8,9 @@ import sys
 
 from fastmcp import FastMCP
 
-from ros_mcp.tools import register_ros_tools
-from ros_mcp.utils.websocket_manager import WebSocketManager
-
 from ros_mcp.resources import register_all_resources
-
+from ros_mcp.tools import register_ros_tools
+from ros_mcp.utils.websocket import WebSocketManager
 
 # ROS bridge connection settings
 ROSBRIDGE_IP = "127.0.0.1"  # Default is localhost. Replace with your local IP or set using the LLM.

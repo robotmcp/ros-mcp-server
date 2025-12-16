@@ -7,7 +7,7 @@ import uuid
 
 from fastmcp import Context, FastMCP
 
-from ros_mcp.utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket import WebSocketManager
 
 
 def get_actions_impl(ws_manager: WebSocketManager) -> dict:

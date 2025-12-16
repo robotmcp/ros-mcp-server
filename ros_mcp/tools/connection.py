@@ -5,7 +5,7 @@ from typing import Union
 from fastmcp import FastMCP
 
 from ros_mcp.utils.network_utils import ping_ip_and_port
-from ros_mcp.utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket import WebSocketManager
 
 
 def connect_to_robot_impl(

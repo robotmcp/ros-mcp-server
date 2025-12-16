@@ -14,7 +14,7 @@ from ros_mcp.tools.parameters import register_parameter_tools
 from ros_mcp.tools.robot_config import register_robot_config_tools
 from ros_mcp.tools.services import register_service_tools
 from ros_mcp.tools.topics import register_topic_tools
-from ros_mcp.utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket import WebSocketManager
 
 
 def register_ros_tools(

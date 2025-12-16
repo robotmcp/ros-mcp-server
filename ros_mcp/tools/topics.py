@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 from fastmcp import FastMCP
 
 from ros_mcp.tools.images import convert_expects_image_hint
-from ros_mcp.utils.websocket_manager import WebSocketManager, parse_input
+from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
 
 def get_topics_impl(ws_manager: WebSocketManager) -> dict:
@@ -154,11 +154,7 @@ def get_topic_publishers_impl(ws_manager: WebSocketManager, topic: str) -> dict:
         publishers_response = ws_manager.request(publishers_message)
 
     # Check for service response errors
-    if (
-        publishers_response
-        and "result" in publishers_response
-        and not publishers_response["result"]
-    ):
+    if publishers_response and "result" in publishers_response and not publishers_response["result"]:
         error_msg = publishers_response.get("values", {}).get("message", "Service call failed")
         return {"error": f"Service call failed: {error_msg}"}
 
@@ -198,11 +194,7 @@ def get_topic_subscribers_impl(ws_manager: WebSocketManager, topic: str) -> dict
         subscribers_response = ws_manager.request(subscribers_message)
 
     # Check for service response errors
-    if (
-        subscribers_response
-        and "result" in subscribers_response
-        and not subscribers_response["result"]
-    ):
+    if subscribers_response and "result" in subscribers_response and not subscribers_response["result"]:
         error_msg = subscribers_response.get("values", {}).get("message", "Service call failed")
         return {"error": f"Service call failed: {error_msg}"}
 
@@ -837,6 +829,17 @@ def register_topic_tools(
     def get_topic_type(topic: str) -> dict:
         """Get the message type for a specific topic."""
         return get_topic_type_impl(ws_manager, topic)
+
+    @mcp.tool(
+        description=(
+            "Get detailed information about a specific topic including its type, publishers, and subscribers.\n"
+            "Example:\n"
+            "get_topic_details('/cmd_vel')"
+        )
+    )
+    def get_topic_details(topic: str) -> dict:
+        """Get detailed information about a specific topic including its type, publishers, and subscribers."""
+        return get_topic_details_impl(ws_manager, topic)
 
     @mcp.tool(
         description=(

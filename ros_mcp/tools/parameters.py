@@ -2,7 +2,7 @@
 
 from fastmcp import FastMCP
 
-from ros_mcp.utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket import WebSocketManager
 
 
 def get_parameter_impl(ws_manager: WebSocketManager, name: str) -> dict:

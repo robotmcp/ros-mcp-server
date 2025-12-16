@@ -2,7 +2,7 @@
 
 from fastmcp import FastMCP
 
-from ros_mcp.utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket import WebSocketManager
 
 
 def get_nodes_impl(ws_manager: WebSocketManager) -> dict:
@@ -199,15 +199,11 @@ def register_node_tools(
 ) -> None:
     """Register all node-related tools."""
 
-    @mcp.tool(description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()"))
+    @mcp.tool(
+        description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()")
+    )
     def get_nodes() -> dict:
-        """
-        Get list of all currently running ROS nodes.
-
-        Returns:
-            dict: Contains list of all active nodes,
-                or a message string if no nodes are found.
-        """
+        """Get list of all currently running ROS nodes."""
         return get_nodes_impl(ws_manager)
 
     @mcp.tool(

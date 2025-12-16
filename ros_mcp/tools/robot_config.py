@@ -3,7 +3,7 @@
 from fastmcp import FastMCP
 
 from ros_mcp.utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
-from ros_mcp.utils.websocket_manager import WebSocketManager
+from ros_mcp.utils.websocket import WebSocketManager
 
 
 def get_verified_robot_spec_impl(name: str) -> dict:
@@ -46,13 +46,7 @@ def get_verified_robots_list_impl() -> dict:
     """
     return get_verified_robots_list_util()
 
-
 def detect_ros_version_impl(ws_manager: WebSocketManager) -> dict:
-    """
-    Detects the ROS version and distro via rosbridge WebSocket.
-    Returns:
-        dict: {'version': <version or '1'>, 'distro': <distro>} or error info.
-    """
     # Try ROS2 detection
     ros2_request = {
         "op": "call_service",
@@ -60,24 +54,13 @@ def detect_ros_version_impl(ws_manager: WebSocketManager) -> dict:
         "service": "/rosapi/get_ros_version",
         "args": {},
     }
-    with ws_manager:
-        response = ws_manager.request(ros2_request)
-        # Check if response has an error (connection/timeout issues)
-        if response and "error" in response:
-            # If there's a connection error, don't try ROS1 - return the error
-            # But if it's a service not found error, we should try ROS1
-            error_msg = response.get("error", "")
-            if (
-                "timeout" in error_msg.lower()
-                or "connection" in error_msg.lower()
-                or "no response" in error_msg.lower()
-            ):
-                return response
 
+    with ws_manager:
+        response = ws_manager.request(ros2_request)        
         values = response.get("values") if response else None
         if isinstance(values, dict) and "version" in values:
             return {"version": values.get("version"), "distro": values.get("distro")}
-
+        
         # Fallback to ROS1 detection
         ros1_request = {
             "op": "call_service",
@@ -86,18 +69,13 @@ def detect_ros_version_impl(ws_manager: WebSocketManager) -> dict:
             "args": {"name": "/rosdistro"},
         }
         response = ws_manager.request(ros1_request)
-
-        # Check for connection errors in ROS1 response
-        if response and "error" in response:
-            return response
-
+        
         value = response.get("values") if response else None
         if value:
             distro = value.get("value") if isinstance(value, dict) else value
             distro_clean = str(distro).strip('"').replace("\\n", "").replace("\n", "")
             return {"version": "1", "distro": distro_clean}
         return {"error": "Could not detect ROS version"}
-
 
 def register_robot_config_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> None:
     """Register all robot configuration-related tools."""
@@ -126,5 +104,9 @@ def register_robot_config_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> N
 
     @mcp.tool(description="Detect the ROS version and distribution via rosbridge.")
     def detect_ros_version() -> dict:
-        """Detects the ROS version and distro via rosbridge WebSocket."""
+        """
+        Detects the ROS version and distro via rosbridge WebSocket.
+        Returns:
+        dict: {'version': <version or '1'>, 'distro': <distro>} or error info.
+        """
         return detect_ros_version_impl(ws_manager)
