@@ -3,6 +3,7 @@
 This module provides the main registration function to register all ROS MCP tools
 with a FastMCP instance.
 """
+
 from fastmcp import FastMCP
 
 from ros_mcp.tools.connection import register_connection_tools
@@ -25,9 +26,9 @@ def register_ros_tools(
     rosbridge_port: int = 9090,
 ) -> None:
     """Register all ROS MCP tools with the provided FastMCP instance.
-    
+
     This function registers all available tools with the provided WebSocketManager.
-    
+
     Args:
         mcp: FastMCP instance to register tools with
         ws_manager: WebSocketManager instance to use for ROS connections
@@ -36,14 +37,14 @@ def register_ros_tools(
     """
     default_ip = rosbridge_ip
     default_port = rosbridge_port
-    
+
     # Register all tool categories
     register_connection_tools(mcp, ws_manager, default_ip, default_port)
     register_robot_config_tools(mcp, ws_manager)
     register_node_tools(mcp, ws_manager)
     register_service_tools(mcp, ws_manager)
     register_topic_tools(mcp, ws_manager)
-    
+
     # TODO: Register additional tool categories as they are created:
     # register_parameter_tools(mcp, ws_manager)
     # register_action_tools(mcp, ws_manager)
