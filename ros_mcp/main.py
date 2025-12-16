@@ -8,6 +8,7 @@ import sys
 
 from fastmcp import FastMCP
 
+# from ros_mcp.prompts import register_all_prompts
 from ros_mcp.resources import register_all_resources
 from ros_mcp.tools import register_ros_tools
 from ros_mcp.utils.websocket import WebSocketManager
@@ -30,6 +31,8 @@ register_ros_tools(mcp, ws_manager, rosbridge_ip=ROSBRIDGE_IP, rosbridge_port=RO
 # Register all resources
 register_all_resources(mcp, ws_manager)
 
+# Register all prompts
+# register_all_prompts(mcp)
 
 def parse_arguments():
     """Parse command line arguments for MCP server configuration."""
