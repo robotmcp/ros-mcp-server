@@ -10,9 +10,9 @@ from ros_mcp.utils.websocket_manager import WebSocketManager
 from ros_mcp.tools.connection import register_connection_tools
 from ros_mcp.tools.nodes import register_node_tools
 from ros_mcp.tools.robot_config import register_robot_config_tools
+from ros_mcp.tools.topics import register_topic_tools
 
 # TODO: Import additional tool categories as they are created:
-# from ros_mcp.tools.topics import register_topic_tools
 # from ros_mcp.tools.services import register_service_tools
 # from ros_mcp.tools.parameters import register_parameter_tools
 # from ros_mcp.tools.actions import register_action_tools
