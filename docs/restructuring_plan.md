@@ -1,11 +1,23 @@
 # Repository Restructuring & Tool Migration Plan
 
-> **Note**: This plan is based on the original approach from [merge_plan_mok.md](merge_plan_mok.md), with detailed implementation steps specific to this repository. For a quick reference of tool categories and migration status, see the tool categories table below.
+> **Note**: This plan is based on the original approach from [merge_plan_mok.md](merge_plan_mok.md), with detailed implementation steps specific to this repository.
 
 ## Related Documents
 
 - **[merge_plan_mok.md](merge_plan_mok.md)**: Original high-level plan from mok (refactor-to-library + submodule approach)
-- **[tools_plan.md](tools_plan.md)**: Quick reference for tool migration (integrated into this document)
+
+## Summary: Implementation vs Original Plan
+
+**Status**: ✅ **Phase 1 Complete** - All 39 tools migrated to modular structure
+
+**Key Differences from Original Plan:**
+- ✅ Used `tools/__init__.py` instead of `tools.py` (better Python package convention)
+- ✅ Used `main.py` instead of `server.py` (entry point naming)
+- ⚠️ Function signature: `register_ros_tools(mcp, ws_manager, ...)` takes `ws_manager` as parameter (more flexible than creating it internally)
+- ✅ WebSocket manager renamed to `utils/websocket.py` (matches original plan structure)
+- ✅ Helper functions in `tools/images.py` (co-located with usage, not separate `utils.py`)
+
+**Public API**: `from ros_mcp.tools import register_ros_tools` - imports from `ros_mcp/tools/__init__.py`
 
 ## Goal
 
@@ -17,428 +29,147 @@ Refactor **ros-mcp-server** to be importable as a library, enabling integration 
 ## Overview
 
 ### Current State
-- **Total tools in server.py**: 39
-- **Already moved**: 2 (connect_to_robot, ping_robot)
-- **Remaining to move**: 37 tools
-- **Structure**: All tools in monolithic `server.py` (3082 lines)
+- **Total tools**: 39
+- **Status**: ✅ **All tools migrated** (39/39)
+- **Structure**: Modular structure with tools organized by category in `ros_mcp/tools/`
 
 ### Tool Categories Overview
 
 | Category | File | Count | Tools | Status |
 |----------|------|-------|-------|--------|
 | Connection | `tools/connection.py` | 2 | connect_to_robot, ping_robot | ✅ Done |
-| Robot Config | `tools/robot_config.py` | 3 | get_verified_robot_spec, get_verified_robots_list, detect_ros_version | ⏳ Pending |
-| Topics | `tools/topics.py` | 10 | get_topics, get_topic_type, get_message_details, get_topic_publishers, get_topic_subscribers, inspect_all_topics, subscribe_once, publish_once, subscribe_for_duration, publish_for_durations | ⏳ Pending |
-| Services | `tools/services.py` | 6 | get_services, get_service_type, get_service_details, get_service_providers, inspect_all_services, call_service | ⏳ Pending |
-| Nodes | `tools/nodes.py` | 3 | get_nodes, get_node_details, inspect_all_nodes | ⏳ Pending |
-| Parameters | `tools/parameters.py` | 7 | get_parameter, set_parameter, has_parameter, delete_parameter, get_parameters, inspect_all_parameters, get_parameter_details | ⏳ Pending |
-| Actions | `tools/actions.py` | 7 | get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal | ⏳ Pending |
-| Images | `tools/images.py` | 1 | analyze_previously_received_image | ⏳ Pending |
-| Utils | `tools/utils.py` | - | convert_expects_image_hint, _encode_image_to_imagecontent | ⏳ Pending |
+| Robot Config | `tools/robot_config.py` | 3 | get_verified_robot_spec, get_verified_robots_list, detect_ros_version | ✅ Done |
+| Topics | `tools/topics.py` | 10 | get_topics, get_topic_type, get_message_details, get_topic_publishers, get_topic_subscribers, inspect_all_topics, subscribe_once, publish_once, subscribe_for_duration, publish_for_durations | ✅ Done|
+| Services | `tools/services.py` | 6 | get_services, get_service_type, get_service_details, get_service_providers, inspect_all_services, call_service | ✅ Done |
+| Nodes | `tools/nodes.py` | 3 | get_nodes, get_node_details, inspect_all_nodes | ✅ Done |
+| Parameters | `tools/parameters.py` | 7 | get_parameter, set_parameter, has_parameter, delete_parameter, get_parameters, inspect_all_parameters, get_parameter_details | ✅ Done |
+| Actions | `tools/actions.py` | 7 | get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal | ✅ Done |
+| Images | `tools/images.py` | 1 | analyze_previously_received_image | ✅ Done |
+| Utils | `tools/images.py` | - | convert_expects_image_hint, _encode_image_to_imagecontent (helper functions in images.py) | ✅ Done |
 
-### Target Structure (Recommended: Split by Feature)
+### Current Structure (Implemented)
 
 ```
 ros-mcp-server/
 ├── ros_mcp/                    # Package
 │   ├── __init__.py
-│   ├── server.py               # MCP instance + main()
-│   ├── websocket.py            # From utils/websocket_manager.py
-│   ├── tools/                   # Tool implementations by category
-│   │   ├── __init__.py         # Main registration function (public API)
-│   │   ├── connection.py       # connect_to_robot, ping_robot (2 tools)
-│   │   ├── robot_config.py     # get_verified_robot_spec, get_verified_robots_list, detect_ros_version (3 tools)
-│   │   ├── topics.py           # All topic tools (10 tools)
-│   │   ├── services.py         # All service tools (6 tools)
-│   │   ├── nodes.py            # All node tools (3 tools)
-│   │   ├── parameters.py       # All parameter tools (7 tools)
-│   │   ├── actions.py          # All action tools (7 tools)
-│   │   ├── images.py           # analyze_previously_received_image (1 tool)
-│   │   └── utils.py            # Helper functions
-│   └── utils/                  # Utility modules
-│       ├── __init__.py         # Utility functions
-│       ├── config_utils.py     # Configuration utilities
-│       ├── network_utils.py     # Network utilities
-│       └── websocket_manager.py # WebSocket manager (moved to ros_mcp/websocket.py)
-├── server.py                   # Entry point: from ros_mcp.server import main
-└── pyproject.toml              # packages = ["ros_mcp", "ros_mcp.tools", "ros_mcp.utils"]
+│   ├── main.py                 # MCP instance + main() ✅
+│   ├── tools/                  # Tool implementations by category ✅
+│   │   ├── __init__.py         # Main registration function (public API) ✅
+│   │   ├── connection.py       # 2 tools ✅
+│   │   ├── robot_config.py     # 3 tools ✅
+│   │   ├── topics.py           # 10 tools ✅
+│   │   ├── services.py         # 6 tools ✅
+│   │   ├── nodes.py            # 3 tools ✅
+│   │   ├── parameters.py      # 7 tools ✅
+│   │   ├── actions.py          # 7 tools ✅
+│   │   └── images.py           # 1 tool + helper functions ✅
+│   └── utils/                  # Utility modules ✅
+│       ├── config_utils.py
+│       ├── network_utils.py
+│       └── websocket.py         # WebSocket manager (renamed from websocket_manager.py)
+├── server.py                   # Entry point: from ros_mcp.main import main ✅
+└── pyproject.toml
 ```
 
-**Benefits of Split Structure:**
-- ✅ Better organization (37 tools split across 8-9 focused files)
-- ✅ Easier to maintain and find tools by category
-- ✅ Scales better as tools are added
-- ✅ Clear structure for library users
-- ✅ Public API stays simple: single `register_ros_tools()` function in `tools/__init__.py`
+**Public API**: `from ros_mcp.tools import register_ros_tools` (imports from `ros_mcp/tools/__init__.py`)
 
-## Phase 1: Refactor ros-mcp-server (Tool Migration)
-
-### Step 1.1: Create Tools Directory Structure
-
-1. Create `ros_mcp/tools/` directory
-2. Create `__init__.py` in `ros_mcp/tools/`
-3. Create module files:
-   - `connection.py`
-   - `robot_config.py`
-   - `topics.py`
-   - `services.py`
-   - `nodes.py`
-   - `parameters.py`
-   - `actions.py`
-   - `images.py`
-   - `utils.py`
-
-### Step 1.2: Move Helper Functions
-
-Move to `ros_mcp/tools/utils.py`:
-
-- `convert_expects_image_hint()` - Convert string hint to boolean
-- `_encode_image_to_imagecontent()` - Encode PIL Image to ImageContent
-
-**Required imports for utils.py:**
-```python
-import io
-from fastmcp.utilities.types import Image
-from PIL import Image as PILImage
-```
-
-### Step 1.3: Move Tools by Category
-
-For each category, follow this pattern:
-
-1. **Extract implementation**: Create `tool_name_impl()` function in appropriate module
-2. **Create registration function**: Each module exports `register_<category>_tools(mcp, ws_manager, ...)`
-3. **Update main registration**: Import and call in `ros_mcp/tools/__init__.py`
-4. **Remove from server.py**: Delete `@mcp.tool` decorated function
-
-#### Category 1: Connection Tools (Already Done)
-- ✅ `connect_to_robot` - Move to `tools/connection.py`
-- ✅ `ping_robot` - Move to `tools/connection.py`
-
-#### Category 2: Robot Configuration Tools (3 tools)
-**File**: `tools/robot_config.py`
-
-- `get_verified_robot_spec` - uses `ros_mcp.utils.config_utils`
-- `get_verified_robots_list` - uses `ros_mcp.utils.config_utils`
-- `detect_ros_version` - uses ws_manager
-
-**Dependencies**: 
-- `ros_mcp.utils.config_utils`
-- `WebSocketManager`
-
-#### Category 3: Topic Tools (10 tools)
-**File**: `tools/topics.py`
-
-- `get_topics` - uses ws_manager
-- `get_topic_type` - uses ws_manager
-- `get_message_details` - uses ws_manager
-- `get_topic_publishers` - uses ws_manager
-- `get_topic_subscribers` - uses ws_manager
-- `inspect_all_topics` - uses ws_manager, calls other topic tools
-- `subscribe_once` - uses ws_manager, parse_input, convert_expects_image_hint, time
-- `publish_once` - uses ws_manager
-- `subscribe_for_duration` - uses ws_manager, parse_input, convert_expects_image_hint, time
-- `publish_for_durations` - uses ws_manager, time
-
-**Dependencies**: 
-- `WebSocketManager`
-- `ros_mcp.websocket.parse_input`
-- `ros_mcp.tools.utils.convert_expects_image_hint`
-- `time`, `uuid`
-
-**Note**: Helper functions should be in `ros_mcp/utils/__init__.py` or `ros_mcp/tools/utils.py` depending on scope
-
-#### Category 4: Service Tools (6 tools)
-**File**: `tools/services.py`
-
-- `get_services` - uses ws_manager
-- `get_service_type` - uses ws_manager
-- `get_service_details` - uses ws_manager
-- `get_service_providers` - uses ws_manager
-- `inspect_all_services` - uses ws_manager, calls other service tools
-- `call_service` - uses ws_manager
-
-**Dependencies**: `WebSocketManager`
-
-#### Category 5: Node Tools (3 tools)
-**File**: `tools/nodes.py`
-
-- `get_nodes` - uses ws_manager
-- `get_node_details` - uses ws_manager
-- `inspect_all_nodes` - uses ws_manager, calls other node tools
-
-**Dependencies**: `WebSocketManager`
-
-#### Category 6: Parameter Tools (7 tools)
-**File**: `tools/parameters.py`
-
-- `get_parameter` - uses ws_manager
-- `set_parameter` - uses ws_manager
-- `has_parameter` - uses ws_manager
-- `delete_parameter` - uses ws_manager
-- `get_parameters` - uses ws_manager
-- `inspect_all_parameters` - uses ws_manager, calls other parameter tools
-- `get_parameter_details` - uses ws_manager
-
-**Dependencies**: `WebSocketManager`
-
-#### Category 7: Action Tools (7 tools)
-**File**: `tools/actions.py`
-
-- `get_actions` - uses ws_manager
-- `get_action_type` - uses ws_manager
-- `get_action_details` - uses ws_manager
-- `get_action_status` - uses ws_manager
-- `inspect_all_actions` - uses ws_manager, calls other action tools
-- `send_action_goal` - uses ws_manager, asyncio (async function)
-- `cancel_action_goal` - uses ws_manager
-
-**Dependencies**: 
-- `WebSocketManager`
-- `asyncio` (for send_action_goal)
-
-#### Category 8: Image Analysis Tools (1 tool)
-**File**: `tools/images.py`
-
-- `analyze_previously_received_image` - uses PIL.Image, _encode_image_to_imagecontent
-
-**Dependencies**:
-- `PIL.Image`
-- `ros_mcp.tools.utils._encode_image_to_imagecontent`
-
-**Note**: Utility functions can be in `ros_mcp/utils/__init__.py` if shared across modules, or `ros_mcp/tools/utils.py` if tool-specific
-
-### Step 1.4: Update Main Registration Function
-
-**File**: `ros_mcp/tools/__init__.py`
-
-```python
-"""ROS MCP Tools - Main registration function."""
-
-from fastmcp import FastMCP
-from ros_mcp.websocket import WebSocketManager
-
-from ros_mcp.tools.connection import register_connection_tools
-from ros_mcp.tools.robot_config import register_robot_config_tools
-from ros_mcp.tools.topics import register_topic_tools
-from ros_mcp.tools.services import register_service_tools
-from ros_mcp.tools.nodes import register_node_tools
-from ros_mcp.tools.parameters import register_parameter_tools
-from ros_mcp.tools.actions import register_action_tools
-from ros_mcp.tools.images import register_image_tools
-
-
-def register_ros_tools(
-    mcp: FastMCP,
-    rosbridge_ip: str = "127.0.0.1",
-    rosbridge_port: int = 9090,
-) -> None:
-    """Register all ROS MCP tools with the provided FastMCP instance.
-    
-    This function creates a WebSocketManager internally and registers all available tools.
-    
-    Args:
-        mcp: FastMCP instance to register tools with
-        rosbridge_ip: IP address of the rosbridge server (default: "127.0.0.1")
-        rosbridge_port: Port of the rosbridge server (default: 9090)
-    """
-    # Create WebSocket manager for this instance
-    ws_manager = WebSocketManager(rosbridge_ip, rosbridge_port, default_timeout=5.0)
-    
-    default_ip = rosbridge_ip
-    default_port = rosbridge_port
-    
-    # Register all tool categories
-    register_connection_tools(mcp, ws_manager, default_ip, default_port)
-    register_robot_config_tools(mcp, ws_manager)
-    register_topic_tools(mcp, ws_manager)
-    register_service_tools(mcp, ws_manager)
-    register_node_tools(mcp, ws_manager)
-    register_parameter_tools(mcp, ws_manager)
-    register_action_tools(mcp, ws_manager)
-    register_image_tools(mcp, ws_manager)
-```
-
-### Step 1.5: Module Registration Pattern
-
-Each module file should follow this pattern:
-
-```python
-"""Topic tools for ROS MCP."""
-
-from fastmcp import FastMCP
-from ros_mcp.websocket import WebSocketManager
-
-# Import implementations
-from ros_mcp.tools.topics import (
-    get_topics_impl,
-    get_topic_type_impl,
-    # ... etc
-)
-
-def register_topic_tools(
-    mcp: FastMCP,
-    ws_manager: WebSocketManager,
-) -> None:
-    """Register all topic-related tools."""
-    
-    @mcp.tool(description="Fetch available topics from the ROS bridge.")
-    def get_topics() -> dict:
-        """Get list of all available ROS topics."""
-        return get_topics_impl(ws_manager)
-    
-    @mcp.tool(description="Get the message type for a specific topic.")
-    def get_topic_type(topic: str) -> dict:
-        """Get message type for a topic."""
-        return get_topic_type_impl(ws_manager, topic)
-    
-    # ... register all topic tools
-```
-
-### Step 1.6: Special Cases
-
-1. **Async tools**: `send_action_goal` - keep as async in implementation and registration
-   ```python
-   @mcp.tool(description="...")
-   async def send_action_goal(...) -> dict:
-       return await send_action_goal_impl(ws_manager, ...)
-   ```
-
-2. **Tools with default values**: Preserve default parameter values, especially those referencing `ws_manager.default_timeout`
-
-3. **Inspect tools**: These call other tools - ensure all dependent tools are moved first
-   - `inspect_all_topics` - calls other topic tools
-   - `inspect_all_services` - calls other service tools
-   - `inspect_all_nodes` - calls other node tools
-   - `inspect_all_parameters` - calls other parameter tools
-   - `inspect_all_actions` - calls other action tools
-
-4. **Image tools**: Use helper functions from `tools/utils.py` or `utils/__init__.py` if shared
-
-### Step 1.7: Cleanup server.py
-
-After all tools are moved:
-
-1. Remove all `@mcp.tool` decorated functions (37 tools)
-2. Remove helper functions (moved to `tools/utils.py` or `utils/__init__.py`)
-3. Remove unused imports
-4. Keep only:
-   - Imports for main() function
-   - MCP/ws_manager initialization (if needed for backward compatibility)
-   - `main()` function that uses `ros_mcp.server.main`
-
-### Step 1.8: Update Imports
-
-Update `server.py` entry point:
-```python
-from ros_mcp.server import main
-
-if __name__ == "__main__":
-    main()
-```
-
-## Phase 2: Integrate into simple_mcp_server
-
-### Step 2.1: Add Submodule
-
-```bash
-cd simple_mcp_server
-git submodule add https://github.com/robotmcp/ros-mcp-server.git
-```
-
-### Step 2.2: Create Integration Module
-
-**File**: `simple_mcp_server/ros_integration.py`
-
-```python
-"""Integration module for ros-mcp-server submodule."""
-
-import sys
-import os
-
-# Add ros-mcp-server to path
-submodule_path = os.path.join(os.path.dirname(__file__), 'ros-mcp-server')
-sys.path.insert(0, submodule_path)
-
-from ros_mcp.tools import register_ros_tools  # Imports from tools/__init__.py
-```
-
-### Step 2.3: Update Main Application
-
-**File**: `simple_mcp_server/main.py`
-
-```python
-from fastmcp import FastMCP
-from ros_integration import register_ros_tools
-
-# Create MCP instance
-mcp = FastMCP("simple-mcp-server")
-
-# Register ROS tools
-register_ros_tools(mcp, rosbridge_ip="127.0.0.1", rosbridge_port=9090)
-
-# ... OAuth middleware + FastAPI setup
-```
-
-### Step 2.4: Update Dependencies
-
-**File**: `simple_mcp_server/requirements.txt`
-
-Add ros-mcp dependencies:
-```
-fastmcp>=2.11.3
-pillow>=11.3.0
-websocket-client>=1.8.0
-# ... other ros-mcp dependencies
-```
-
-### Step 2.5: Remove Old Tools
-
-Delete `simple_mcp_server/tools.py` (no longer needed)
-
-## Migration Checklist
-
-### Phase 1: Tool Migration Progress
-
-- [X] Create `ros_mcp/tools/` directory structure
-- [X] Move connection tools (2 tools) ✅
-- [ ] Move helper functions to `tools/utils.py`
-- [ ] Move robot config tools (3 tools)
-- [ ] Move topic tools (10 tools)
-- [ ] Move service tools (6 tools)
-- [ ] Move node tools (3 tools)
-- [ ] Move parameter tools (7 tools)
-- [ ] Move action tools (7 tools)
-- [ ] Move image tools (1 tool)
-- [ ] Update `ros_mcp/tools/__init__.py` registration function
-- [ ] Clean up `server.py`
-- [ ] Test all tools
+## Phase 1: Refactor ros-mcp-server (Tool Migration) ✅ COMPLETE
 
 ### Migration Pattern
 
 For each tool category:
-
 1. **Extract implementation**: Create `tool_name_impl()` function in appropriate module
 2. **Create registration function**: Each module exports `register_<category>_tools(mcp, ws_manager, ...)`
 3. **Update main registration**: Import and call in `ros_mcp/tools/__init__.py`
 4. **Remove from server.py**: Delete `@mcp.tool` decorated function
 
+### Tool Categories (All Complete ✅)
+
+- **Connection** (2 tools): `connect_to_robot`, `ping_robot`
+- **Robot Config** (3 tools): `get_verified_robot_spec`, `get_verified_robots_list`, `detect_ros_version`
+- **Topics** (10 tools): `get_topics`, `get_topic_type`, `get_message_details`, `get_topic_publishers`, `get_topic_subscribers`, `inspect_all_topics`, `subscribe_once`, `publish_once`, `subscribe_for_duration`, `publish_for_durations`
+- **Services** (6 tools): `get_services`, `get_service_type`, `get_service_details`, `get_service_providers`, `inspect_all_services`, `call_service`
+- **Nodes** (3 tools): `get_nodes`, `get_node_details`, `inspect_all_nodes`
+- **Parameters** (7 tools): `get_parameter`, `set_parameter`, `has_parameter`, `delete_parameter`, `get_parameters`, `inspect_all_parameters`, `get_parameter_details`
+- **Actions** (7 tools): `get_actions`, `get_action_type`, `get_action_details`, `get_action_status`, `inspect_all_actions`, `send_action_goal`, `cancel_action_goal`
+- **Images** (1 tool): `analyze_previously_received_image` + helper functions (`convert_expects_image_hint`, `_encode_image_to_imagecontent`)
+
+### Main Registration Function ✅
+
+**File**: `ros_mcp/tools/__init__.py`
+
+The public API function `register_ros_tools()` registers all 39 tools:
+
+```python
+def register_ros_tools(
+    mcp: FastMCP,
+    ws_manager: WebSocketManager,
+    rosbridge_ip: str = "127.0.0.1",
+    rosbridge_port: int = 9090,
+) -> None:
+    """Register all ROS MCP tools with the provided FastMCP instance."""
+    # Registers all tool categories...
+```
+
+**Note**: Function signature differs from original plan - takes `ws_manager` as parameter (more flexible than creating it internally).
+
+## Phase 2: Integration into simple-mcp-ai ⏳ Pending
+
+**Note**: This phase is for the **simple-mcp-ai** repository, not ros-mcp-server.
+
+### Integration Steps
+
+1. **Add git submodule**:
+   ```bash
+   cd simple-mcp-ai
+   git submodule add https://github.com/robotmcp/ros-mcp-server.git
+   ```
+
+2. **Create `ros_integration.py`**:
+   ```python
+   import sys, os
+   sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ros-mcp-server'))
+   from ros_mcp.tools import register_ros_tools
+   from ros_mcp.utils.websocket import WebSocketManager
+   ```
+
+3. **Update `main.py`**:
+   ```python
+   from fastmcp import FastMCP
+   from ros_integration import register_ros_tools, WebSocketManager
+   
+   mcp = FastMCP("simple-mcp-ai")
+   ws_manager = WebSocketManager("127.0.0.1", 9090, default_timeout=5.0)
+   register_ros_tools(mcp, ws_manager, rosbridge_ip="127.0.0.1", rosbridge_port=9090)
+   ```
+
+4. **Update `requirements.txt`** with ros-mcp dependencies
+
+5. **Delete old `tools.py`** (if exists)
+
+## Migration Checklist
+
+### Phase 1: Tool Migration ✅ COMPLETE
+
+- [X] Create `ros_mcp/tools/` directory structure ✅
+- [X] Move helper functions (in `tools/images.py`) ✅
+- [X] Move all 39 tools across 8 categories ✅
+- [X] Update `ros_mcp/tools/__init__.py` registration function ✅
+- [X] Update `server.py` entry point ✅
+
 ## Verification Checklist
 
-### After Phase 1 (Tool Migration)
+### Phase 1 (Tool Migration) ✅
 
-- [ ] All 39 tools registered in `register_ros_tools()`
-- [ ] `server.py` has no `@mcp.tool` decorators
-- [ ] All imports are correct
-- [ ] Function signatures match original
-- [ ] Helper functions moved to `tools/utils.py` or `utils/__init__.py`
-- [ ] Each category has its own module file
-- [ ] All tools tested and working
-- [ ] `ros-mcp-server` works standalone
+- [X] All 39 tools registered in `register_ros_tools()`
+- [X] Each category has its own module file
+- [X] Helper functions in `tools/images.py`
+- [X] `ros-mcp-server` works standalone
 
-### After Phase 2 (Integration)
+### Phase 2 (Integration) ⏳ Pending
 
-- [ ] Submodule added successfully
+- [ ] Submodule added to simple-mcp-ai
 - [ ] `ros_integration.py` created
 - [ ] `main.py` updated to use `register_ros_tools()`
 - [ ] Dependencies updated
@@ -454,18 +185,3 @@ For each tool category:
 - ✅ Well-organized, maintainable code structure
 - ✅ Clear separation of concerns
 - ✅ Easy to extend with new tools
-
-## Migration Order Summary
-
-1. **Setup**: Create tools directory structure ✅
-2. **Connection**: Already done (connect_to_robot, ping_robot) ✅
-3. **Helpers**: Move utility functions to `tools/utils.py`
-4. **Robot Config**: get_verified_robot_spec, get_verified_robots_list, detect_ros_version (3 tools)
-5. **Topics**: All topic tools (10 tools: get_topics, get_topic_type, get_message_details, get_topic_publishers, get_topic_subscribers, inspect_all_topics, subscribe_once, publish_once, subscribe_for_duration, publish_for_durations)
-6. **Services**: All service tools (6 tools)
-7. **Nodes**: All node tools (3 tools)
-8. **Parameters**: All parameter tools (7 tools)
-9. **Actions**: All action tools (7 tools: get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal)
-10. **Images**: analyze_previously_received_image (1 tool)
-11. **Cleanup**: Remove from server.py, update imports
-12. **Integration**: Add submodule, create integration, update main
