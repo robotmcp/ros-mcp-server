@@ -50,33 +50,6 @@ def _encode_image_to_imagecontent(image):
     return img_obj.to_image_content()
 
 
-def analyze_previously_received_image_impl(
-    image_path: str = "./camera/received_image.jpeg",
-) -> dict:
-    """
-    Analyze the previously received image saved at the specified path.
-
-    This tool loads the previously saved image from the specified path
-    (which can be created by any ROS operation that receives image data), and converts
-    it into an MCP-compatible ImageContent format so that the LLM can interpret it.
-
-    Images can be received from:
-    - Any Topic containing image data
-    - Any Service responses containing image data
-    - subscribe_once() or subscribe_for_duration() operations
-
-    Args:
-        image_path (str): Path to the saved image file (default: "./camera/received_image.jpeg")
-
-    Returns:
-        ImageContent: JPEG-encoded image wrapped in an ImageContent object, or error dict if file not found.
-    """
-    if not os.path.exists(image_path):
-        return {"error": f"No image found at {image_path}"}
-    img = PILImage.open(image_path)
-    return _encode_image_to_imagecontent(img)
-
-
 def register_image_tools(
     mcp: FastMCP,
 ) -> None:
@@ -92,6 +65,28 @@ def register_image_tools(
             "Use this tool to analyze the saved image after receiving it from any source.\n"
         )
     )
-    def analyze_previously_received_image() -> dict:
-        """Analyze the previously received image saved at ./camera/received_image.jpeg"""
-        return analyze_previously_received_image_impl()
+    def analyze_previously_received_image(
+        image_path: str = "./camera/received_image.jpeg",
+    ) -> dict:
+        """
+        Analyze the previously received image saved at the specified path.
+
+        This tool loads the previously saved image from the specified path
+        (which can be created by any ROS operation that receives image data), and converts
+        it into an MCP-compatible ImageContent format so that the LLM can interpret it.
+
+        Images can be received from:
+        - Any Topic containing image data
+        - Any Service responses containing image data
+        - subscribe_once() or subscribe_for_duration() operations
+
+        Args:
+            image_path (str): Path to the saved image file (default: "./camera/received_image.jpeg")
+
+        Returns:
+            ImageContent: JPEG-encoded image wrapped in an ImageContent object, or error dict if file not found.
+        """
+        if not os.path.exists(image_path):
+            return {"error": f"No image found at {image_path}"}
+        img = PILImage.open(image_path)
+        return _encode_image_to_imagecontent(img)
