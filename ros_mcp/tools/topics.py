@@ -287,7 +287,7 @@ def register_topic_tools(
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
-        # Use ws_manager.default_timeout if timeout is None
+        # Set defaults for optional parameters
         if timeout is None:
             timeout = ws_manager.default_timeout
         if queue_length is None:
