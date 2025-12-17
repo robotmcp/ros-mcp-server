@@ -13,7 +13,13 @@ def register_service_tools(
 
     @mcp.tool(description=("Get list of all available ROS services.\nExample:\nget_services()"))
     def get_services() -> dict:
-        """Get list of all available ROS services."""
+        """
+        Get list of all available ROS services.
+
+        Returns:
+            dict: Contains list of all active services,
+                or a message string if no services are found.
+        """
         # rosbridge service call to get service list
         message = {
             "op": "call_service",
@@ -46,7 +52,16 @@ def register_service_tools(
         )
     )
     def get_service_type(service: str) -> dict:
-        """Get the service type for a specific service."""
+        """
+        Get the service type for a specific service.
+
+        Args:
+            service (str): The service name (e.g., '/rosapi/topics')
+
+        Returns:
+            dict: Contains the service type,
+                or an error message if service doesn't exist.
+        """
         # Validate input
         if not service or not service.strip():
             return {"error": "Service name cannot be empty"}
@@ -88,7 +103,16 @@ def register_service_tools(
         )
     )
     def get_service_details(service: str) -> dict:
-        """Get complete service details including request/response structures and provider nodes."""
+        """
+        Get complete service details including request/response structures and provider nodes.
+
+        Args:
+            service (str): The service name (e.g., '/rosapi/topics')
+
+        Returns:
+            dict: Contains complete service definition with request and response structures,
+                provider nodes, and provider count.
+        """
         # Validate input
         if not service or not service.strip():
             return {"error": "Service name cannot be empty"}
@@ -217,7 +241,18 @@ def register_service_tools(
     def call_service(
         service_name: str, service_type: str, request: dict, timeout: float | None = None
     ) -> dict:
-        """Call a ROS service with specified request data."""
+        """
+        Call a ROS service with specified request data.
+
+        Args:
+            service_name (str): The service name (e.g., '/rosapi/topics')
+            service_type (str): The service type (e.g., 'rosapi/Topics')
+            request (dict): Service request data as a dictionary
+            timeout (float | None): Timeout in seconds. If None, uses the default timeout.
+
+        Returns:
+            dict: Contains the service response or error information.
+        """
         # rosbridge service call
         message = {
             "op": "call_service",

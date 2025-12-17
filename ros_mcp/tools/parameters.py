@@ -82,7 +82,15 @@ def register_parameter_tools(
         )
     )
     def get_parameter(name: str) -> dict:
-        """Get a single ROS parameter value by name. Works only with ROS 2."""
+        """
+        Get a single ROS parameter value by name. Works only with ROS 2.
+
+        Args:
+            name (str): The parameter name (e.g., '/turtlesim:background_b')
+
+        Returns:
+            dict: Contains parameter value and metadata, or error message if parameter not found.
+        """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
@@ -158,7 +166,16 @@ def register_parameter_tools(
         )
     )
     def set_parameter(name: str, value: str) -> dict:
-        """Set a single ROS parameter value. Works only with ROS 2."""
+        """
+        Set a single ROS parameter value. Works only with ROS 2.
+
+        Args:
+            name (str): The parameter name (e.g., '/turtlesim:background_b')
+            value (str): The parameter value to set
+
+        Returns:
+            dict: Contains success status and metadata, or error message if failed.
+        """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
@@ -242,6 +259,12 @@ def register_parameter_tools(
         """
         Check if a ROS parameter exists. Works only with ROS 2.
 
+        Args:
+            name (str): The parameter name (e.g., '/turtlesim:background_b')
+
+        Returns:
+            dict: Contains existence status and metadata, or error message if failed.
+
         Note: This uses get_param internally (via _safe_check_parameter_exists) to avoid
         crashes in rosapi_node when checking for non-existent parameters.
         """
@@ -266,7 +289,15 @@ def register_parameter_tools(
         )
     )
     def delete_parameter(name: str) -> dict:
-        """Delete a ROS parameter. Works only with ROS 2."""
+        """
+        Delete a ROS parameter. Works only with ROS 2.
+
+        Args:
+            name (str): The parameter name (e.g., '/turtlesim:background_b')
+
+        Returns:
+            dict: Contains success status and metadata, or error message if failed.
+        """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
@@ -350,7 +381,15 @@ def register_parameter_tools(
         )
     )
     def get_parameters(node_name: str) -> dict:
-        """Get list of all ROS parameter names for a specific node. Works only with ROS 2."""
+        """
+        Get list of all ROS parameter names for a specific node. Works only with ROS 2.
+
+        Args:
+            node_name (str): The node name (e.g., '/turtlesim')
+
+        Returns:
+            dict: Contains list of all parameter names for the node, or error message if failed.
+        """
         if not node_name or not node_name.strip():
             return {"error": "Node name cannot be empty"}
 
@@ -568,7 +607,15 @@ def register_parameter_tools(
         )
     )
     def get_parameter_details(name: str) -> dict:
-        """Get comprehensive details about a specific ROS parameter including value, type, and metadata. Works only with ROS 2."""
+        """
+        Get comprehensive details about a specific ROS parameter including value, type, and metadata. Works only with ROS 2.
+
+        Args:
+            name (str): The parameter name (e.g., '/turtlesim:background_r')
+
+        Returns:
+            dict: Contains detailed parameter information or error details.
+        """
         # Validate input
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}

@@ -13,7 +13,13 @@ def register_node_tools(
 
     @mcp.tool(description=("Get list of all currently running ROS nodes.\nExample:\nget_nodes()"))
     def get_nodes() -> dict:
-        """Get list of all currently running ROS nodes."""
+        """
+        Get list of all currently running ROS nodes.
+
+        Returns:
+            dict: Contains list of all active nodes,
+                or a message string if no nodes are found.
+        """
         # rosbridge service call to get node list
         message = {
             "op": "call_service",
@@ -48,7 +54,16 @@ def register_node_tools(
         )
     )
     def get_node_details(node: str) -> dict:
-        """Get detailed information about a specific node including its publishers, subscribers, and services."""
+        """
+        Get detailed information about a specific node including its publishers, subscribers, and services.
+
+        Args:
+            node (str): The node name (e.g., '/turtlesim')
+
+        Returns:
+            dict: Contains detailed node information including publishers, subscribers, and services,
+                or an error message if node doesn't exist.
+        """
         # Validate input
         if not node or not node.strip():
             return {"error": "Node name cannot be empty"}

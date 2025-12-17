@@ -17,7 +17,13 @@ def register_topic_tools(
 
     @mcp.tool(description=("Get list of all available ROS topics.\nExample:\nget_topics()"))
     def get_topics() -> dict:
-        """Get list of all available ROS topics."""
+        """
+        Fetch available topics from the ROS bridge.
+
+        Returns:
+            dict: Contains two lists - 'topics' and 'types',
+                or a message string if no topics are found.
+        """
         # rosbridge service call to get topic list
         message = {
             "op": "call_service",
@@ -52,7 +58,16 @@ def register_topic_tools(
         )
     )
     def get_topic_type(topic: str) -> dict:
-        """Get the message type for a specific topic."""
+        """
+        Get the message type for a specific topic.
+
+        Args:
+            topic (str): The topic name (e.g., '/cmd_vel')
+
+        Returns:
+            dict: Contains the 'type' field with the message type,
+                or an error message if topic doesn't exist.
+        """
         # Validate input
         if not topic or not topic.strip():
             return {"error": "Topic name cannot be empty"}
@@ -94,7 +109,16 @@ def register_topic_tools(
         )
     )
     def get_topic_details(topic: str) -> dict:
-        """Get detailed information about a specific topic including its type, publishers, and subscribers."""
+        """
+        Get detailed information about a specific topic including its type, publishers, and subscribers.
+
+        Args:
+            topic (str): The topic name (e.g., '/cmd_vel')
+
+        Returns:
+            dict: Contains detailed topic information including type, publishers, and subscribers,
+                or an error message if topic doesn't exist.
+        """
         # Validate input
         if not topic or not topic.strip():
             return {"error": "Topic name cannot be empty"}
@@ -165,7 +189,16 @@ def register_topic_tools(
         )
     )
     def get_message_details(message_type: str) -> dict:
-        """Get the complete structure/definition of a message type."""
+        """
+        Get the complete structure/definition of a message type.
+
+        Args:
+            message_type (str): The message type (e.g., 'geometry_msgs/Twist')
+
+        Returns:
+            dict: Contains the message structure with field names and types,
+                or an error message if the message type doesn't exist.
+        """
         # Validate input
         if not message_type or not message_type.strip():
             return {"error": "Message type cannot be empty"}
@@ -231,7 +264,25 @@ def register_topic_tools(
         queue_length: int = None,
         throttle_rate_ms: int = None,
     ) -> dict:
-        """Subscribe to a ROS topic and return the first message received."""
+        """
+        Subscribe to a given ROS topic via rosbridge and return the first message received.
+
+        Args:
+            topic (str): The ROS topic name (e.g., "/cmd_vel", "/joint_states").
+            msg_type (str): The ROS message type (e.g., "geometry_msgs/Twist").
+            timeout (float | None): Timeout in seconds. If None, uses the default timeout.
+            queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
+            throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+            expects_image (str): Hint about whether to expect image data.
+                - "true": prioritize image parsing (use for sensor_msgs/Image topics)
+                - "false": skip image detection for faster processing (use for non-image topics)
+                - "auto": auto-detect based on message fields (default)
+
+        Returns:
+            dict:
+                - {"msg": <parsed ROS message>} if successful
+                - {"error": "<error message>"} if subscription or timeout fails
+        """
         # Validate critical args before attempting subscription
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
@@ -345,7 +396,29 @@ def register_topic_tools(
         throttle_rate_ms: int = None,
         expects_image: str = "auto",
     ) -> dict:
-        """Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages."""
+        """
+        Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages.
+
+        Args:
+            topic (str): ROS topic name (e.g. "/cmd_vel", "/joint_states")
+            msg_type (str): ROS message type (e.g. "geometry_msgs/Twist")
+            duration (float): How long (seconds) to listen for messages
+            max_messages (int): Maximum number of messages to collect before stopping
+            queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
+            throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+            expects_image (str): Hint about whether to expect image data.
+                - "true": prioritize image parsing (use for sensor_msgs/Image topics)
+                - "false": skip image detection for faster processing (use for non-image topics)
+                - "auto": auto-detect based on message fields (default)
+
+        Returns:
+            dict:
+                {
+                    "topic": topic_name,
+                    "collected_count": N,
+                    "messages": [msg1, msg2, ...]
+                }
+        """
         # Validate critical args before subscribing
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
@@ -466,17 +539,23 @@ def register_topic_tools(
         durations: list[float] = [],
     ) -> dict:
         """
-            Publish a sequence of messages to a given ROS topic with delays in between.
+        Publish a sequence of messages to a given ROS topic with delays in between.
 
         Args:
             topic (str): ROS topic name (e.g., "/cmd_vel")
-            msg_type (str): ROS message type (e.g., "geometry_msgs/msg/Twist")
+            msg_type (str): ROS message type (e.g., "geometry_msgs/Twist")
             messages (list[dict]): A list of message dictionaries (ROS-compatible payloads)
             durations (list[float]): A list of durations (seconds) to wait between messages
+
         Returns:
             dict:
-                - {"success": True} if sent without errors
-                - {"error": "<error message>"} if connection/send failed
+                {
+                    "success": True,
+                    "published_count": <number of messages>,
+                    "topic": topic,
+                    "msg_type": msg_type
+                }
+                OR {"error": "<error message>"} if something failed
         """
         # Neutralize the mutable default arguments
         messages = list(messages)

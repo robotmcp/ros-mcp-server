@@ -22,7 +22,13 @@ def register_action_tools(
         )
     )
     def get_actions() -> dict:
-        """Get list of all available ROS actions. Works only with ROS 2."""
+        """
+        Get list of all available ROS actions. Works only with ROS 2.
+
+        Returns:
+            dict: Contains list of all active actions,
+                or a message string if no actions are found.
+        """
         # Check if required service is available
         required_services = ["/rosapi/action_servers"]
 
@@ -102,7 +108,15 @@ def register_action_tools(
         )
     )
     def get_action_details(action: str) -> dict:
-        """Get complete action details including type, goal, result, and feedback structures. Works only with ROS 2."""
+        """
+        Get complete action details including type, goal, result, and feedback structures. Works only with ROS 2.
+
+        Args:
+            action (str): The action name (e.g., '/turtle1/rotate_absolute')
+
+        Returns:
+            dict: Contains complete action definition with type, goal, result, and feedback structures.
+        """
         # Validate input
         if not action or not action.strip():
             return {"error": "Action name cannot be empty"}
@@ -408,7 +422,15 @@ def register_action_tools(
         )
     )
     def get_action_status(action_name: str) -> dict:
-        """Get action status for a specific action name. Works only with ROS 2."""
+        """
+        Get action status for a specific action name. Works only with ROS 2.
+
+        Args:
+            action_name (str): The action name (e.g., '/fibonacci')
+
+        Returns:
+            dict: Contains action status information including active goals and their status.
+        """
         # Validate input
         if not action_name or not action_name.strip():
             return {"error": "Action name cannot be empty"}
@@ -524,7 +546,18 @@ def register_action_tools(
         timeout: float | None = None,
         ctx: Context | None = None,
     ) -> dict:
-        """Send a goal to a ROS action server. Works only with ROS 2."""
+        """
+        Send a goal to a ROS action server. Works only with ROS 2.
+
+        Args:
+            action_name (str): The name of the action to call (e.g., '/turtle1/rotate_absolute')
+            action_type (str): The type of the action (e.g., 'turtlesim/action/RotateAbsolute')
+            goal (dict): The goal message to send
+            timeout (float, optional): Timeout for action completion in seconds. Default is None (uses default timeout).
+
+        Returns:
+            dict: Contains action response including goal_id, status, and result.
+        """
         # Validate inputs
         if not action_name or not action_name.strip():
             return {"error": "Action name cannot be empty"}
@@ -653,7 +686,16 @@ def register_action_tools(
         )
     )
     def cancel_action_goal(action_name: str, goal_id: str) -> dict:
-        """Cancel a specific action goal. Works only with ROS 2."""
+        """
+        Cancel a specific action goal. Works only with ROS 2.
+
+        Args:
+            action_name (str): The name of the action (e.g., '/turtle1/rotate_absolute')
+            goal_id (str): The goal ID to cancel
+
+        Returns:
+            dict: Contains cancellation status and result.
+        """
         # Validate inputs
         if not action_name or not action_name.strip():
             return {"error": "Action name cannot be empty"}
