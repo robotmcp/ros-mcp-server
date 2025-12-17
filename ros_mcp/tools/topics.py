@@ -1,9 +1,7 @@
 """Topic tools for ROS MCP."""
 
-import ast
 import json
 import time
-from typing import Dict
 
 from fastmcp import FastMCP
 
@@ -161,90 +159,6 @@ def register_topic_tools(
 
     @mcp.tool(
         description=(
-            "Get list of publishers for a specific topic.\n"
-            "Example:\n"
-            "get_topic_publishers('/cmd_vel')"
-        )
-    )
-    def get_topic_publishers(topic: str) -> dict:
-        """Get list of publishers for a specific topic."""
-        # Validate input
-        if not topic or not topic.strip():
-            return {"error": "Topic name cannot be empty"}
-
-        # Get publishers for this topic
-        publishers_message = {
-            "op": "call_service",
-            "service": "/rosapi/publishers",
-            "type": "rosapi/Publishers",
-            "args": {"topic": topic},
-            "id": f"get_publishers_{topic.replace('/', '_')}",
-        }
-
-        with ws_manager:
-            publishers_response = ws_manager.request(publishers_message)
-
-        # Check for service response errors
-        if (
-            publishers_response
-            and "result" in publishers_response
-            and not publishers_response["result"]
-        ):
-            error_msg = publishers_response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
-
-        if publishers_response and "values" in publishers_response:
-            publishers = publishers_response["values"].get("publishers", [])
-            return {"topic": topic, "publishers": publishers, "publisher_count": len(publishers)}
-        else:
-            return {"error": f"Failed to get publishers for topic {topic}"}
-
-    @mcp.tool(
-        description=(
-            "Get list of subscribers for a specific topic.\n"
-            "Example:\n"
-            "get_topic_subscribers('/cmd_vel')"
-        )
-    )
-    def get_topic_subscribers(topic: str) -> dict:
-        """Get list of subscribers for a specific topic."""
-        # Validate input
-        if not topic or not topic.strip():
-            return {"error": "Topic name cannot be empty"}
-
-        # Get subscribers for this topic
-        subscribers_message = {
-            "op": "call_service",
-            "service": "/rosapi/subscribers",
-            "type": "rosapi/Subscribers",
-            "args": {"topic": topic},
-            "id": f"get_subscribers_{topic.replace('/', '_')}",
-        }
-
-        with ws_manager:
-            subscribers_response = ws_manager.request(subscribers_message)
-
-        # Check for service response errors
-        if (
-            subscribers_response
-            and "result" in subscribers_response
-            and not subscribers_response["result"]
-        ):
-            error_msg = subscribers_response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
-
-        if subscribers_response and "values" in subscribers_response:
-            subscribers = subscribers_response["values"].get("subscribers", [])
-            return {
-                "topic": topic,
-                "subscribers": subscribers,
-                "subscriber_count": len(subscribers),
-            }
-        else:
-            return {"error": f"Failed to get subscribers for topic {topic}"}
-
-    @mcp.tool(
-        description=(
             "Get the complete structure/definition of a message type.\n"
             "Example:\n"
             "get_message_details('geometry_msgs/Twist')"
@@ -300,101 +214,6 @@ def register_topic_tools(
 
     @mcp.tool(
         description=(
-            "Get comprehensive information about all ROS topics including publishers, subscribers, and message types. "
-            "Note that this may take time to execute when there are a large number of topics since it queries each one by one.\n"
-            "Example:\n"
-            "inspect_all_topics()"
-        )
-    )
-    def inspect_all_topics() -> dict:
-        """Get comprehensive information about all ROS topics including publishers, subscribers, and message types."""
-        # First get all topics
-        topics_message = {
-            "op": "call_service",
-            "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
-            "args": {},
-            "id": "inspect_all_topics_request_1",
-        }
-
-        with ws_manager:
-            topics_response = ws_manager.request(topics_message)
-
-            if not topics_response or "values" not in topics_response:
-                return {"error": "Failed to get topics list"}
-
-            topics = topics_response["values"].get("topics", [])
-            types = topics_response["values"].get("types", [])
-            topic_details = {}
-
-            # Get details for each topic
-            topic_errors = []
-            for i, topic in enumerate(topics):
-                # Get topic type
-                topic_type = types[i] if i < len(types) else "unknown"
-
-                # Get publishers for this topic
-                publishers_message = {
-                    "op": "call_service",
-                    "service": "/rosapi/publishers",
-                    "type": "rosapi/Publishers",
-                    "args": {"topic": topic},
-                    "id": f"get_publishers_{topic.replace('/', '_')}",
-                }
-
-                publishers_response = ws_manager.request(publishers_message)
-                publishers = []
-                if publishers_response and "values" in publishers_response:
-                    publishers = publishers_response["values"].get("publishers", [])
-                elif (
-                    publishers_response
-                    and "result" in publishers_response
-                    and not publishers_response["result"]
-                ):
-                    error_msg = publishers_response.get("values", {}).get(
-                        "message", "Service call failed"
-                    )
-                    topic_errors.append(f"Topic {topic} publishers: {error_msg}")
-
-                # Get subscribers for this topic
-                subscribers_message = {
-                    "op": "call_service",
-                    "service": "/rosapi/subscribers",
-                    "type": "rosapi/Subscribers",
-                    "args": {"topic": topic},
-                    "id": f"get_subscribers_{topic.replace('/', '_')}",
-                }
-
-                subscribers_response = ws_manager.request(subscribers_message)
-                subscribers = []
-                if subscribers_response and "values" in subscribers_response:
-                    subscribers = subscribers_response["values"].get("subscribers", [])
-                elif (
-                    subscribers_response
-                    and "result" in subscribers_response
-                    and not subscribers_response["result"]
-                ):
-                    error_msg = subscribers_response.get("values", {}).get(
-                        "message", "Service call failed"
-                    )
-                    topic_errors.append(f"Topic {topic} subscribers: {error_msg}")
-
-                topic_details[topic] = {
-                    "type": topic_type,
-                    "publishers": publishers,
-                    "subscribers": subscribers,
-                    "publisher_count": len(publishers),
-                    "subscriber_count": len(subscribers),
-                }
-
-        return {
-            "total_topics": len(topics),
-            "topics": topic_details,
-            "topic_errors": topic_errors,  # Include any errors encountered during inspection
-        }
-
-    @mcp.tool(
-        description=(
             "Subscribe to a ROS topic and return the first message received.\n"
             "Example:\n"
             "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
@@ -408,40 +227,55 @@ def register_topic_tools(
         topic: str = "",
         msg_type: str = "",
         expects_image: str = "auto",
-        timeout: float | None = None,
-        queue_length: int | None = None,
-        throttle_rate_ms: int | None = None,
+        timeout: float = None,
+        queue_length: int = None,
+        throttle_rate_ms: int = None,
     ) -> dict:
         """Subscribe to a ROS topic and return the first message received."""
         # Validate critical args before attempting subscription
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
-        # Validate optional parameters
-        if queue_length is not None and (not isinstance(queue_length, int) or queue_length < 1):
-            return {"error": "queue_length must be an integer ≥ 1"}
+        # Set defaults for optional parameters
+        if not timeout:
+            timeout = ws_manager.default_timeout
+        if not queue_length:
+            queue_length = 1  # Default queue length
+        if not throttle_rate_ms:
+            throttle_rate_ms = 0  # Default: no throttling
 
-        if throttle_rate_ms is not None and (
-            not isinstance(throttle_rate_ms, int) or throttle_rate_ms < 0
-        ):
-            return {"error": "throttle_rate_ms must be an integer ≥ 0"}
+        # Validate and convert parameters (handle string inputs from MCP)
+        try:
+            timeout = float(timeout)
+            if timeout < 0:
+                return {"error": "timeout must be >= 0"}
+        except (ValueError, TypeError):
+            return {"error": "timeout must be a number"}
+
+        try:
+            queue_length = int(queue_length)
+            if queue_length < 1:
+                return {"error": "queue_length must be an integer ≥ 1"}
+        except (ValueError, TypeError):
+            return {"error": "queue_length must be an integer"}
+
+        try:
+            throttle_rate_ms = int(throttle_rate_ms)
+            if throttle_rate_ms < 0:
+                return {"error": "throttle_rate_ms must be an integer ≥ 0"}
+        except (ValueError, TypeError):
+            return {"error": "throttle_rate_ms must be an integer"}
 
         # Construct the rosbridge subscribe message
         subscribe_msg: dict = {
             "op": "subscribe",
             "topic": topic,
             "type": msg_type,
+            "queue_length": queue_length,
+            "throttle_rate": throttle_rate_ms,
         }
 
-        # Add optional parameters if provided
-        if queue_length is not None:
-            subscribe_msg["queue_length"] = queue_length
-
-        if throttle_rate_ms is not None:
-            subscribe_msg["throttle_rate"] = throttle_rate_ms
-
-        # Use default timeout if none specified
-        actual_timeout = timeout if timeout is not None else ws_manager.default_timeout
+        actual_timeout = timeout
 
         # Subscribe and wait for the first message
         with ws_manager:
@@ -507,8 +341,8 @@ def register_topic_tools(
         msg_type: str = "",
         duration: float = 5.0,
         max_messages: int = 100,
-        queue_length: int | None = None,
-        throttle_rate_ms: int | None = None,
+        queue_length: int = None,
+        throttle_rate_ms: int = None,
         expects_image: str = "auto",
     ) -> dict:
         """Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages."""
@@ -516,28 +350,50 @@ def register_topic_tools(
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
-        # Validate optional parameters
-        if queue_length is not None and (not isinstance(queue_length, int) or queue_length < 1):
-            return {"error": "queue_length must be an integer ≥ 1"}
+        # Validate and convert parameters
+        try:
+            duration = float(duration)
+            if duration < 0:
+                return {"error": "duration must be >= 0"}
+        except (ValueError, TypeError):
+            return {"error": "duration must be a number"}
 
-        if throttle_rate_ms is not None and (
-            not isinstance(throttle_rate_ms, int) or throttle_rate_ms < 0
-        ):
-            return {"error": "throttle_rate_ms must be an integer ≥ 0"}
+        try:
+            max_messages = int(max_messages)
+            if max_messages < 1:
+                return {"error": "max_messages must be an integer ≥ 1"}
+        except (ValueError, TypeError):
+            return {"error": "max_messages must be an integer"}
+
+        # Set defaults for optional parameters
+        if not queue_length:
+            queue_length = 1  # Default queue length
+        if not throttle_rate_ms:
+            throttle_rate_ms = 0  # Default: no throttling
+
+        # Validate and convert parameters (handle string inputs from MCP)
+        try:
+            queue_length = int(queue_length)
+            if queue_length < 1:
+                return {"error": "queue_length must be an integer ≥ 1"}
+        except (ValueError, TypeError):
+            return {"error": "queue_length must be an integer"}
+
+        try:
+            throttle_rate_ms = int(throttle_rate_ms)
+            if throttle_rate_ms < 0:
+                return {"error": "throttle_rate_ms must be an integer ≥ 0"}
+        except (ValueError, TypeError):
+            return {"error": "throttle_rate_ms must be an integer"}
 
         # Send subscription request
         subscribe_msg: dict = {
             "op": "subscribe",
             "topic": topic,
             "type": msg_type,
+            "queue_length": queue_length,
+            "throttle_rate": throttle_rate_ms,
         }
-
-        # Add optional parameters if provided
-        if queue_length is not None:
-            subscribe_msg["queue_length"] = queue_length
-
-        if throttle_rate_ms is not None:
-            subscribe_msg["throttle_rate"] = throttle_rate_ms
 
         with ws_manager:
             send_error = ws_manager.send(subscribe_msg)

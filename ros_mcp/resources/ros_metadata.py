@@ -367,3 +367,119 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     "service_errors": [],
                 }
             )
+
+    @mcp.resource("ros-mcp://ros-metadata/topics/all")
+    def get_topics_details() -> str:
+        """
+        Get comprehensive information about all ROS topics including publishers, subscribers, and message types.
+
+        Returns:
+            str: JSON string with detailed information about all topics including:
+                - Topic names and types
+                - Publishers for each topic
+                - Subscribers for each topic
+                - Connection counts and statistics
+        """
+        try:
+            # First get all topics
+            topics_message = {
+                "op": "call_service",
+                "service": "/rosapi/topics",
+                "type": "rosapi/Topics",
+                "args": {},
+                "id": "inspect_all_topics_request_1",
+            }
+
+            with ws_manager:
+                topics_response = ws_manager.request(topics_message)
+
+                if not topics_response or "values" not in topics_response:
+                    return json.dumps(
+                        {
+                            "error": "Failed to get topics list",
+                            "total_topics": 0,
+                            "topics": {},
+                            "topic_errors": [],
+                        }
+                    )
+
+                topics = topics_response["values"].get("topics", [])
+                types = topics_response["values"].get("types", [])
+                topic_details = {}
+
+                # Get details for each topic
+                topic_errors = []
+                for i, topic in enumerate(topics):
+                    # Get topic type
+                    topic_type = types[i] if i < len(types) else "unknown"
+
+                    # Get publishers for this topic
+                    publishers_message = {
+                        "op": "call_service",
+                        "service": "/rosapi/publishers",
+                        "type": "rosapi/Publishers",
+                        "args": {"topic": topic},
+                        "id": f"get_publishers_{topic.replace('/', '_')}",
+                    }
+
+                    publishers_response = ws_manager.request(publishers_message)
+                    publishers = []
+                    if publishers_response and "values" in publishers_response:
+                        publishers = publishers_response["values"].get("publishers", [])
+                    elif (
+                        publishers_response
+                        and "result" in publishers_response
+                        and not publishers_response["result"]
+                    ):
+                        error_msg = publishers_response.get("values", {}).get(
+                            "message", "Service call failed"
+                        )
+                        topic_errors.append(f"Topic {topic} publishers: {error_msg}")
+
+                    # Get subscribers for this topic
+                    subscribers_message = {
+                        "op": "call_service",
+                        "service": "/rosapi/subscribers",
+                        "type": "rosapi/Subscribers",
+                        "args": {"topic": topic},
+                        "id": f"get_subscribers_{topic.replace('/', '_')}",
+                    }
+
+                    subscribers_response = ws_manager.request(subscribers_message)
+                    subscribers = []
+                    if subscribers_response and "values" in subscribers_response:
+                        subscribers = subscribers_response["values"].get("subscribers", [])
+                    elif (
+                        subscribers_response
+                        and "result" in subscribers_response
+                        and not subscribers_response["result"]
+                    ):
+                        error_msg = subscribers_response.get("values", {}).get(
+                            "message", "Service call failed"
+                        )
+                        topic_errors.append(f"Topic {topic} subscribers: {error_msg}")
+
+                    topic_details[topic] = {
+                        "type": topic_type,
+                        "publishers": publishers,
+                        "subscribers": subscribers,
+                        "publisher_count": len(publishers),
+                        "subscriber_count": len(subscribers),
+                    }
+
+                result = {
+                    "total_topics": len(topics),
+                    "topics": topic_details,
+                    "topic_errors": topic_errors,  # Include any errors encountered during inspection
+                }
+
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps(
+                {
+                    "error": f"Failed to inspect all topics: {str(e)}",
+                    "total_topics": 0,
+                    "topics": {},
+                    "topic_errors": [],
+                }
+            )
