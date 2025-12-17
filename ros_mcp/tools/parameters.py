@@ -655,7 +655,7 @@ def register_parameter_tools(
         try:
             with ws_manager:
                 type_response = ws_manager.request(type_message)
-        except Exception as e:
+        except Exception:
             # If describe_parameters fails, continue with type inference from value
             type_response = None
 

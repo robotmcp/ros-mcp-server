@@ -109,7 +109,7 @@ def register_action_tools(
 
         # First, get the action type
         action_type = "unknown"
-        
+
         # Check if required service is available
         required_services = ["/rosapi/interfaces"]
 
@@ -188,12 +188,20 @@ def register_action_tools(
             return {
                 "error": f"Action type for {action} not found",
                 "action": action,
-                "available_action_types": action_interfaces if 'action_interfaces' in locals() else [],
+                "available_action_types": action_interfaces
+                if "action_interfaces" in locals()
+                else [],
                 "suggestion": "This action might not be available or use a different naming pattern",
             }
 
         # Now get action details using the action type
-        result = {"action": action, "action_type": action_type, "goal": {}, "result": {}, "feedback": {}}
+        result = {
+            "action": action,
+            "action_type": action_type,
+            "goal": {},
+            "result": {},
+            "feedback": {},
+        }
 
         # Check if required action detail services are available
         required_detail_services = [
@@ -226,7 +234,9 @@ def register_action_tools(
                 }
 
             available_services = services_response.get("values", {}).get("services", [])
-            missing_services = [svc for svc in required_detail_services if svc not in available_services]
+            missing_services = [
+                svc for svc in required_detail_services if svc not in available_services
+            ]
 
             if missing_services:
                 # Return what we have (action type) even if details aren't available

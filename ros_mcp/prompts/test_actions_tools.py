@@ -548,5 +548,3 @@ This is useful for:
 - **Node Tools:** `get_nodes()`, `get_node_details()`
 - **Connection Tools:** `connect_to_robot()`, `detect_ros_version()`
 """
-
-

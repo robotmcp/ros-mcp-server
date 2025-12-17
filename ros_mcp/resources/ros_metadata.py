@@ -483,3 +483,157 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     "topic_errors": [],
                 }
             )
+
+    @mcp.resource("ros-mcp://ros-metadata/actions/all")
+    def get_actions_details() -> str:
+        """
+        Get comprehensive information about all ROS actions including types and available actions.
+
+        Returns:
+            str: JSON string with detailed information about all actions including:
+                - Action names and types
+                - Action status and availability
+                - Connection counts and statistics
+        """
+        try:
+            # Check if required action services are available
+            required_services = ["/rosapi/action_servers"]
+
+            with ws_manager:
+                # Get available services to check compatibility
+                services_message = {
+                    "op": "call_service",
+                    "service": "/rosapi/services",
+                    "type": "rosapi/Services",
+                    "args": {},
+                    "id": "check_services_for_inspect_actions",
+                }
+
+                services_response = ws_manager.request(services_message)
+                if not services_response or not isinstance(services_response, dict):
+                    return json.dumps(
+                        {
+                            "error": "Failed to check service availability",
+                            "total_actions": 0,
+                            "actions": {},
+                            "action_errors": [],
+                            "compatibility": {
+                                "issue": "Cannot determine available services",
+                                "required_services": required_services,
+                                "suggestion": "Ensure rosbridge is running and rosapi is available",
+                            },
+                        }
+                    )
+
+                available_services = services_response.get("values", {}).get("services", [])
+                missing_services = [
+                    svc for svc in required_services if svc not in available_services
+                ]
+
+                if missing_services:
+                    return json.dumps(
+                        {
+                            "error": "Action inspection not supported by this rosbridge/rosapi version",
+                            "total_actions": 0,
+                            "actions": {},
+                            "action_errors": [],
+                            "compatibility": {
+                                "issue": "Required action services are not available",
+                                "missing_services": missing_services,
+                                "required_services": required_services,
+                                "available_services": [
+                                    s for s in available_services if "action" in s
+                                ],
+                                "suggestions": [
+                                    "This rosbridge version doesn't support action inspection services",
+                                    "Use get_actions() to list available actions",
+                                    "Consider upgrading rosbridge or using a different implementation",
+                                ],
+                                "note": "Action inspection requires /rosapi/action_servers service",
+                            },
+                        }
+                    )
+
+                # First get all actions
+                actions_message = {
+                    "op": "call_service",
+                    "service": "/rosapi/action_servers",
+                    "type": "rosapi/ActionServers",
+                    "args": {},
+                    "id": "inspect_all_actions_request_1",
+                }
+
+                actions_response = ws_manager.request(actions_message)
+
+                if not actions_response or "values" not in actions_response:
+                    return json.dumps(
+                        {
+                            "error": "Failed to get actions list",
+                            "total_actions": 0,
+                            "actions": {},
+                            "action_errors": [],
+                        }
+                    )
+
+                actions = actions_response["values"].get("action_servers", [])
+                action_details = {}
+
+                # Get details for each action
+                action_errors = []
+                for action in actions:
+                    # Try to get action type (this may not always work due to rosapi limitations)
+                    action_type = "unknown"
+
+                    # Known action type mappings for common actions
+                    action_type_map = {
+                        "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
+                        # Add more mappings as needed based on common ROS actions
+                    }
+
+                    if action in action_type_map:
+                        action_type = action_type_map[action]
+                    else:
+                        # Try to derive from interfaces
+                        interfaces_message = {
+                            "op": "call_service",
+                            "service": "/rosapi/interfaces",
+                            "type": "rosapi/Interfaces",
+                            "args": {},
+                            "id": f"get_interfaces_{action.replace('/', '_')}",
+                        }
+
+                        interfaces_response = ws_manager.request(interfaces_message)
+                        if interfaces_response and "values" in interfaces_response:
+                            interfaces = interfaces_response["values"].get("interfaces", [])
+                            action_interfaces = [
+                                iface for iface in interfaces if "/action/" in iface
+                            ]
+
+                            # Try to match based on action name patterns
+                            action_name_part = action.split("/")[-1]
+                            for iface in action_interfaces:
+                                if action_name_part.lower() in iface.lower():
+                                    action_type = iface
+                                    break
+
+                    action_details[action] = {
+                        "type": action_type,
+                        "status": "available" if action_type != "unknown" else "type_unknown",
+                    }
+
+                result = {
+                    "total_actions": len(actions),
+                    "actions": action_details,
+                    "action_errors": action_errors,
+                }
+
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps(
+                {
+                    "error": f"Failed to inspect all actions: {str(e)}",
+                    "total_actions": 0,
+                    "actions": {},
+                    "action_errors": [],
+                }
+            )

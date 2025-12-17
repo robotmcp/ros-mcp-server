@@ -661,4 +661,3 @@ This collects messages at a maximum rate of 10 Hz (100ms between messages).
 - **Parameter Tools:** `get_parameters()`, `set_parameter()` (ROS 2 only)
 - **Connection Tools:** `connect_to_robot()`, `detect_ros_version()`
 """
-
