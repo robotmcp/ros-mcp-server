@@ -15,6 +15,7 @@ def _safe_check_parameter_exists(
     Returns:
         tuple: (exists: bool, reason: str, response: dict | None)
     """
+
     def _is_empty_value(value: str) -> bool:
         """Check if a parameter value is effectively empty."""
         if not value:
@@ -22,7 +23,7 @@ def _safe_check_parameter_exists(
         # Strip quotes (handles cases like '""' which represents empty string)
         stripped = value.strip('"').strip("'")
         return not stripped or stripped == ""
-    
+
     message = {
         "op": "call_service",
         "service": "/rosapi/get_param",
