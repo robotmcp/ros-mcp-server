@@ -82,7 +82,7 @@ register_all_prompts(mcp)
 
 Tools are the primary interface for interacting with ROS systems. They are organized by category and follow a consistent pattern.
 
-#### Tool Categories
+#### Tool Categories: Total 31 tools
 
 | Category | File | Count | Description |
 |----------|------|-------|-------------|
@@ -95,16 +95,13 @@ Tools are the primary interface for interacting with ROS systems. They are organ
 | **Actions** | `actions.py` | 5 | Action discovery and execution (ROS 2 only) |
 | **Images** | `images.py` | 1 | Image analysis and processing |
 
-**Total: 31 tools**
-
-
 
 #### Public API
 
 The main registration function in `tools/__init__.py`:
 
 ```python
-def register_ros_tools(
+def register_all_tools(
     mcp: FastMCP,
     ws_manager: WebSocketManager,
     rosbridge_ip: str = "127.0.0.1",
@@ -132,25 +129,22 @@ Resources provide comprehensive system information in JSON format. They are acce
 **Robot Specification Resources:**
 - `ros-mcp://robot-specs/get_verified_robots_list` - List of available robot specifications
 
-#### Resource Registration Pattern
+#### Public API
+
+The main registration function is found in `resources/__init__.py`:
 
 ```python
-def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
-    """Register ROS metadata resources with the MCP server."""
-    
-    @mcp.resource("ros-mcp://ros-metadata/all")
-    def get_all_ros_metadata() -> str:
-        """Get all ROS metadata."""
-        # Query ROS system via ws_manager
-        # Return JSON string
-        return json.dumps(metadata, indent=2)
+def register_all_resources(
+    mcp: FastMCP,
+    ws_manager: WebSocketManager,
+) -> None:
+    """Register all resources with the MCP server instance."""
+    register_robot_spec_resources(mcp)
+    register_ros_metadata_resources(mcp, ws_manager)
 ```
 
-**Key Characteristics:**
-- Resources return JSON strings (not dicts)
-- Use `@mcp.resource` decorator with URI
-- Access ROS system via WebSocket manager
-- Provide comprehensive system snapshots
+
+
 
 ### 4. Prompts (`ros_mcp/prompts/`)
 
@@ -166,19 +160,6 @@ Prompts are interactive guides that help users test and understand the ROS MCP S
 - `test-parameters-tools` - Parameter tools testing (ROS 2)
 - `test-actions-tools` - Action tools testing (ROS 2)
 
-#### Prompt Registration Pattern
-
-```python
-def register_test_category_prompts(mcp):
-    """Register test prompts for a category."""
-    
-    @mcp.prompt(name="test-category-tools")
-    def test_category_tools() -> str:
-        """Return prompt content as string."""
-        return """# Testing Guide
-        ...
-        """
-```
 
 ### 5. Utilities (`ros_mcp/utils/`)
 
@@ -201,113 +182,6 @@ Utilities provide shared functionality used across tools and resources.
 - `load_robot_config()` - Load robot specification YAML files
 - `get_verified_robot_spec_util()` - Parse and validate robot configs
 - `get_verified_robots_list_util()` - List available robot specifications
-
-## Communication Flow
-
-### Tool Execution Flow
-
-```
-User Request
-    ↓
-MCP Client
-    ↓
-FastMCP Server (main.py)
-    ↓
-Tool Function (tools/*.py)
-    ↓
-Implementation Function (*_impl)
-    ↓
-WebSocket Manager (utils/websocket.py)
-    ↓
-Rosbridge WebSocket
-    ↓
-ROS System
-```
-
-### Resource Access Flow
-
-```
-User Request (Resource URI)
-    ↓
-MCP Client
-    ↓
-FastMCP Server (main.py)
-    ↓
-Resource Function (resources/*.py)
-    ↓
-WebSocket Manager (utils/websocket.py)
-    ↓
-Rosbridge WebSocket
-    ↓
-ROS System
-    ↓
-JSON Response
-```
-
-## WebSocket Manager
-
-The `WebSocketManager` is the core communication component that handles all ROS interactions.
-
-### Key Features
-
-- **Connection Management**: Establishes and maintains WebSocket connections
-- **Request/Response**: Sends ROS messages and receives responses
-- **Context Manager**: Thread-safe connection handling with `with` statements
-- **Error Handling**: Graceful handling of connection failures
-- **Timeout Management**: Configurable timeouts for operations
-
-### Usage Pattern
-
-```python
-with ws_manager:
-    response = ws_manager.request({
-        "op": "call_service",
-        "service": "/rosapi/topics",
-        "type": "rosapi/Topics",
-        "args": {},
-        "id": "request_id"
-    })
-```
-
-## Design Patterns
-
-### 1. Registration Pattern
-
-All components (tools, resources, prompts) follow a registration pattern:
-
-```python
-def register_component(mcp: FastMCP, ...) -> None:
-    """Register component with MCP server."""
-    # Registration logic
-```
-
-### 2. Implementation Pattern
-
-Tools separate implementation from registration:
-
-```python
-def tool_impl(ws_manager, ...) -> dict:
-    """Pure implementation logic."""
-    pass
-
-@mcp.tool(...)
-def tool(...) -> dict:
-    """MCP tool wrapper."""
-    return tool_impl(ws_manager, ...)
-```
-
-### 3. Category Organization
-
-Related tools are grouped into category modules:
-- Each category has its own file
-- Each category has a registration function
-- Categories are independent and can be extended
-
-### 4. Resource URI Pattern
-
-Resources use URIs following this pattern:
-- `ros-mcp://ros-metadata/{category}/all` - Metadata resources
-- `ros-mcp://robot-specs/{resource_name}` - Robot specification resources
 
 ## Extension Points
 
@@ -337,7 +211,7 @@ Resources use URIs following this pattern:
 The ROS MCP Server is designed to be importable as a library:
 
 ```python
-from ros_mcp.tools import register_ros_tools
+from ros_mcp.tools import register_all_tools
 from ros_mcp.resources import register_all_resources
 from ros_mcp.prompts import register_all_prompts
 from ros_mcp.utils.websocket import WebSocketManager
@@ -346,7 +220,7 @@ from ros_mcp.utils.websocket import WebSocketManager
 mcp = FastMCP("your-server")
 ws_manager = WebSocketManager("127.0.0.1", 9090)
 
-register_ros_tools(mcp, ws_manager)
+register_all_tools(mcp, ws_manager, rosbridge_ip="127.0.0.1", rosbridge_port=9090)
 register_all_resources(mcp, ws_manager)
 register_all_prompts(mcp)
 ```
@@ -362,68 +236,15 @@ register_all_prompts(mcp)
 
 ### ROS Dependencies
 - **rosbridge_server**: ROS WebSocket bridge (external, must be running)
-- **rosapi**: ROS API services (part of rosbridge)
-
-## Error Handling
-
-### Tool Error Handling
-
-Tools return structured error responses:
-
-```python
-{
-    "error": "Error message",
-    "details": {...}  # Optional additional context
-}
-```
-
-### Resource Error Handling
-
-Resources include errors in JSON response:
-
-```python
-{
-    "error": "Error message",
-    "data": {...},  # Partial data if available
-    "errors": [...]  # List of errors encountered
-}
-```
-
-### WebSocket Error Handling
-
-WebSocket manager handles:
-- Connection failures
-- Timeout errors
-- Invalid responses
-- Network issues
 
 ## Testing
 
-The architecture supports testing through:
-- **Test Prompts**: Interactive guides for testing tools
-- **Resource Access**: Comprehensive system information gathering
-- **Tool Isolation**: Implementation functions can be tested independently
-
 See `docs/testing.md` for detailed testing instructions.
-
-## Future Considerations
-
-### Potential Enhancements
-- Caching layer for frequently accessed resources
-- Connection pooling for multiple ROS systems
-- Async/await support for better concurrency
-- Plugin system for custom tool categories
-- Resource versioning for API stability
-
-### Scalability
-- Current architecture supports single ROS system connection
-- WebSocket manager can be extended for multiple connections
-- Resource aggregation can be optimized for large systems
 
 ## Related Documentation
 
 - **Testing Guide**: `docs/testing.md` - How to test the server
 - **Restructuring Plan**: `docs/restructuring_plan.md` - Migration history
-- **Launch System**: `docs/launch_system.md` - ROS integration guide
+- **Launch System**: `docs/launch_system.md` - ROS launch guide
 - **Installation**: `docs/installation.md` - Setup instructions
 

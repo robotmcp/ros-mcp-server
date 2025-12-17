@@ -8,16 +8,16 @@
 
 ## Summary: Implementation vs Original Plan
 
-**Status**: ✅ **Phase 1 Complete** - All 39 tools migrated to modular structure
+**Status**: ✅ **Phase 1 Complete** - All 31 tools migrated to modular structure
 
 **Key Differences from Original Plan:**
 - ✅ Used `tools/__init__.py` instead of `tools.py` (better Python package convention)
 - ✅ Used `main.py` instead of `server.py` (entry point naming)
-- ⚠️ Function signature: `register_ros_tools(mcp, ws_manager, ...)` takes `ws_manager` as parameter (more flexible than creating it internally)
+- ⚠️ Function signature: `register_all_tools(mcp, ws_manager, ...)` takes `ws_manager` as parameter (more flexible than creating it internally)
 - ✅ WebSocket manager renamed to `utils/websocket.py` (matches original plan structure)
 - ✅ Helper functions in `tools/images.py` (co-located with usage, not separate `utils.py`)
 
-**Public API**: `from ros_mcp.tools import register_ros_tools` - imports from `ros_mcp/tools/__init__.py`
+**Public API**: `from ros_mcp.tools import register_all_tools` - imports from `ros_mcp/tools/__init__.py`
 
 ## Goal
 
@@ -29,8 +29,8 @@ Refactor **ros-mcp-server** to be importable as a library, enabling integration 
 ## Overview
 
 ### Current State
-- **Total tools**: 39
-- **Status**: ✅ **All tools migrated** (39/39)
+- **Total tools**: 31
+- **Status**: ✅ **All tools migrated** (31/31)
 - **Structure**: Modular structure with tools organized by category in `ros_mcp/tools/`
 
 ### Tool Categories Overview
@@ -72,7 +72,7 @@ ros-mcp-server/
 └── pyproject.toml
 ```
 
-**Public API**: `from ros_mcp.tools import register_ros_tools` (imports from `ros_mcp/tools/__init__.py`)
+**Public API**: `from ros_mcp.tools import register_all_tools` (imports from `ros_mcp/tools/__init__.py`)
 
 ## Phase 1: Refactor ros-mcp-server (Tool Migration) ✅ COMPLETE
 
@@ -99,10 +99,10 @@ For each tool category:
 
 **File**: `ros_mcp/tools/__init__.py`
 
-The public API function `register_ros_tools()` registers all 39 tools:
+The public API function `register_all_tools()` registers all 31 tools:
 
 ```python
-def register_ros_tools(
+def register_all_tools(
     mcp: FastMCP,
     ws_manager: WebSocketManager,
     rosbridge_ip: str = "127.0.0.1",
@@ -130,18 +130,18 @@ def register_ros_tools(
    ```python
    import sys, os
    sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ros-mcp-server'))
-   from ros_mcp.tools import register_ros_tools
+   from ros_mcp.tools import register_all_tools
    from ros_mcp.utils.websocket import WebSocketManager
    ```
 
 3. **Update `main.py`**:
    ```python
    from fastmcp import FastMCP
-   from ros_integration import register_ros_tools, WebSocketManager
+   from ros_integration import register_all_tools, WebSocketManager
    
    mcp = FastMCP("simple-mcp-ai")
    ws_manager = WebSocketManager("127.0.0.1", 9090, default_timeout=5.0)
-   register_ros_tools(mcp, ws_manager, rosbridge_ip="127.0.0.1", rosbridge_port=9090)
+   register_all_tools(mcp, ws_manager, rosbridge_ip="127.0.0.1", rosbridge_port=9090)
    ```
 
 4. **Update `requirements.txt`** with ros-mcp dependencies
@@ -154,7 +154,7 @@ def register_ros_tools(
 
 - [X] Create `ros_mcp/tools/` directory structure ✅
 - [X] Move helper functions (in `tools/images.py`) ✅
-- [X] Move all 39 tools across 8 categories ✅
+- [X] Move all 31 tools across 8 categories ✅
 - [X] Update `ros_mcp/tools/__init__.py` registration function ✅
 - [X] Update `server.py` entry point ✅
 
@@ -162,7 +162,7 @@ def register_ros_tools(
 
 ### Phase 1 (Tool Migration) ✅
 
-- [X] All 39 tools registered in `register_ros_tools()`
+- [X] All 31 tools registered in `register_all_tools()`
 - [X] Each category has its own module file
 - [X] Helper functions in `tools/images.py`
 - [X] `ros-mcp-server` works standalone
@@ -171,7 +171,7 @@ def register_ros_tools(
 
 - [ ] Submodule added to simple-mcp-ai
 - [ ] `ros_integration.py` created
-- [ ] `main.py` updated to use `register_ros_tools()`
+- [ ] `main.py` updated to use `register_all_tools()`
 - [ ] Dependencies updated
 - [ ] Old `tools.py` removed
 - [ ] Integration tested end-to-end
