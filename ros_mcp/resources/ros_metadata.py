@@ -255,3 +255,115 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     "node_errors": [],
                 }
             )
+
+    @mcp.resource("ros-mcp://ros-metadata/services/all")
+    def get_services_details() -> str:
+        """
+        Get comprehensive information about all ROS services including types and providers.
+
+        Returns:
+            str: JSON string with detailed information about all services including:
+                - Service names and types
+                - Provider nodes for each service
+                - Connection counts and statistics
+        """
+        try:
+            # First get all services
+            services_message = {
+                "op": "call_service",
+                "service": "/rosapi/services",
+                "type": "rosapi_msgs/srv/Services",
+                "args": {},
+                "id": "inspect_all_services_request_1",
+            }
+
+            with ws_manager:
+                services_response = ws_manager.request(services_message)
+
+                if not services_response or "values" not in services_response:
+                    return json.dumps(
+                        {
+                            "error": "Failed to get services list",
+                            "total_services": 0,
+                            "services": {},
+                            "service_errors": [],
+                        }
+                    )
+
+                services = services_response["values"].get("services", [])
+                service_details = {}
+
+                # Get details for each service
+                service_errors = []
+                for service in services:
+                    # Get service type
+                    type_message = {
+                        "op": "call_service",
+                        "service": "/rosapi/service_type",
+                        "type": "rosapi_msgs/srv/ServiceType",
+                        "args": {"service": service},
+                        "id": f"get_type_{service.replace('/', '_')}",
+                    }
+
+                    type_response = ws_manager.request(type_message)
+                    service_type = ""
+                    if type_response and "values" in type_response:
+                        service_type = type_response["values"].get("type", "unknown")
+                    elif type_response and "error" in type_response:
+                        service_errors.append(f"Service {service}: {type_response['error']}")
+
+                    # Get service provider (using service_node instead of service_providers)
+                    provider_message = {
+                        "op": "call_service",
+                        "service": "/rosapi/service_node",
+                        "type": "rosapi_msgs/srv/ServiceNode",
+                        "args": {"service": service},
+                        "id": f"get_provider_{service.replace('/', '_')}",
+                    }
+
+                    provider_response = ws_manager.request(provider_message)
+                    providers = []
+
+                    # Handle different response formats safely
+                    if provider_response and isinstance(provider_response, dict):
+                        if "values" in provider_response:
+                            node = provider_response["values"].get("node", "")
+                            if node:
+                                providers = [node]
+                        elif "result" in provider_response:
+                            node = provider_response["result"].get("node", "")
+                            if node:
+                                providers = [node]
+                        elif "error" in provider_response:
+                            service_errors.append(
+                                f"Service {service} provider: {provider_response['error']}"
+                            )
+                    elif provider_response is False:
+                        service_errors.append(f"Service {service} provider: No response received")
+                    elif provider_response is True:
+                        service_errors.append(
+                            f"Service {service} provider: Unexpected boolean response"
+                        )
+
+                    service_details[service] = {
+                        "type": service_type,
+                        "providers": providers,
+                        "provider_count": len(providers),
+                    }
+
+                result = {
+                    "total_services": len(services),
+                    "services": service_details,
+                    "service_errors": service_errors,  # Include any errors encountered during inspection
+                }
+
+            return json.dumps(result, indent=2)
+        except Exception as e:
+            return json.dumps(
+                {
+                    "error": f"Failed to inspect all services: {str(e)}",
+                    "total_services": 0,
+                    "services": {},
+                    "service_errors": [],
+                }
+            )
