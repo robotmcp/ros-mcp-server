@@ -10,271 +10,242 @@ from fastmcp import Context, FastMCP
 from ros_mcp.utils.websocket import WebSocketManager
 
 
-def get_actions_impl(ws_manager: WebSocketManager) -> dict:
-    """
-    Get list of all available ROS actions. Works only with ROS 2.
+def register_action_tools(
+    mcp: FastMCP,
+    ws_manager: WebSocketManager,
+) -> None:
+    """Register all action-related tools."""
 
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
+    @mcp.tool(
+        description=(
+            "Get list of all available ROS actions. Works only with ROS 2.\nExample:\nget_actions()"
+        )
+    )
+    def get_actions() -> dict:
+        """Get list of all available ROS actions. Works only with ROS 2."""
+        # Check if required service is available
+        required_services = ["/rosapi/action_servers"]
 
-    Returns:
-        dict: Contains list of all active actions,
-            or a message string if no actions are found.
-    """
-    # Check if required service is available
-    required_services = ["/rosapi/action_servers"]
+        with ws_manager:
+            # Get available services to check compatibility
+            services_message = {
+                "op": "call_service",
+                "service": "/rosapi/services",
+                "type": "rosapi/Services",
+                "args": {},
+                "id": "check_services_for_get_actions",
+            }
 
-    with ws_manager:
-        # Get available services to check compatibility
-        services_message = {
+            services_response = ws_manager.request(services_message)
+            if not services_response or not isinstance(services_response, dict):
+                return {
+                    "warning": "Cannot check service availability",
+                    "compatibility": {
+                        "issue": "Cannot determine available services",
+                        "required_services": required_services,
+                        "suggestion": "Ensure rosbridge is running and rosapi is available",
+                    },
+                }
+
+            available_services = services_response.get("values", {}).get("services", [])
+            missing_services = [svc for svc in required_services if svc not in available_services]
+
+            if missing_services:
+                return {
+                    "warning": "Action listing not supported by this rosbridge/rosapi version",
+                    "compatibility": {
+                        "issue": "Required action services are not available",
+                        "missing_services": missing_services,
+                        "required_services": required_services,
+                        "available_services": [s for s in available_services if "action" in s],
+                        "suggestion": "This rosbridge version doesn't support action listing services",
+                    },
+                }
+
+        # rosbridge service call to get action list
+        message = {
             "op": "call_service",
-            "service": "/rosapi/services",
-            "type": "rosapi/Services",
+            "service": "/rosapi/action_servers",
+            "type": "rosapi/ActionServers",
             "args": {},
-            "id": "check_services_for_get_actions",
+            "id": "get_actions_request_1",
         }
 
-        services_response = ws_manager.request(services_message)
-        if not services_response or not isinstance(services_response, dict):
-            return {
-                "warning": "Cannot check service availability",
-                "compatibility": {
-                    "issue": "Cannot determine available services",
-                    "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available",
-                },
-            }
+        # Request action list from rosbridge
+        with ws_manager:
+            response = ws_manager.request(message)
 
-        available_services = services_response.get("values", {}).get("services", [])
-        missing_services = [svc for svc in required_services if svc not in available_services]
+        # Handle error responses from ws_manager
+        if response and "error" in response:
+            return {"error": f"WebSocket error: {response['error']}"}
 
-        if missing_services:
-            return {
-                "warning": "Action listing not supported by this rosbridge/rosapi version",
-                "compatibility": {
-                    "issue": "Required action services are not available",
-                    "missing_services": missing_services,
-                    "required_services": required_services,
-                    "available_services": [s for s in available_services if "action" in s],
-                    "suggestion": "This rosbridge version doesn't support action listing services",
-                },
-            }
+        # Check for service response errors first
+        if response and "result" in response and not response["result"]:
+            # Service call failed - return error with details from values
+            if "values" in response and isinstance(response["values"], dict):
+                error_msg = response["values"].get("message", "Service call failed")
+            else:
+                error_msg = "Service call failed"
+            return {"error": f"Service call failed: {error_msg}"}
 
-    # rosbridge service call to get action list
-    message = {
-        "op": "call_service",
-        "service": "/rosapi/action_servers",
-        "type": "rosapi/ActionServers",
-        "args": {},
-        "id": "get_actions_request_1",
-    }
-
-    # Request action list from rosbridge
-    with ws_manager:
-        response = ws_manager.request(message)
-
-    # Handle error responses from ws_manager
-    if response and "error" in response:
-        return {"error": f"WebSocket error: {response['error']}"}
-
-    # Check for service response errors first
-    if response and "result" in response and not response["result"]:
-        # Service call failed - return error with details from values
-        if "values" in response and isinstance(response["values"], dict):
-            error_msg = response["values"].get("message", "Service call failed")
+        # Return action info if present
+        if response and "values" in response:
+            actions = response["values"].get("action_servers", [])
+            return {"actions": actions, "action_count": len(actions)}
         else:
-            error_msg = "Service call failed"
-        return {"error": f"Service call failed: {error_msg}"}
+            return {"warning": "No actions found or /rosapi/action_servers service not available"}
 
-    # Return action info if present
-    if response and "values" in response:
-        actions = response["values"].get("action_servers", [])
-        return {"actions": actions, "action_count": len(actions)}
-    else:
-        return {"warning": "No actions found or /rosapi/action_servers service not available"}
+    @mcp.tool(
+        description=(
+            "Get complete action details including type, goal, result, and feedback structures. Works only with ROS 2.\n"
+            "Example:\nget_action_details('/turtle1/rotate_absolute')"
+        )
+    )
+    def get_action_details(action: str) -> dict:
+        """Get complete action details including type, goal, result, and feedback structures. Works only with ROS 2."""
+        # Validate input
+        if not action or not action.strip():
+            return {"error": "Action name cannot be empty"}
 
+        # First, get the action type
+        action_type = "unknown"
+        
+        # Check if required service is available
+        required_services = ["/rosapi/interfaces"]
 
-def get_action_type_impl(ws_manager: WebSocketManager, action: str) -> dict:
-    """
-    Get the action type for a specific action. Works only with ROS 2.
+        with ws_manager:
+            # Get available services to check compatibility
+            services_message = {
+                "op": "call_service",
+                "service": "/rosapi/services",
+                "type": "rosapi/Services",
+                "args": {},
+                "id": "check_services_for_get_action_type",
+            }
 
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
-        action (str): The action name (e.g., '/turtle1/rotate_absolute')
+            services_response = ws_manager.request(services_message)
+            if not services_response or not isinstance(services_response, dict):
+                return {
+                    "warning": "Cannot check service availability",
+                    "action": action,
+                    "compatibility": {
+                        "issue": "Cannot determine available services",
+                        "required_services": required_services,
+                        "suggestion": "Ensure rosbridge is running and rosapi is available",
+                    },
+                }
 
-    Returns:
-        dict: Contains the action type,
-            or an error message if action doesn't exist.
-    """
-    # Validate input
-    if not action or not action.strip():
-        return {"error": "Action name cannot be empty"}
+            available_services = services_response.get("values", {}).get("services", [])
+            missing_services = [svc for svc in required_services if svc not in available_services]
 
-    # Check if required service is available
-    required_services = ["/rosapi/interfaces"]
+            if missing_services:
+                return {
+                    "warning": "Action type resolution not supported by this rosbridge/rosapi version",
+                    "action": action,
+                    "compatibility": {
+                        "issue": "Required services are not available",
+                        "missing_services": missing_services,
+                        "required_services": required_services,
+                        "available_services": [s for s in available_services if "interface" in s],
+                        "suggestion": "This rosbridge version doesn't support interface listing services",
+                    },
+                }
 
-    with ws_manager:
-        # Get available services to check compatibility
-        services_message = {
-            "op": "call_service",
-            "service": "/rosapi/services",
-            "type": "rosapi/Services",
-            "args": {},
-            "id": "check_services_for_get_action_type",
+        # Known action type mappings
+        action_type_map = {
+            "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
+            # Add more mappings as needed
         }
 
-        services_response = ws_manager.request(services_message)
-        if not services_response or not isinstance(services_response, dict):
+        # Check if it's a known action
+        if action in action_type_map:
+            action_type = action_type_map[action]
+        else:
+            # For unknown actions, try to derive the type from interfaces list
+            interfaces_message = {
+                "op": "call_service",
+                "service": "/rosapi/interfaces",
+                "type": "rosapi/Interfaces",
+                "args": {},
+                "id": f"get_interfaces_for_action_{action.replace('/', '_')}",
+            }
+
+            with ws_manager:
+                interfaces_response = ws_manager.request(interfaces_message)
+
+            if interfaces_response and "values" in interfaces_response:
+                interfaces = interfaces_response["values"].get("interfaces", [])
+                # Look for action interfaces that might match
+                action_interfaces = [iface for iface in interfaces if "/action/" in iface]
+                # Try to match based on action name patterns
+                action_name_part = action.split("/")[-1]  # Get last part (e.g., "rotate_absolute")
+                for iface in action_interfaces:
+                    if action_name_part.lower() in iface.lower():
+                        action_type = iface
+                        break
+
+        if action_type == "unknown":
             return {
-                "warning": "Cannot check service availability",
+                "error": f"Action type for {action} not found",
                 "action": action,
-                "compatibility": {
-                    "issue": "Cannot determine available services",
-                    "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available",
-                },
+                "available_action_types": action_interfaces if 'action_interfaces' in locals() else [],
+                "suggestion": "This action might not be available or use a different naming pattern",
             }
 
-        available_services = services_response.get("values", {}).get("services", [])
-        missing_services = [svc for svc in required_services if svc not in available_services]
+        # Now get action details using the action type
+        result = {"action": action, "action_type": action_type, "goal": {}, "result": {}, "feedback": {}}
 
-        if missing_services:
-            return {
-                "warning": "Action type resolution not supported by this rosbridge/rosapi version",
-                "action": action,
-                "compatibility": {
-                    "issue": "Required services are not available",
-                    "missing_services": missing_services,
-                    "required_services": required_services,
-                    "available_services": [s for s in available_services if "interface" in s],
-                    "suggestion": "This rosbridge version doesn't support interface listing services",
-                },
+        # Check if required action detail services are available
+        required_detail_services = [
+            "/rosapi/action_goal_details",
+            "/rosapi/action_result_details",
+            "/rosapi/action_feedback_details",
+        ]
+
+        with ws_manager:
+            # Get available services to check compatibility
+            services_message = {
+                "op": "call_service",
+                "service": "/rosapi/services",
+                "type": "rosapi/Services",
+                "args": {},
+                "id": "check_services_for_action_details",
             }
 
-    # Known action type mappings
-    action_type_map = {
-        "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
-        # Add more mappings as needed
-    }
+            services_response = ws_manager.request(services_message)
+            if not services_response or not isinstance(services_response, dict):
+                return {
+                    "error": "Failed to check service availability",
+                    "action": action,
+                    "action_type": action_type,
+                    "compatibility": {
+                        "issue": "Cannot determine available services",
+                        "required_services": required_detail_services,
+                        "suggestion": "Ensure rosbridge is running and rosapi is available",
+                    },
+                }
 
-    # Check if it's a known action
-    if action in action_type_map:
-        return {"action": action, "type": action_type_map[action]}
+            available_services = services_response.get("values", {}).get("services", [])
+            missing_services = [svc for svc in required_detail_services if svc not in available_services]
 
-    # For unknown actions, try to derive the type from interfaces list
-    interfaces_message = {
-        "op": "call_service",
-        "service": "/rosapi/interfaces",
-        "type": "rosapi/Interfaces",
-        "args": {},
-        "id": f"get_interfaces_for_action_{action.replace('/', '_')}",
-    }
+            if missing_services:
+                # Return what we have (action type) even if details aren't available
+                return {
+                    "action": action,
+                    "action_type": action_type,
+                    "goal": {},
+                    "result": {},
+                    "feedback": {},
+                    "compatibility": {
+                        "issue": "Required action detail services are not available",
+                        "missing_services": missing_services,
+                        "required_services": required_detail_services,
+                        "available_services": [s for s in available_services if "action" in s],
+                        "note": "Action type found, but detailed structures are not available",
+                    },
+                }
 
-    with ws_manager:
-        interfaces_response = ws_manager.request(interfaces_message)
-
-    if interfaces_response and "values" in interfaces_response:
-        interfaces = interfaces_response["values"].get("interfaces", [])
-
-        # Look for action interfaces that might match
-        action_interfaces = [iface for iface in interfaces if "/action/" in iface]
-
-        # Try to match based on action name patterns
-        action_name_part = action.split("/")[-1]  # Get last part (e.g., "rotate_absolute")
-
-        for iface in action_interfaces:
-            if action_name_part.lower() in iface.lower():
-                return {"action": action, "type": iface}
-
-        # If no exact match, return the list of available action interfaces
-        return {
-            "error": f"Action type for {action} not found",
-            "available_action_types": action_interfaces,
-            "suggestion": "This action might not be available or use a different naming pattern",
-        }
-
-    return {
-        "error": f"Failed to get type for action {action}",
-        "action": action,
-        "compatibility": {
-            "issue": "Failed to retrieve interfaces from rosapi",
-            "required_services": ["/rosapi/interfaces"],
-            "suggestion": "Ensure rosbridge is running and rosapi is available",
-            "note": "Action type resolution requires /rosapi/interfaces service",
-        },
-    }
-
-
-def get_action_details_impl(ws_manager: WebSocketManager, action_type: str) -> dict:
-    """
-    Get complete action details including goal, result, and feedback structures. Works only with ROS 2.
-
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
-        action_type (str): The action type (e.g., 'turtlesim/action/RotateAbsolute')
-
-    Returns:
-        dict: Contains complete action definition with goal, result, and feedback structures.
-    """
-    # Validate input
-    if not action_type or not action_type.strip():
-        return {"error": "Action type cannot be empty"}
-
-    # Check if required action detail services are available
-    required_services = [
-        "/rosapi/action_goal_details",
-        "/rosapi/action_result_details",
-        "/rosapi/action_feedback_details",
-    ]
-
-    with ws_manager:
-        # Get available services to check compatibility
-        services_message = {
-            "op": "call_service",
-            "service": "/rosapi/services",
-            "type": "rosapi/Services",
-            "args": {},
-            "id": "check_services_for_action_details",
-        }
-
-        services_response = ws_manager.request(services_message)
-        if not services_response or not isinstance(services_response, dict):
-            return {
-                "error": "Failed to check service availability",
-                "action_type": action_type,
-                "compatibility": {
-                    "issue": "Cannot determine available services",
-                    "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available",
-                },
-            }
-
-        available_services = services_response.get("values", {}).get("services", [])
-        missing_services = [svc for svc in required_services if svc not in available_services]
-
-        if missing_services:
-            return {
-                "error": f"Action details for {action_type} not found",
-                "action_type": action_type,
-                "compatibility": {
-                    "issue": "Required action detail services are not available",
-                    "missing_services": missing_services,
-                    "required_services": required_services,
-                    "available_services": [s for s in available_services if "action" in s],
-                    "suggestions": [
-                        "Use get_actions() to list available actions",
-                        "Use get_action_type() to get action type from action name",
-                        "Action details may not be exposed by this rosbridge/rosapi version",
-                        "Consider subscribing to action topics directly for live message inspection",
-                    ],
-                    "note": "Action detail services (/rosapi/action_*_details) are not part of standard rosapi",
-                },
-            }
-
-    result = {"action_type": action_type, "goal": {}, "result": {}, "feedback": {}}
-
-    # Get goal, result, and feedback details in a single WebSocket context
-    with ws_manager:
+            # Get goal, result, and feedback details
         # Get goal details using action-specific service
         goal_message = {
             "op": "call_service",
@@ -410,470 +381,15 @@ def get_action_details_impl(ws_manager: WebSocketManager, action_type: str) -> d
                         "constants": dict(zip(const_names, const_values)) if const_names else {},
                     }
 
-    # Check if we got any data
-    if not result["goal"] and not result["result"] and not result["feedback"]:
-        return {"error": f"Action type {action_type} not found or has no definition"}
-
-    return result
-
-
-def get_action_status_impl(ws_manager: WebSocketManager, action_name: str) -> dict:
-    """
-    Get action status for a specific action name. Works only with ROS 2.
-
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
-        action_name (str): The action name (e.g., '/fibonacci')
-
-    Returns:
-        dict: Contains action status information including active goals and their status.
-    """
-    # Validate input
-    if not action_name or not action_name.strip():
-        return {"error": "Action name cannot be empty"}
-
-    # Ensure action name starts with /
-    if not action_name.startswith("/"):
-        action_name = f"/{action_name}"
-
-    # Try to get action status by subscribing to the status topic
-    status_topic = f"{action_name}/_action/status"
-    status_msg_type = "action_msgs/msg/GoalStatusArray"
-
-    try:
-        # Subscribe to action status topic
-        with ws_manager:
-            message = {
-                "op": "subscribe",
-                "topic": status_topic,
-                "type": status_msg_type,
-                "id": f"get_action_status_{action_name.replace('/', '_')}",
-            }
-
-            send_error = ws_manager.send(message)
-            if send_error:
-                return {
-                    "action_name": action_name,
-                    "success": False,
-                    "error": f"Failed to subscribe to status topic: {send_error}",
-                }
-
-            # Wait for status message
-            response = ws_manager.receive(timeout=3.0)
-            if not response:
-                return {
-                    "action_name": action_name,
-                    "success": False,
-                    "error": "No response from action status topic",
-                }
-
-            response_data = json.loads(response)
-
-            if response_data.get("op") == "status" and response_data.get("level") == "error":
-                return {
-                    "error": f"Action status error: {response_data.get('msg', 'Unknown error')}"
-                }
-
-            if "msg" not in response_data or "status_list" not in response_data["msg"]:
-                return {
-                    "action_name": action_name,
-                    "success": True,
-                    "active_goals": [],
-                    "goal_count": 0,
-                    "note": f"No active goals found for action {action_name}",
-                }
-
-            status_list = response_data["msg"]["status_list"]
-            status_map = {
-                0: "STATUS_UNKNOWN",
-                1: "STATUS_ACCEPTED",
-                2: "STATUS_EXECUTING",
-                3: "STATUS_CANCELING",
-                4: "STATUS_SUCCEEDED",
-                5: "STATUS_CANCELED",
-                6: "STATUS_ABORTED",
-            }
-
-            active_goals = []
-            for status_item in status_list:
-                goal_info = status_item.get("goal_info", {})
-                goal_id = goal_info.get("goal_id", {}).get("uuid", "unknown")
-                status = status_item.get("status", -1)
-                stamp = goal_info.get("stamp", {})
-
-                active_goals.append(
-                    {
-                        "goal_id": goal_id,
-                        "status": status,
-                        "status_text": status_map.get(status, "UNKNOWN"),
-                        "timestamp": f"{stamp.get('sec', 0)}.{stamp.get('nanosec', 0)}",
-                    }
-                )
-
+        # Check if we got any data
+        if not result["goal"] and not result["result"] and not result["feedback"]:
             return {
-                "action_name": action_name,
-                "success": True,
-                "active_goals": active_goals,
-                "goal_count": len(active_goals),
-                "note": f"Found {len(active_goals)} active goal(s) for action {action_name}",
-            }
-
-    except json.JSONDecodeError as e:
-        return {"error": f"Failed to parse status response: {str(e)}"}
-    except Exception as e:
-        return {
-            "action_name": action_name,
-            "success": False,
-            "error": f"Failed to get action status: {str(e)}",
-        }
-
-
-def inspect_all_actions_impl(ws_manager: WebSocketManager) -> dict:
-    """
-    Get comprehensive information about all actions including types and available actions. Works only with ROS 2.
-
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
-
-    Returns:
-        dict: Contains detailed information about all actions,
-            including action names, types, and server information.
-    """
-    # Check if required action services are available
-    required_services = ["/rosapi/action_servers"]
-
-    with ws_manager:
-        # Get available services to check compatibility
-        services_message = {
-            "op": "call_service",
-            "service": "/rosapi/services",
-            "type": "rosapi/Services",
-            "args": {},
-            "id": "check_services_for_inspect_actions",
-        }
-
-        services_response = ws_manager.request(services_message)
-        if not services_response or not isinstance(services_response, dict):
-            return {
-                "error": "Failed to check service availability",
-                "compatibility": {
-                    "issue": "Cannot determine available services",
-                    "required_services": required_services,
-                    "suggestion": "Ensure rosbridge is running and rosapi is available",
-                },
-            }
-
-        available_services = services_response.get("values", {}).get("services", [])
-        missing_services = [svc for svc in required_services if svc not in available_services]
-
-        if missing_services:
-            return {
-                "error": "Action inspection not supported by this rosbridge/rosapi version",
-                "compatibility": {
-                    "issue": "Required action services are not available",
-                    "missing_services": missing_services,
-                    "required_services": required_services,
-                    "available_services": [s for s in available_services if "action" in s],
-                    "suggestions": [
-                        "This rosbridge version doesn't support action inspection services",
-                        "Use get_actions() to list available actions",
-                        "Consider upgrading rosbridge or using a different implementation",
-                    ],
-                    "note": "Action inspection requires /rosapi/action_servers service",
-                },
-            }
-
-    # First get all actions
-    actions_message = {
-        "op": "call_service",
-        "service": "/rosapi/action_servers",
-        "type": "rosapi/ActionServers",
-        "args": {},
-        "id": "inspect_all_actions_request_1",
-    }
-
-    with ws_manager:
-        actions_response = ws_manager.request(actions_message)
-
-        if not actions_response or "values" not in actions_response:
-            return {"error": "Failed to get actions list"}
-
-        actions = actions_response["values"].get("action_servers", [])
-        action_details = {}
-
-        # Get details for each action
-        action_errors = []
-        for action in actions:
-            # Try to get action type (this may not always work due to rosapi limitations)
-            action_type = "unknown"
-
-            # Known action type mappings for common actions
-            action_type_map = {
-                "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
-                # Add more mappings as needed based on common ROS actions
-            }
-
-            if action in action_type_map:
-                action_type = action_type_map[action]
-            else:
-                # Try to derive from interfaces
-                interfaces_message = {
-                    "op": "call_service",
-                    "service": "/rosapi/interfaces",
-                    "type": "rosapi/Interfaces",
-                    "args": {},
-                    "id": f"get_interfaces_{action.replace('/', '_')}",
-                }
-
-                interfaces_response = ws_manager.request(interfaces_message)
-                if interfaces_response and "values" in interfaces_response:
-                    interfaces = interfaces_response["values"].get("interfaces", [])
-                    action_interfaces = [iface for iface in interfaces if "/action/" in iface]
-
-                    # Try to match based on action name patterns
-                    action_name_part = action.split("/")[-1]
-                    for iface in action_interfaces:
-                        if action_name_part.lower() in iface.lower():
-                            action_type = iface
-                            break
-
-            action_details[action] = {
-                "type": action_type,
-                "status": "available" if action_type != "unknown" else "type_unknown",
-            }
-
-        return {
-            "total_actions": len(actions),
-            "actions": action_details,
-            "action_errors": action_errors,
-        }
-
-
-async def send_action_goal_impl(
-    ws_manager: WebSocketManager,
-    action_name: str,
-    action_type: str,
-    goal: dict,
-    timeout: float | None = None,
-    ctx: Context | None = None,
-) -> dict:
-    """
-    Send a goal to a ROS action server. Works only with ROS 2.
-
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
-        action_name (str): The name of the action to call (e.g., '/turtle1/rotate_absolute')
-        action_type (str): The type of the action (e.g., 'turtlesim/action/RotateAbsolute')
-        goal (dict): The goal message to send
-        timeout (float, optional): Timeout for action completion in seconds. Default is None (uses default timeout).
-        ctx: FastMCP Context for progress reporting
-
-    Returns:
-        dict: Contains action response including goal_id, status, and result.
-    """
-    # Validate inputs
-    if not action_name or not action_name.strip():
-        return {"error": "Action name cannot be empty"}
-
-    if not action_type or not action_type.strip():
-        return {"error": "Action type cannot be empty"}
-
-    if not goal:
-        return {"error": "Goal cannot be empty"}
-
-    # Generate unique goal ID
-    goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
-
-    # rosbridge action goal message
-    # Based on rosbridge source code, it expects "args" instead of "goal"
-    message = {
-        "op": "send_action_goal",
-        "id": goal_id,
-        "action": action_name,
-        "action_type": action_type,
-        "args": goal,  # rosbridge expects "args" not "goal"
-        "feedback": True,  # Enable feedback messages
-    }
-
-    # Send the action goal through rosbridge
-    with ws_manager:
-        send_error = ws_manager.send(message)
-        if send_error:
-            return {
-                "action": action_name,
+                "action": action,
                 "action_type": action_type,
-                "success": False,
-                "error": f"Failed to send action goal: {send_error}",
+                "error": f"Action type {action_type} found but has no definition",
             }
-
-        # Wait for action completion - handle both action_result and action_feedback
-        actual_timeout = timeout if timeout is not None else 10.0  # Default 10 seconds
-        start_time = time.time()
-        last_feedback = None  # Store the last feedback message
-        feedback_count = 0  # Count feedback messages received
-
-        while time.time() - start_time < actual_timeout:
-            elapsed_time = time.time() - start_time
-
-            response = ws_manager.receive(timeout=actual_timeout - elapsed_time)
-
-            if response:
-                try:
-                    msg_data = json.loads(response)
-
-                    # Handle action_result messages (final completion)
-                    if msg_data.get("op") == "action_result":
-                        # Report completion
-                        if ctx:
-                            try:
-                                completion_msg = f"Action completed successfully (received {feedback_count} feedback messages)"
-                                await ctx.report_progress(
-                                    progress=feedback_count, total=None, message=completion_msg
-                                )
-                            except Exception:
-                                pass
-
-                        return {
-                            "action": action_name,
-                            "action_type": action_type,
-                            "success": True,
-                            "goal_id": goal_id,
-                            "status": msg_data.get("status", "unknown"),
-                            "result": msg_data.get("values", {}),
-                        }
-
-                    # Store action_feedback messages and report progress
-                    if msg_data.get("op") == "action_feedback":
-                        feedback_count += 1
-                        last_feedback = msg_data
-
-                        # Report feedback progress
-                        if ctx:
-                            try:
-                                feedback_values = msg_data.get("values", {})
-                                feedback_msg = f"Action feedback #{feedback_count}: {str(feedback_values)[:100]}..."
-                                await ctx.report_progress(
-                                    progress=feedback_count, total=None, message=feedback_msg
-                                )
-                            except Exception:
-                                pass
-
-                except json.JSONDecodeError:
-                    continue
-            else:
-                # No response received, continue waiting
-                pass
-
-            await asyncio.sleep(0.1)
-
-        # Timeout - return last feedback if available
-        if ctx and feedback_count > 0:
-            try:
-                await ctx.report_progress(
-                    progress=feedback_count,
-                    total=None,
-                    message=f"Action timed out after {actual_timeout} seconds (received {feedback_count} feedback messages)",
-                )
-            except Exception:
-                pass
-
-        result = {
-            "action": action_name,
-            "action_type": action_type,
-            "success": False,
-            "goal_id": goal_id,
-            "error": f"Action timed out after {actual_timeout} seconds",
-        }
-
-        if last_feedback:
-            result["success"] = True
-            result["last_feedback"] = last_feedback.get("values", {})
-            result["note"] = "Action timed out, but partial progress was made"
 
         return result
-
-
-def cancel_action_goal_impl(ws_manager: WebSocketManager, action_name: str, goal_id: str) -> dict:
-    """
-    Cancel a specific action goal. Works only with ROS 2.
-
-    Args:
-        ws_manager: WebSocketManager instance to use for ROS connections
-        action_name (str): The name of the action (e.g., '/turtle1/rotate_absolute')
-        goal_id (str): The goal ID to cancel
-
-    Returns:
-        dict: Contains cancellation status and result.
-    """
-    # Validate inputs
-    if not action_name or not action_name.strip():
-        return {"error": "Action name cannot be empty"}
-
-    if not goal_id or not goal_id.strip():
-        return {"error": "Goal ID cannot be empty"}
-
-    # Create cancel message for rosbridge (based on rosbridge source code)
-    cancel_message = {
-        "op": "cancel_action_goal",
-        "id": goal_id,  # Use the actual goal ID, not a new one
-        "action": action_name,
-        "feedback": True,  # Enable feedback messages
-    }
-
-    # Send the cancel request through rosbridge
-    with ws_manager:
-        # Send cancel request
-        send_error = ws_manager.send(cancel_message)
-        if send_error:
-            return {
-                "action": action_name,
-                "goal_id": goal_id,
-                "success": False,
-                "error": f"Failed to send cancel request: {send_error}",
-            }
-
-    return {
-        "action": action_name,
-        "goal_id": goal_id,
-        "success": True,
-        "note": "Cancel request sent successfully. Action may still be executing.",
-    }
-
-
-def register_action_tools(
-    mcp: FastMCP,
-    ws_manager: WebSocketManager,
-) -> None:
-    """Register all action-related tools."""
-
-    @mcp.tool(
-        description=(
-            "Get list of all available ROS actions. Works only with ROS 2.\nExample:\nget_actions()"
-        )
-    )
-    def get_actions() -> dict:
-        """Get list of all available ROS actions. Works only with ROS 2."""
-        return get_actions_impl(ws_manager)
-
-    @mcp.tool(
-        description=(
-            "Get the action type for a specific action. Works only with ROS 2.\n"
-            "Example:\nget_action_type('/turtle1/rotate_absolute')"
-        )
-    )
-    def get_action_type(action: str) -> dict:
-        """Get the action type for a specific action. Works only with ROS 2."""
-        return get_action_type_impl(ws_manager, action)
-
-    @mcp.tool(
-        description=(
-            "Get complete action details including goal, result, and feedback structures. Works only with ROS 2.\n"
-            "Example:\nget_action_details('turtlesim/action/RotateAbsolute')"
-        )
-    )
-    def get_action_details(action_type: str) -> dict:
-        """Get complete action details including goal, result, and feedback structures. Works only with ROS 2."""
-        return get_action_details_impl(ws_manager, action_type)
 
     @mcp.tool(
         description=(
@@ -883,17 +399,107 @@ def register_action_tools(
     )
     def get_action_status(action_name: str) -> dict:
         """Get action status for a specific action name. Works only with ROS 2."""
-        return get_action_status_impl(ws_manager, action_name)
+        # Validate input
+        if not action_name or not action_name.strip():
+            return {"error": "Action name cannot be empty"}
 
-    @mcp.tool(
-        description=(
-            "Get comprehensive information about all actions including types and available actions. Works only with ROS 2.\n"
-            "Example:\ninspect_all_actions()"
-        )
-    )
-    def inspect_all_actions() -> dict:
-        """Get comprehensive information about all actions including types and available actions. Works only with ROS 2."""
-        return inspect_all_actions_impl(ws_manager)
+        # Ensure action name starts with /
+        if not action_name.startswith("/"):
+            action_name = f"/{action_name}"
+
+        # Try to get action status by subscribing to the status topic
+        status_topic = f"{action_name}/_action/status"
+        status_msg_type = "action_msgs/msg/GoalStatusArray"
+
+        try:
+            # Subscribe to action status topic
+            with ws_manager:
+                message = {
+                    "op": "subscribe",
+                    "topic": status_topic,
+                    "type": status_msg_type,
+                    "id": f"get_action_status_{action_name.replace('/', '_')}",
+                }
+
+                send_error = ws_manager.send(message)
+                if send_error:
+                    return {
+                        "action_name": action_name,
+                        "success": False,
+                        "error": f"Failed to subscribe to status topic: {send_error}",
+                    }
+
+                # Wait for status message
+                response = ws_manager.receive(timeout=3.0)
+                if not response:
+                    return {
+                        "action_name": action_name,
+                        "success": False,
+                        "error": "No response from action status topic",
+                    }
+
+                response_data = json.loads(response)
+
+                if response_data.get("op") == "status" and response_data.get("level") == "error":
+                    return {
+                        "error": f"Action status error: {response_data.get('msg', 'Unknown error')}"
+                    }
+
+                if "msg" not in response_data or "status_list" not in response_data["msg"]:
+                    return {
+                        "action_name": action_name,
+                        "success": True,
+                        "active_goals": [],
+                        "goal_count": 0,
+                        "note": f"No active goals found for action {action_name}",
+                    }
+
+                status_list = response_data["msg"]["status_list"]
+                status_map = {
+                    0: "STATUS_UNKNOWN",
+                    1: "STATUS_ACCEPTED",
+                    2: "STATUS_EXECUTING",
+                    3: "STATUS_CANCELING",
+                    4: "STATUS_SUCCEEDED",
+                    5: "STATUS_CANCELED",
+                    6: "STATUS_ABORTED",
+                }
+
+                active_goals = []
+                for status_item in status_list:
+                    goal_info = status_item.get("goal_info", {})
+                    goal_id = goal_info.get("goal_id", {}).get("uuid", "unknown")
+                    status = status_item.get("status", -1)
+                    stamp = goal_info.get("stamp", {})
+
+                    active_goals.append(
+                        {
+                            "goal_id": goal_id,
+                            "status": status,
+                            "status_text": status_map.get(status, "UNKNOWN"),
+                            "timestamp": f"{stamp.get('sec', 0)}.{stamp.get('nanosec', 0)}",
+                        }
+                    )
+
+                # Unsubscribe
+                ws_manager.send({"op": "unsubscribe", "topic": status_topic})
+
+                return {
+                    "action_name": action_name,
+                    "success": True,
+                    "active_goals": active_goals,
+                    "goal_count": len(active_goals),
+                    "note": f"Found {len(active_goals)} active goal(s) for action {action_name}",
+                }
+
+        except json.JSONDecodeError as e:
+            return {"error": f"Failed to parse status response: {str(e)}"}
+        except Exception as e:
+            return {
+                "action_name": action_name,
+                "success": False,
+                "error": f"Failed to get action status: {str(e)}",
+            }
 
     @mcp.tool(
         description=(
@@ -909,7 +515,126 @@ def register_action_tools(
         ctx: Context | None = None,
     ) -> dict:
         """Send a goal to a ROS action server. Works only with ROS 2."""
-        return await send_action_goal_impl(ws_manager, action_name, action_type, goal, timeout, ctx)
+        # Validate inputs
+        if not action_name or not action_name.strip():
+            return {"error": "Action name cannot be empty"}
+
+        if not action_type or not action_type.strip():
+            return {"error": "Action type cannot be empty"}
+
+        if not goal:
+            return {"error": "Goal cannot be empty"}
+
+        # Generate unique goal ID
+        goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
+
+        # rosbridge action goal message
+        # Based on rosbridge source code, it expects "args" instead of "goal"
+        message = {
+            "op": "send_action_goal",
+            "id": goal_id,
+            "action": action_name,
+            "action_type": action_type,
+            "args": goal,  # rosbridge expects "args" not "goal"
+            "feedback": True,  # Enable feedback messages
+        }
+
+        # Send the action goal through rosbridge
+        with ws_manager:
+            send_error = ws_manager.send(message)
+            if send_error:
+                return {
+                    "action": action_name,
+                    "action_type": action_type,
+                    "success": False,
+                    "error": f"Failed to send action goal: {send_error}",
+                }
+
+            # Wait for action completion - handle both action_result and action_feedback
+            actual_timeout = timeout if timeout is not None else 10.0  # Default 10 seconds
+            start_time = time.time()
+            last_feedback = None  # Store the last feedback message
+            feedback_count = 0  # Count feedback messages received
+
+            while time.time() - start_time < actual_timeout:
+                elapsed_time = time.time() - start_time
+
+                response = ws_manager.receive(timeout=actual_timeout - elapsed_time)
+
+                if response:
+                    try:
+                        msg_data = json.loads(response)
+
+                        # Handle action_result messages (final completion)
+                        if msg_data.get("op") == "action_result":
+                            # Report completion
+                            if ctx:
+                                try:
+                                    completion_msg = f"Action completed successfully (received {feedback_count} feedback messages)"
+                                    await ctx.report_progress(
+                                        progress=feedback_count, total=None, message=completion_msg
+                                    )
+                                except Exception:
+                                    pass
+
+                            return {
+                                "action": action_name,
+                                "action_type": action_type,
+                                "success": True,
+                                "goal_id": goal_id,
+                                "status": msg_data.get("status", "unknown"),
+                                "result": msg_data.get("values", {}),
+                            }
+
+                        # Store action_feedback messages and report progress
+                        if msg_data.get("op") == "action_feedback":
+                            feedback_count += 1
+                            last_feedback = msg_data
+
+                            # Report feedback progress
+                            if ctx:
+                                try:
+                                    feedback_values = msg_data.get("values", {})
+                                    feedback_msg = f"Action feedback #{feedback_count}: {str(feedback_values)[:100]}..."
+                                    await ctx.report_progress(
+                                        progress=feedback_count, total=None, message=feedback_msg
+                                    )
+                                except Exception:
+                                    pass
+
+                    except json.JSONDecodeError:
+                        continue
+                else:
+                    # No response received, continue waiting
+                    pass
+
+                await asyncio.sleep(0.1)
+
+            # Timeout - return last feedback if available
+            if ctx and feedback_count > 0:
+                try:
+                    await ctx.report_progress(
+                        progress=feedback_count,
+                        total=None,
+                        message=f"Action timed out after {actual_timeout} seconds (received {feedback_count} feedback messages)",
+                    )
+                except Exception:
+                    pass
+
+            result = {
+                "action": action_name,
+                "action_type": action_type,
+                "success": False,
+                "goal_id": goal_id,
+                "error": f"Action timed out after {actual_timeout} seconds",
+            }
+
+            if last_feedback:
+                result["success"] = True
+                result["last_feedback"] = last_feedback.get("values", {})
+                result["note"] = "Action timed out, but partial progress was made"
+
+            return result
 
     @mcp.tool(
         description=(
@@ -919,4 +644,36 @@ def register_action_tools(
     )
     def cancel_action_goal(action_name: str, goal_id: str) -> dict:
         """Cancel a specific action goal. Works only with ROS 2."""
-        return cancel_action_goal_impl(ws_manager, action_name, goal_id)
+        # Validate inputs
+        if not action_name or not action_name.strip():
+            return {"error": "Action name cannot be empty"}
+
+        if not goal_id or not goal_id.strip():
+            return {"error": "Goal ID cannot be empty"}
+
+        # Create cancel message for rosbridge (based on rosbridge source code)
+        cancel_message = {
+            "op": "cancel_action_goal",
+            "id": goal_id,  # Use the actual goal ID, not a new one
+            "action": action_name,
+            "feedback": True,  # Enable feedback messages
+        }
+
+        # Send the cancel request through rosbridge
+        with ws_manager:
+            # Send cancel request
+            send_error = ws_manager.send(cancel_message)
+            if send_error:
+                return {
+                    "action": action_name,
+                    "goal_id": goal_id,
+                    "success": False,
+                    "error": f"Failed to send cancel request: {send_error}",
+                }
+
+        return {
+            "action": action_name,
+            "goal_id": goal_id,
+            "success": True,
+            "note": "Cancel request sent successfully. Action may still be executing.",
+        }
