@@ -178,7 +178,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 "service": "/rosapi/nodes",
                 "type": "rosapi/Nodes",
                 "args": {},
-                "id": "inspect_all_nodes_request_1",
+                "id": "get_nodes_request",
             }
 
             with ws_manager:
