@@ -142,4 +142,3 @@ Test service calls:
 - Check ROS metadata: `ros-mcp://ros-metadata/all`
 - List verified robots: `ros-mcp://robot-specs/get_verified_robots_list`
 """
-
