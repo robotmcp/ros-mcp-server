@@ -96,6 +96,60 @@ Tools are the primary interface for interacting with ROS systems. They are organ
 | **Images** | `images.py` | 1 | Image analysis and processing |
 
 
+#### Tool Template
+
+All tools follow a consistent pattern with decorator, description, and comprehensive docstring:
+
+```python
+def register_category_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> None:
+    """Register all category-related tools."""
+
+    @mcp.tool(
+        description=(
+            "Brief description of what the tool does.\n"
+            "Example:\n"
+            "tool_name(param1='value1', param2=123)"
+        )
+    )
+    def tool_name(param1: str, param2: int = 0) -> dict:
+        """
+        Comprehensive description of the tool's functionality.
+
+        Args:
+            param1 (str): Description of parameter 1 (e.g., 'example value')
+            param2 (int): Description of parameter 2 (e.g., 123). Default is 0.
+
+        Returns:
+            dict: Contains result data with specific fields,
+                or an error message if operation fails.
+        """
+        # Implementation logic here
+        # Use ws_manager for ROS communication
+        with ws_manager:
+            # Tool implementation
+            pass
+        
+        return {"result": "data"}
+```
+
+**Key Components:**
+
+1. **Decorator** (`@mcp.tool`):
+   - Contains `description` parameter with brief explanation
+   - Includes usage examples when helpful
+   - Description is visible to LLMs for tool selection
+
+2. **Function Docstring**:
+   - Comprehensive description of functionality
+   - **Args section**: Documents all parameters with types, descriptions, and examples
+   - **Returns section**: Documents return value structure and possible error cases
+   - Docstring is for developer reference and IDE tooltips
+
+3. **Implementation**:
+   - Inline implementation 
+   - Uses `ws_manager` context manager for ROS communication when needed
+   - Returns structured dictionaries with consistent error handling
+
 #### Public API
 
 The main registration function in `tools/__init__.py`:
