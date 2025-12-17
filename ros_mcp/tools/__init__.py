@@ -17,7 +17,7 @@ from ros_mcp.tools.topics import register_topic_tools
 from ros_mcp.utils.websocket import WebSocketManager
 
 
-def register_ros_tools(
+def register_all_tools(
     mcp: FastMCP,
     ws_manager: WebSocketManager,
     rosbridge_ip: str = "127.0.0.1",

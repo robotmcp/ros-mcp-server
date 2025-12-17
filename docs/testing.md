@@ -186,7 +186,7 @@ Returns JSON with:
 }
 ```
 
-## Complete Testing Workflow
+## Complete Tools Testing Workflow
 
 ### 1. Initial Setup and Connection
 
@@ -323,7 +323,7 @@ Access resources to get comprehensive system information:
 ### Tool Issues
 
 - **Tools return empty results:**
-  - Verify turtlesim is running
+  - Verify `turtlesim` is running
   - Check that topics/services/nodes exist
   - Ensure rosbridge is connected
 
