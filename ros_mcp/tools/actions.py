@@ -543,8 +543,8 @@ def register_action_tools(
         action_name: str,
         action_type: str,
         goal: dict,
-        timeout: float | None = None,
-        ctx: Context | None = None,
+        timeout: float = None,
+        ctx: Context = None,
     ) -> dict:
         """
         Send a goal to a ROS action server. Works only with ROS 2.
@@ -553,7 +553,7 @@ def register_action_tools(
             action_name (str): The name of the action to call (e.g., '/turtle1/rotate_absolute')
             action_type (str): The type of the action (e.g., 'turtlesim/action/RotateAbsolute')
             goal (dict): The goal message to send
-            timeout (float, optional): Timeout for action completion in seconds. Default is None (uses default timeout).
+            timeout (float): Timeout for action completion in seconds. If None, uses ws_manager.default_timeout.
 
         Returns:
             dict: Contains action response including goal_id, status, and result.
@@ -567,6 +567,10 @@ def register_action_tools(
 
         if not goal:
             return {"error": "Goal cannot be empty"}
+
+        # Use ws_manager.default_timeout if timeout is None
+        if timeout is None:
+            timeout = ws_manager.default_timeout
 
         # Generate unique goal ID
         goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
@@ -594,15 +598,14 @@ def register_action_tools(
                 }
 
             # Wait for action completion - handle both action_result and action_feedback
-            actual_timeout = timeout if timeout is not None else 10.0  # Default 10 seconds
             start_time = time.time()
             last_feedback = None  # Store the last feedback message
             feedback_count = 0  # Count feedback messages received
 
-            while time.time() - start_time < actual_timeout:
+            while time.time() - start_time < timeout:
                 elapsed_time = time.time() - start_time
 
-                response = ws_manager.receive(timeout=actual_timeout - elapsed_time)
+                response = ws_manager.receive(timeout - elapsed_time)
 
                 if response:
                     try:
@@ -659,7 +662,7 @@ def register_action_tools(
                     await ctx.report_progress(
                         progress=feedback_count,
                         total=None,
-                        message=f"Action timed out after {actual_timeout} seconds (received {feedback_count} feedback messages)",
+                        message=f"Action timed out after {timeout} seconds (received {feedback_count} feedback messages)",
                     )
                 except Exception:
                     pass
@@ -669,7 +672,7 @@ def register_action_tools(
                 "action_type": action_type,
                 "success": False,
                 "goal_id": goal_id,
-                "error": f"Action timed out after {actual_timeout} seconds",
+                "error": f"Action timed out after {timeout} seconds",
             }
 
             if last_feedback:

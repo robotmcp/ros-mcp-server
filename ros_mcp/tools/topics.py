@@ -250,8 +250,8 @@ def register_topic_tools(
             "Subscribe to a ROS topic and return the first message received.\n"
             "Example:\n"
             "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
-            "subscribe_once(topic='/slow_topic', msg_type='my_package/SlowMsg', timeout=None)  # Specify timeout only if topic publishes infrequently\n"
-            "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=None, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
+            "subscribe_once(topic='/slow_topic', msg_type='my_package/SlowMsg', timeout=10.0)  # Use longer timeout for slow topics\n"
+            "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=5.0, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
             "subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image='true')  # Hint that this is an image for faster processing\n"
             "subscribe_once(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', expects_image='false')  # Skip image detection for non-image data"
         )
@@ -270,9 +270,9 @@ def register_topic_tools(
         Args:
             topic (str): The ROS topic name (e.g., "/cmd_vel", "/joint_states").
             msg_type (str): The ROS message type (e.g., "geometry_msgs/Twist").
-            timeout (float | None): Timeout in seconds. If None, uses the default timeout.
-            queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
-            throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+            timeout (float): Timeout in seconds. If None, uses ws_manager.default_timeout.
+            queue_length (int): How many messages to buffer before dropping old ones. Must be ≥ 1. Default is 1.
+            throttle_rate_ms (int): Minimum interval between messages in milliseconds. Must be ≥ 0. Default is 0 (no throttling).
             expects_image (str): Hint about whether to expect image data.
                 - "true": prioritize image parsing (use for sensor_msgs/Image topics)
                 - "false": skip image detection for faster processing (use for non-image topics)
@@ -287,12 +287,12 @@ def register_topic_tools(
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
-        # Set defaults for optional parameters
-        if not timeout:
+        # Use ws_manager.default_timeout if timeout is None
+        if timeout is None:
             timeout = ws_manager.default_timeout
-        if not queue_length:
+        if queue_length is None:
             queue_length = 1  # Default queue length
-        if not throttle_rate_ms:
+        if throttle_rate_ms is None:
             throttle_rate_ms = 0  # Default: no throttling
 
         # Validate and convert parameters (handle string inputs from MCP)
@@ -404,8 +404,8 @@ def register_topic_tools(
             msg_type (str): ROS message type (e.g. "geometry_msgs/Twist")
             duration (float): How long (seconds) to listen for messages
             max_messages (int): Maximum number of messages to collect before stopping
-            queue_length (int | None): How many messages to buffer before dropping old ones. Must be ≥ 1.
-            throttle_rate_ms (int | None): Minimum interval between messages in milliseconds. Must be ≥ 0.
+            queue_length (int): How many messages to buffer before dropping old ones. Must be ≥ 1. Default is 1.
+            throttle_rate_ms (int): Minimum interval between messages in milliseconds. Must be ≥ 0. Default is 0 (no throttling).
             expects_image (str): Hint about whether to expect image data.
                 - "true": prioritize image parsing (use for sensor_msgs/Image topics)
                 - "false": skip image detection for faster processing (use for non-image topics)
@@ -423,6 +423,12 @@ def register_topic_tools(
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
+        # Set defaults for optional parameters
+        if queue_length is None:
+            queue_length = 1  # Default queue length
+        if throttle_rate_ms is None:
+            throttle_rate_ms = 0  # Default: no throttling
+
         # Validate and convert parameters
         try:
             duration = float(duration)
@@ -437,12 +443,6 @@ def register_topic_tools(
                 return {"error": "max_messages must be an integer ≥ 1"}
         except (ValueError, TypeError):
             return {"error": "max_messages must be an integer"}
-
-        # Set defaults for optional parameters
-        if not queue_length:
-            queue_length = 1  # Default queue length
-        if not throttle_rate_ms:
-            throttle_rate_ms = 0  # Default: no throttling
 
         # Validate and convert parameters (handle string inputs from MCP)
         try:

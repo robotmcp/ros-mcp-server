@@ -239,7 +239,7 @@ def register_service_tools(
         )
     )
     def call_service(
-        service_name: str, service_type: str, request: dict, timeout: float | None = None
+        service_name: str, service_type: str, request: dict, timeout: float = None
     ) -> dict:
         """
         Call a ROS service with specified request data.
@@ -248,11 +248,15 @@ def register_service_tools(
             service_name (str): The service name (e.g., '/rosapi/topics')
             service_type (str): The service type (e.g., 'rosapi/Topics')
             request (dict): Service request data as a dictionary
-            timeout (float | None): Timeout in seconds. If None, uses the default timeout.
+            timeout (float): Timeout in seconds. If None, uses ws_manager.default_timeout.
 
         Returns:
             dict: Contains the service response or error information.
         """
+        # Use ws_manager.default_timeout if timeout is None
+        if timeout is None:
+            timeout = ws_manager.default_timeout
+
         # rosbridge service call
         message = {
             "op": "call_service",
