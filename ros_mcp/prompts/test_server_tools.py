@@ -15,130 +15,148 @@ def register_test_server_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing server tools
         """
-        return """# Testing ROS MCP Server Capabilities
+        return """# Testing ROS MCP Server - Quick Start Guide
 
-This guide will help you test and explore the capabilities of the ROS MCP Server.
+This is a high-level overview guide for testing the ROS MCP Server. For detailed testing instructions and troubleshooting, see the category-specific guides listed at the end.
 
-## Step 1: Test Connection Tools
+## Prerequisites
 
-Before testing other capabilities, verify you can connect to a ROS robot:
+Before testing, ensure you have:
+1. **Turtlesim running**: `ros2 run turtlesim turtlesim_node` (ROS 2) or `rosrun turtlesim turtlesim_node` (ROS 1)
+2. **Rosbridge running**: `ros2 run rosbridge_server rosbridge_websocket` (ROS 2) or `rosrun rosbridge_server rosbridge_websocket` (ROS 1)
 
-1. **Ping the robot** to check connectivity:
-   ```
-   ping_robot(ip='192.168.1.100', port=9090)
-   ```
+## Quick Test Workflow
 
-2. **Connect to the robot**:
-   ```
-   connect_to_robot(ip='192.168.1.100', port=9090)
-   ```
+### 1. Connect and Discover
 
-## Step 2: Test Discovery Tools
+```python
+# Connect
+connect_to_robot(ip='127.0.0.1', port=9090)
+detect_ros_version()
 
-Explore what's available in your ROS system:
+# Discover what's available
+get_topics()      # Lists all topics
+get_services()    # Lists all services
+get_nodes()       # Lists all nodes
+get_actions()     # Lists all actions (ROS 2 only)
+```
 
-1. **Detect ROS version**:
-   ```
-   detect_ros_version()
-   ```
+### 2. Test Main Tools by Category
 
-2. **Get all topics**:
-   ```
-   get_topics()
-   ```
+**Topics** - Subscribe and publish:
+```python
+subscribe_once(topic='/turtle1/pose', msg_type='turtlesim/msg/Pose')
+publish_once(topic='/turtle1/cmd_vel', msg_type='geometry_msgs/msg/Twist', 
+             msg={'linear': {'x': 2.0, 'y': 0.0, 'z': 0.0}})
+```
 
-3. **Get all services**:
-   ```
-   get_services()
-   ```
+**Services** - Call services:
+```python
+call_service(service_name='/turtle1/teleport_absolute', 
+             service_type='turtlesim/srv/TeleportAbsolute', 
+             request={'x': 5.5, 'y': 5.5, 'theta': 0.0})
+```
 
-4. **Get all nodes**:
-   ```
-   get_nodes()
-   ```
+**Nodes** - Inspect nodes:
+```python
+get_node_details('/turtlesim')
+```
 
-## Step 3: Test Topic Operations
+**Parameters** (ROS 2 only) - Get and set parameters:
+```python
+get_parameters('turtlesim')
+set_parameter('/turtlesim:background_r', '255')
+```
 
-Test topic subscription and publishing:
+**Actions** (ROS 2 only) - Send goals:
+```python
+send_action_goal(action_name='/turtle1/rotate_absolute', 
+                 action_type='turtlesim/action/RotateAbsolute', 
+                 goal={'theta': 1.57})
+```
 
-1. **Get topic details**:
-   ```
-   get_topic_details('/cmd_vel')
-   ```
+## Main Tools by Category
 
-2. **Subscribe to a topic** (get one message):
-   ```
-   subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist')
-   ```
+### Connection Tools
+- `connect_to_robot()` - Connect to ROS system
+- `ping_robot()` - Test connectivity
+- `detect_ros_version()` - Detect ROS version
 
-3. **Publish to a topic**:
-   ```
-   publish_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', msg={'linear': {'x': 1.0}})
-   ```
+### Discovery Tools
+- `get_topics()` - List all topics
+- `get_services()` - List all services
+- `get_nodes()` - List all nodes
+- `get_actions()` - List all actions (ROS 2)
 
-## Step 4: Test Service Operations
+### Topic Tools
+- `get_topic_details()` - Get topic information
+- `subscribe_once()` - Subscribe and get one message
+- `publish_once()` - Publish a message
 
-Test service calls:
+### Service Tools
+- `get_service_details()` - Get service information
+- `call_service()` - Call a service
 
-1. **Get service details**:
-   ```
-   get_service_details('rosapi/Topics')
-   ```
+### Node Tools
+- `get_node_details()` - Get node information
 
-2. **Call a service**:
-   ```
-   call_service(service_name='/rosapi/topics', service_type='rosapi/Topics', request={})
-   ```
+### Parameter Tools (ROS 2)
+- `get_parameters()` - List parameters for a node
+- `get_parameter()` - Get a parameter value
+- `set_parameter()` - Set a parameter value
 
-## Step 5: Test Advanced Features
+### Action Tools (ROS 2)
+- `get_action_details()` - Get action information
+- `send_action_goal()` - Send an action goal
+- `get_action_status()` - Get action status
 
-1. **Inspect all topics** (comprehensive information):
-   ```
-   inspect_all_topics()
-   ```
+## Resources
 
-2. **Get ROS metadata** (all information at once):
-   ```
-   Resource: ros-mcp://ros-metadata/all
-   ```
+Access comprehensive information via resources:
+- `ros-mcp://ros-metadata/all` - All ROS metadata
+- `ros-mcp://ros-metadata/topics/all` - All topics details
+- `ros-mcp://ros-metadata/services/all` - All services details
+- `ros-mcp://ros-metadata/nodes/all` - All nodes details
+- `ros-mcp://ros-metadata/actions/all` - All actions details (ROS 2)
+- `ros-mcp://ros-metadata/parameters/all` - All parameters details (ROS 2)
 
-3. **Test image analysis** (if you have image topics):
-   ```
-   subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image='true')
-   analyze_previously_received_image()
-   ```
+## Quick Testing Checklist
 
-## Step 6: Test Robot-Specific Features
+- [ ] Connect: `connect_to_robot()`, `detect_ros_version()`
+- [ ] Discover: `get_topics()`, `get_services()`, `get_nodes()`, `get_actions()`
+- [ ] Topics: `subscribe_once()`, `publish_once()`
+- [ ] Services: `call_service()`
+- [ ] Nodes: `get_node_details()`
+- [ ] Parameters: `get_parameters()`, `set_parameter()` (ROS 2)
+- [ ] Actions: `send_action_goal()`, `get_action_status()` (ROS 2)
 
-1. **List verified robots**:
-   ```
-   get_verified_robots_list()
-   ```
+## If Something Fails
 
-2. **Get robot specifications** (if available):
-   ```
-   get_verified_robot_spec('unitree_go2')
-   ```
+If the main tools above don't work, refer to the detailed category-specific guides for troubleshooting:
 
-## Testing Checklist
-
-- [ ] Test connection tools (ping, connect)
-- [ ] Test discovery tools (topics, services, nodes)
-- [ ] Test topic operations (subscribe, publish)
-- [ ] Test service operations (call service)
-- [ ] Test parameter operations (if ROS 2)
-- [ ] Test action operations (if ROS 2)
-- [ ] Test image analysis (if applicable)
+- **Connection issues?** → See `test-connection-tools` for detailed connection troubleshooting
+- **Topic tools not working?** → See `test-topics-tools` for detailed topic testing and troubleshooting
+- **Service tools not working?** → See `test-services-tools` for detailed service testing and troubleshooting
+- **Node tools not working?** → See `test-nodes-tools` for detailed node testing and troubleshooting
+- **Parameter tools not working?** → See `test-parameters-tools` for detailed parameter testing and troubleshooting (ROS 2)
+- **Action tools not working?** → See `test-actions-tools` for detailed action testing and troubleshooting (ROS 2)
 
 ## Tips
 
 - Most tools work with both ROS 1 and ROS 2
 - Parameters and Actions are ROS 2 only
-- Use `inspect_all_*` tools for comprehensive information (may be slow with many items)
-- All resources are accessible via their URIs
+- Turtlesim is a great example for testing all tool categories
+- Use resources for comprehensive system overview
+- Individual test guides provide detailed troubleshooting steps
 
-## Need Help?
+## Category-Specific Test Guides
 
-- Check ROS metadata: `ros-mcp://ros-metadata/all`
-- List verified robots: `ros-mcp://robot-specs/get_verified_robots_list`
+For detailed testing instructions, troubleshooting, and advanced usage:
+
+- **`test-connection-tools`** - Detailed connection tool testing
+- **`test-topics-tools`** - Detailed topic tool testing
+- **`test-services-tools`** - Detailed service tool testing
+- **`test-nodes-tools`** - Detailed node tool testing
+- **`test-parameters-tools`** - Detailed parameter tool testing (ROS 2)
+- **`test-actions-tools`** - Detailed action tool testing (ROS 2)
 """

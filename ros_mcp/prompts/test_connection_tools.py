@@ -15,10 +15,20 @@ def register_test_connection_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing connection tools
         """
-        return """# Testing ROS Connection Tools
+        return """# Testing ROS Connection Tools - Detailed Guide
 
-This guide will help you test and explore the connection tools available in the ROS MCP Server.
-These tools allow you to connect to ROS robots, test connectivity, and detect ROS versions.
+This is a detailed guide for testing connection tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
+
+## When to Use This Guide
+
+Use this detailed guide when:
+- The main connection tools from `test-server-tools` are not working
+- You need step-by-step instructions for each connection tool
+- You need troubleshooting help for specific connection issues
+- You want to understand connection tool details and advanced usage
+- You're having network or connectivity problems
+
+For a quick high-level overview, see `test-server-tools`.
 
 ## Prerequisites
 
@@ -159,14 +169,6 @@ connect_to_robot(ip='192.168.1.100', port=9091)
 ping_robot(ip='192.168.1.100', port=9091)
 ```
 
-## Testing Checklist
-
-- [ ] Ping a robot using `ping_robot()`
-- [ ] Connect to a robot using `connect_to_robot()`
-- [ ] Detect ROS version using `detect_ros_version()`
-- [ ] Test with local connection (127.0.0.1)
-- [ ] Test with remote connection (if available)
-- [ ] Test with custom port (if applicable)
 
 ## Troubleshooting
 
@@ -221,74 +223,7 @@ ping_robot(ip='192.168.1.100', port=9091)
 - For local testing, use `127.0.0.1` or `localhost`
 - For remote robots, ensure both systems are on the same network or VPN
 
-## Example Workflow
+## Related Guides
 
-1. **Test connectivity:**
-   ```
-   ping_robot(ip='192.168.1.100', port=9090)
-   ```
-
-2. **Connect to robot:**
-   ```
-   connect_to_robot(ip='192.168.1.100', port=9090)
-   ```
-
-3. **Verify ROS version:**
-   ```
-   detect_ros_version()
-   ```
-
-4. **Now you can use other tools:**
-   ```
-   get_nodes()
-   get_topics()
-   get_services()
-   ```
-
-## Network Configuration
-
-### Default Settings
-
-- **Default IP:** `127.0.0.1` (localhost)
-- **Default Port:** `9090` (standard rosbridge port)
-- **Default Timeouts:** `2.0` seconds for both ping and port checks
-
-### Custom Configuration
-
-You can override defaults when calling the tools:
-
-```
-connect_to_robot(
-    ip='192.168.1.100',
-    port=9091,
-    ping_timeout=5.0,
-    port_timeout=5.0
-)
-```
-
-## Security Considerations
-
-- Be cautious when connecting to remote robots over untrusted networks
-- Consider using VPN or secure networks for remote connections
-- Verify the robot's identity before connecting
-- Some robots may require authentication (not handled by these tools)
-
-## Next Steps
-
-After successfully connecting:
-
-1. Explore available nodes: `get_nodes()`
-2. List topics: `get_topics()`
-3. List services: `get_services()`
-4. Test parameter tools (ROS 2 only): `get_parameters('node_name')`
-5. Subscribe to topics: `subscribe_once()` or `subscribe_for_duration()`
-6. Call services: `call_service()`
-
-## Related Tools
-
-- **Robot Configuration:** `get_verified_robots_list()`, `get_verified_robot_spec()`
-- **Node Tools:** `get_nodes()`, `get_node_details()`
-- **Topic Tools:** `get_topics()`, `subscribe_once()`
-- **Service Tools:** `get_services()`, `call_service()`
-- **Parameter Tools:** `get_parameters()`, `get_parameter()` (ROS 2 only)
+- **`test-server-tools`** - High-level overview of all ROS MCP Server tools
 """

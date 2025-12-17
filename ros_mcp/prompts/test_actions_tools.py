@@ -15,10 +15,20 @@ def register_test_actions_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing action tools
         """
-        return """# Testing ROS Action Tools
+        return """# Testing ROS Action Tools - Detailed Guide
 
-This guide will help you test and explore the action tools available in the ROS MCP Server.
-These tools allow you to discover, inspect, and interact with ROS actions (ROS 2 only).
+This is a detailed guide for testing action tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
+
+## When to Use This Guide
+
+Use this detailed guide when:
+- The main action tools from `test-server-tools` are not working
+- You need step-by-step instructions for each action tool
+- You need troubleshooting help for specific action tool issues
+- You want to understand action tool details and advanced usage
+- You need to test the actions details resource
+
+For a quick high-level overview, see `test-server-tools`.
 
 ## Prerequisites
 
@@ -277,9 +287,35 @@ This resource provides:
 **How to access:**
 The resource can be accessed through the MCP resource interface. It returns a JSON string with comprehensive action information.
 
+**Testing the resource:**
+
+1. **Access the resource** through your MCP client:
+   - Resource URI: `ros-mcp://ros-metadata/actions/all`
+   - This will return a JSON string with all action information
+
+2. **Compare with individual tool calls:**
+   ```
+   # Get actions list
+   get_actions()
+   
+   # Get details for each action individually
+   get_action_details('/turtle1/rotate_absolute')
+   
+   # Compare with resource output
+   # Resource: ros-mcp://ros-metadata/actions/all
+   ```
+
+3. **Use the resource for system overview:**
+   - The resource is more efficient for getting information about all actions at once
+   - Useful for understanding the complete system architecture
+   - Provides action types even when detailed structures aren't available
+
 **Response includes:**
 - `total_actions`: Total number of actions
 - `actions`: Dictionary with details for each action
+  - Each action entry contains:
+    - `type`: The action type (e.g., "turtlesim/action/RotateAbsolute")
+    - `status`: Status of the action ("available" or "type_unknown")
 - `action_errors`: List of any errors encountered (if any)
 
 **Example Response:**
@@ -295,6 +331,11 @@ The resource can be accessed through the MCP resource interface. It returns a JS
   "action_errors": []
 }
 ```
+
+**When to use the resource vs individual tools:**
+- **Use the resource** when you need a quick overview of all actions and their types
+- **Use `get_action_details()`** when you need detailed goal/result/feedback structures for a specific action
+- **Use `get_actions()`** when you just need a simple list of action names
 
 ## Action Naming Convention
 
@@ -319,82 +360,6 @@ Action status codes indicate the current state of a goal:
 - `5`: STATUS_CANCELED - Goal was cancelled
 - `6`: STATUS_ABORTED - Goal execution was aborted
 
-## Common Use Cases
-
-### Use Case 1: Discover What Actions Are Available
-
-```
-get_actions()
-```
-
-This is often the first step to understand your ROS system.
-
-### Use Case 2: Understand a Specific Action
-
-When you want to know what an action does:
-
-```
-get_action_details('/turtle1/rotate_absolute')
-```
-
-This tells you:
-- What the goal structure is (what you need to send)
-- What the result structure is (what you'll get back)
-- What the feedback structure is (progress updates during execution)
-
-### Use Case 3: Execute an Action and Monitor Progress
-
-Send a goal to execute an action, then check its status:
-
-```
-# Send the goal
-send_action_goal(
-    action_name='/turtle1/rotate_absolute',
-    action_type='turtlesim/action/RotateAbsolute',
-    goal={'theta': 1.57}
-)
-
-# Check the status after sending
-get_action_status('/turtle1/rotate_absolute')
-```
-
-This workflow allows you to:
-- Execute an action and get the result
-- Monitor the action status to see if it's still running
-- Get the goal_id from the send response to cancel if needed
-
-### Use Case 5: Cancel a Running Action
-
-If you need to stop an action that's currently executing:
-
-```
-cancel_action_goal(
-    action_name='/turtle1/rotate_absolute',
-    goal_id='goal_1234567890_abcdef12'
-)
-```
-
-### Use Case 6: Get Complete System Overview
-
-For a comprehensive view of all actions and their types:
-
-**Access the resource:** `ros-mcp://ros-metadata/actions/all`
-
-This is useful for:
-- Understanding the complete system architecture
-- Finding which actions are available
-- Discovering action types across all actions
-
-## Testing Checklist
-
-- [ ] Get list of all actions using `get_actions()`
-- [ ] Get details for a specific action using `get_action_details('/action_name')`
-- [ ] Send an action goal using `send_action_goal()`
-- [ ] Get action status using `get_action_status('/action_name')` after sending a goal
-- [ ] Cancel an action goal using `cancel_action_goal()`
-- [ ] Access all actions details resource: `ros-mcp://ros-metadata/actions/all`
-- [ ] Test with different action names
-- [ ] Verify goal, result, and feedback structures
 - [ ] Test action execution with different goals
 - [ ] Test action cancellation
 
@@ -477,74 +442,7 @@ This is useful for:
 - **Goal IDs are unique** - Save the goal_id from `send_action_goal()` if you need to cancel it later
 - **Timeout parameter is optional** - Default is 10 seconds, but you can specify longer for slow actions
 
-## Integration with Other Tools
+## Related Guides
 
-### With Topic Tools
-
-1. Actions use topics internally for communication
-2. Action status topic: `{action_name}/_action/status`
-3. Action goal topic: `{action_name}/_action/goal`
-4. Action result topic: `{action_name}/_action/result`
-5. Action feedback topic: `{action_name}/_action/feedback`
-6. Use topic tools to inspect these topics: `get_topic_details('{action_name}/_action/status')`
-
-### With Service Tools
-
-1. Actions are similar to services but with feedback
-2. Use service tools to understand the difference
-3. Services are one-shot, actions provide progress updates
-
-### With Node Tools
-
-1. Get node details: `get_node_details('/node_name')`
-2. See what actions the node provides
-3. Use action tools to interact with those actions
-
-## Example Workflow
-
-1. **Discover actions:**
-   ```
-   get_actions()
-   ```
-
-2. **Inspect a specific action:**
-   ```
-   get_action_details('/turtle1/rotate_absolute')
-   ```
-
-3. **Understand action structure:**
-   - Check what the goal structure is
-   - Check what the result structure is
-   - Check what the feedback structure is
-
-4. **Send a goal:**
-   ```
-   send_action_goal(
-       action_name='/turtle1/rotate_absolute',
-       action_type='turtlesim/action/RotateAbsolute',
-       goal={'theta': 1.57}
-   )
-   ```
-
-5. **Check status after sending (optional):**
-   ```
-   get_action_status('/turtle1/rotate_absolute')
-   ```
-   
-   This will show you if there are any active goals still executing.
-
-6. **Get complete system overview:**
-   Access the resource: `ros-mcp://ros-metadata/actions/all`
-
-7. **Use the information:**
-   - Send goals to execute actions
-   - Monitor action status
-   - Cancel actions if needed
-
-## Related Tools
-
-- **Topic Tools:** `get_topics()`, `get_topic_details()`, `subscribe_once()`
-- **Service Tools:** `get_services()`, `get_service_details()`, `call_service()`
-- **Node Tools:** `get_nodes()`, `get_node_details()`
-- **Connection Tools:** `connect_to_robot()`, `detect_ros_version()`
+- **`test-server-tools`** - High-level overview of all ROS MCP Server tools
 """

@@ -15,10 +15,20 @@ def register_test_nodes_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing node tools
         """
-        return """# Testing ROS Node Tools
+        return """# Testing ROS Node Tools - Detailed Guide
 
-This guide will help you test and explore the node tools available in the ROS MCP Server.
-These tools allow you to discover, inspect, and understand ROS nodes and their connections.
+This is a detailed guide for testing node tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
+
+## When to Use This Guide
+
+Use this detailed guide when:
+- The main node tools from `test-server-tools` are not working
+- You need step-by-step instructions for each node tool
+- You need troubleshooting help for specific node tool issues
+- You want to understand node tool details and advanced usage
+- You need to test node resources or advanced features
+
+For a quick high-level overview, see `test-server-tools`.
 
 ## Prerequisites
 
@@ -166,60 +176,6 @@ ROS nodes use the format: `/node_name`
   - `/rosapi` - ROS API service provider
   - `/rosapi_params` - ROS API parameters service (ROS 2)
 
-## Common Use Cases
-
-### Use Case 1: Discover What Nodes Are Running
-
-```
-get_nodes()
-```
-
-This is often the first step to understand your ROS system.
-
-### Use Case 2: Understand a Specific Node
-
-When you want to know what a node does:
-
-```
-get_node_details('/turtlesim')
-```
-
-This tells you:
-- What topics it publishes (outputs)
-- What topics it subscribes to (inputs)
-- What services it provides (actions you can call)
-
-### Use Case 3: Get Complete System Overview
-
-For a comprehensive view of all nodes and their connections:
-
-**Access the resource:** `ros-mcp://ros-metadata/nodes/all`
-
-This is useful for:
-- Understanding the complete system architecture
-- Finding which nodes communicate with each other
-- Discovering available services across all nodes
-
-### Use Case 4: Find Nodes That Publish to a Topic
-
-1. Get all nodes: `get_nodes()`
-2. For each node, get details: `get_node_details('/node_name')`
-3. Check the `publishers` list to find which node publishes to your topic
-
-### Use Case 5: Find Nodes That Subscribe to a Topic
-
-1. Get all nodes: `get_nodes()`
-2. For each node, get details: `get_node_details('/node_name')`
-3. Check the `subscribers` list to find which node subscribes to your topic
-
-## Testing Checklist
-
-- [ ] Get list of all nodes using `get_nodes()`
-- [ ] Get details for a specific node using `get_node_details('/node_name')`
-- [ ] Access all nodes details resource: `ros-mcp://ros-metadata/nodes/all`
-- [ ] Test with different node names
-- [ ] Verify publishers, subscribers, and services information
-- [ ] Test with nodes that have no publishers/subscribers/services
 
 ## Troubleshooting
 
@@ -273,55 +229,7 @@ This is useful for:
 - **Combine with topic tools** - Use node details to understand topic connections
 - **Combine with service tools** - Use node details to discover available services
 
-## Integration with Other Tools
+## Related Guides
 
-### With Topic Tools
-
-1. Get node details: `get_node_details('/node_name')`
-2. See what topics the node publishes/subscribes to
-3. Use topic tools to inspect those topics: `get_topic_details('/topic_name')`
-
-### With Service Tools
-
-1. Get node details: `get_node_details('/node_name')`
-2. See what services the node provides
-3. Use service tools to call those services: `call_service('/service_name', ...)`
-
-### With Parameter Tools (ROS 2)
-
-1. Get node details: `get_node_details('/node_name')`
-2. Get parameters for that node: `get_parameters('/node_name')`
-3. Get specific parameter: `get_parameter('/node_name:parameter_name')`
-
-## Example Workflow
-
-1. **Discover nodes:**
-   ```
-   get_nodes()
-   ```
-
-2. **Inspect a specific node:**
-   ```
-   get_node_details('/turtlesim')
-   ```
-
-3. **Understand node connections:**
-   - Check what topics it publishes (outputs)
-   - Check what topics it subscribes to (inputs)
-   - Check what services it provides
-
-4. **Get complete system overview:**
-   Access the resource: `ros-mcp://ros-metadata/nodes/all`
-
-5. **Use the information:**
-   - Subscribe to topics the node publishes
-   - Publish to topics the node subscribes to
-   - Call services the node provides
-
-## Related Tools
-
-- **Topic Tools:** `get_topics()`, `get_topic_details()`, `subscribe_once()`
-- **Service Tools:** `get_services()`, `get_service_details()`, `call_service()`
-- **Parameter Tools:** `get_parameters()`, `get_parameter()` (ROS 2 only)
-- **Connection Tools:** `connect_to_robot()`, `detect_ros_version()`
+- **`test-server-tools`** - High-level overview of all ROS MCP Server tools
 """

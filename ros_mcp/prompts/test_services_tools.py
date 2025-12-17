@@ -15,10 +15,20 @@ def register_test_services_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing service tools
         """
-        return """# Testing ROS Service Tools
+        return """# Testing ROS Service Tools - Detailed Guide
 
-This guide will help you test and explore the service tools available in the ROS MCP Server.
-These tools allow you to discover, inspect, and call ROS services.
+This is a detailed guide for testing service tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
+
+## When to Use This Guide
+
+Use this detailed guide when:
+- The main service tools from `test-server-tools` are not working
+- You need step-by-step instructions for each service tool
+- You need troubleshooting help for specific service tool issues
+- You want to understand service tool details and advanced usage
+- You need to test service resources or advanced features
+
+For a quick high-level overview, see `test-server-tools`.
 
 ## Prerequisites
 
@@ -252,72 +262,6 @@ ROS services use the format: `/service_name`
   - `/node_name/service_name` - Node-specific services
   - `/turtle1/*` - Turtlesim services (if turtlesim is running)
 
-## Common Use Cases
-
-### Use Case 1: Discover Available Services
-
-```
-get_services()
-```
-
-This is often the first step to understand what services are available.
-
-### Use Case 2: Understand a Service Before Calling It
-
-1. Get service type (optional, can skip to step 2):
-   ```
-   get_service_type('/service_name')
-   ```
-
-2. Get complete service details (includes type, request/response, and providers):
-   ```
-   get_service_details('/service_name')
-   ```
-
-3. Call the service with proper request format:
-   ```
-   call_service('/service_name', 'service_type', {'field': 'value'})
-   ```
-
-### Use Case 3: Get Complete System Overview
-
-**Access the resource:** `ros-mcp://ros-metadata/services/all`
-
-This is useful for:
-- Understanding all available services in the system
-- Finding service types and providers
-- Discovering services you might not know about
-
-### Use Case 4: Call a Service with Custom Request
-
-1. Get service details to understand the request structure:
-   ```
-   get_service_details('/my_service')
-   ```
-
-2. Build the request dictionary using the field names from the details:
-   ```
-   request = {
-     'field1': 'value1',
-     'field2': 42
-   }
-   ```
-
-3. Call the service using the type from get_service_details:
-   ```
-   call_service('/my_service', 'my_package/CustomService', request)
-   ```
-
-## Testing Checklist
-
-- [ ] Get list of all services using `get_services()`
-- [ ] Get service type for a specific service using `get_service_type('/service_name')`
-- [ ] Get complete service details (including providers) using `get_service_details('/service_name')`
-- [ ] Access all services details resource: `ros-mcp://ros-metadata/services/all`
-- [ ] Call a service with no parameters using `call_service()`
-- [ ] Call a service with parameters using `call_service()`
-- [ ] Test with different service types
-- [ ] Verify request/response structures match expectations
 
 ## Troubleshooting
 
@@ -394,50 +338,7 @@ This is useful for:
 - **Test with simple services first** - Start with services that have no parameters (like `/clear`)
 - **Handle timeouts** - Specify timeout for services that might be slow
 
-## Integration with Other Tools
+## Related Guides
 
-### With Node Tools
-
-1. Get service details: `get_service_details('/service_name')` (includes providers)
-2. Get node details: `get_node_details('/node_name')`
-3. See what other services the node provides
-
-### With Topic Tools
-
-1. Call a service that returns topic information: `call_service('/rosapi/topics', ...)`
-2. Use the results to explore topics: `get_topic_details('/topic_name')`
-
-### With Parameter Tools (ROS 2)
-
-1. Some services can get/set parameters
-2. Use `call_service()` to interact with parameter services
-
-## Example Workflow
-
-1. **Discover services:**
-   ```
-   get_services()
-   ```
-
-2. **Get complete service details (includes type, request/response, and providers):**
-   ```
-   get_service_details('/rosapi/topics')
-   ```
-
-3. **Call the service:**
-   ```
-   call_service('/rosapi/topics', 'rosapi_msgs/srv/Topics', {})
-   ```
-
-5. **Use the response:**
-   - Process the service response data
-   - Use results for further operations
-   - Call other services based on the results
-
-## Related Tools
-
-- **Node Tools:** `get_nodes()`, `get_node_details()` - Find which nodes provide services
-- **Topic Tools:** `get_topics()`, `get_topic_details()` - Services can provide topic information
-- **Parameter Tools:** `get_parameters()`, `set_parameter()` (ROS 2 only)
-- **Connection Tools:** `connect_to_robot()`, `detect_ros_version()`
+- **`test-server-tools`** - High-level overview of all ROS MCP Server tools
 """

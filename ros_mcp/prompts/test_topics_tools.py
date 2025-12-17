@@ -15,10 +15,20 @@ def register_test_topics_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing topic tools
         """
-        return """# Testing ROS Topic Tools
+        return """# Testing ROS Topic Tools - Detailed Guide
 
-This guide will help you test and explore the topic tools available in the ROS MCP Server.
-These tools allow you to discover, inspect, subscribe to, and publish ROS topics.
+This is a detailed guide for testing topic tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
+
+## When to Use This Guide
+
+Use this detailed guide when:
+- The main topic tools from `test-server-tools` are not working
+- You need step-by-step instructions for each topic tool
+- You need troubleshooting help for specific topic tool issues
+- You want to understand topic tool details and advanced usage
+- You need to test topic resources or advanced features
+
+For a quick high-level overview, see `test-server-tools`.
 
 ## Prerequisites
 
@@ -350,68 +360,6 @@ ROS topics use the format: `/topic_name`
   - `/node_name/topic_name` - Node-specific topics
   - `/turtle1/*` - Turtlesim topics (if turtlesim is running)
 
-## Common Use Cases
-
-### Use Case 1: Discover Available Topics
-
-```
-get_topics()
-```
-
-This is often the first step to understand what topics are available.
-
-### Use Case 2: Understand a Topic Before Subscribing/Publishing
-
-1. Get topic type:
-   ```
-   get_topic_type('/topic_name')
-   ```
-
-2. Get topic details:
-   ```
-   get_topic_details('/topic_name')
-   ```
-
-3. Get message structure:
-   ```
-   get_message_details('message_type')
-   ```
-
-### Use Case 3: Monitor a Topic
-
-```
-subscribe_for_duration(topic='/topic_name', msg_type='message_type', duration=10.0)
-```
-
-This collects messages from a topic for monitoring or analysis.
-
-### Use Case 4: Send Commands to a Robot
-
-```
-publish_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', msg={'linear': {'x': 1.0}})
-```
-
-This sends a velocity command to move a robot forward.
-
-### Use Case 5: Get Complete System Overview
-
-**Access the resource:** `ros-mcp://ros-metadata/topics/all`
-
-This provides a comprehensive view of all topics and their connections.
-
-## Testing Checklist
-
-- [ ] Get list of all topics using `get_topics()`
-- [ ] Get topic type for a specific topic using `get_topic_type('/topic_name')`
-- [ ] Get topic details (including publishers and subscribers) using `get_topic_details('/topic_name')`
-- [ ] Get message details using `get_message_details('message_type')`
-- [ ] Access all topics details resource: `ros-mcp://ros-metadata/topics/all`
-- [ ] Subscribe to a topic once using `subscribe_once()`
-- [ ] Subscribe to a topic for duration using `subscribe_for_duration()`
-- [ ] Publish a single message using `publish_once()`
-- [ ] Publish multiple messages using `publish_for_durations()`
-- [ ] Test with different message types
-- [ ] Test with image topics (expects_image='true')
 
 ## Troubleshooting
 
@@ -487,177 +435,7 @@ This provides a comprehensive view of all topics and their connections.
 - **Test subscriptions with short durations first** - Start with 1-2 seconds to verify it works
 - **Verify publishers/subscribers** - Use `get_topic_details()` to see both publishers and subscribers in one call
 
-## Integration with Other Tools
+## Related Guides
 
-### With Node Tools
-
-1. Get topic details: `get_topic_details('/topic_name')`
-2. See which nodes publish/subscribe to the topic
-3. Get node details: `get_node_details('/node_name')`
-4. See what other topics the node uses
-
-### With Service Tools
-
-1. Some services can provide topic information
-2. Use `call_service('/rosapi/topics', ...)` as an alternative to `get_topics()`
-
-### With Parameter Tools (ROS 2)
-
-1. Topics can have associated parameters
-2. Use parameter tools to configure topic-related settings
-
-## Example Workflow
-
-1. **Discover topics:**
-   ```
-   get_topics()
-   ```
-
-2. **Get topic details:**
-   ```
-   get_topic_details('/cmd_vel')
-   ```
-
-3. **Understand message structure:**
-   ```
-   get_message_details('geometry_msgs/msg/Twist')
-   ```
-
-4. **Subscribe to monitor:**
-   ```
-   subscribe_for_duration(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', duration=5.0)
-   ```
-
-5. **Publish commands:**
-   ```
-   publish_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', msg={'linear': {'x': 1.0}})
-   ```
-
-## Testing Publish/Subscribe Workflows
-
-### Test 1: Basic Publish and Subscribe
-
-**Goal:** Publish a message and verify it can be received.
-
-1. **Get topic information:**
-   ```
-   get_topic_details('/turtle1/cmd_vel')
-   ```
-
-2. **Publish a command:**
-   ```
-   publish_once(topic='/turtle1/cmd_vel', msg_type='geometry_msgs/msg/Twist', msg={'linear': {'x': 1.0}, 'angular': {'z': 0.0}})
-   ```
-
-3. **Subscribe to verify (if topic has subscribers):**
-   ```
-   subscribe_once(topic='/turtle1/cmd_vel', msg_type='geometry_msgs/msg/Twist', timeout=2.0)
-   ```
-
-### Test 2: Monitor a Publishing Topic
-
-**Goal:** Subscribe to a topic that's actively publishing.
-
-1. **Find a topic with publishers:**
-   ```
-   get_topic_details('/turtle1/pose')
-   ```
-
-2. **Subscribe to collect messages:**
-   ```
-   subscribe_for_duration(topic='/turtle1/pose', msg_type='turtlesim/msg/Pose', duration=3.0, max_messages=10)
-   ```
-
-3. **Analyze the collected messages** - Check the pose values, timestamps, etc.
-
-### Test 3: Publish Sequence with Delays
-
-**Goal:** Send a sequence of commands with timing.
-
-1. **Get message structure:**
-   ```
-   get_message_details('geometry_msgs/msg/Twist')
-   ```
-
-2. **Publish a sequence:**
-   ```
-   publish_for_durations(
-       topic='/turtle1/cmd_vel',
-       msg_type='geometry_msgs/msg/Twist',
-       messages=[
-           {'linear': {'x': 1.0}, 'angular': {'z': 0.0}},  # Move forward
-           {'linear': {'x': 0.0}, 'angular': {'z': 1.0}},  # Turn
-           {'linear': {'x': 0.0}, 'angular': {'z': 0.0}}   # Stop
-       ],
-       durations=[2.0, 1.0, 0.5]
-   )
-   ```
-
-### Test 4: Image Topic Subscription
-
-**Goal:** Subscribe to an image topic and analyze it.
-
-1. **Find image topics:**
-   ```
-   get_topics()
-   # Look for topics with type 'sensor_msgs/msg/Image'
-   ```
-
-2. **Subscribe with image hint:**
-   ```
-   subscribe_once(topic='/image', msg_type='sensor_msgs/msg/Image', expects_image='true')
-   ```
-
-3. **Analyze the image:**
-   ```
-   analyze_previously_received_image()
-   ```
-
-### Test 5: High-Rate Topic with Throttling
-
-**Goal:** Subscribe to a high-frequency topic without overwhelming the system.
-
-1. **Subscribe with rate control:**
-   ```
-   subscribe_for_duration(
-       topic='/high_rate_topic',
-       msg_type='sensor_msgs/msg/Image',
-       duration=5.0,
-       queue_length=5,
-       throttle_rate_ms=100,
-       expects_image='true'
-   )
-   ```
-
-This collects messages at a maximum rate of 10 Hz (100ms between messages).
-
-### Test 6: End-to-End Robot Control
-
-**Goal:** Control a robot by publishing commands and monitoring feedback.
-
-1. **Discover control and feedback topics:**
-   ```
-   get_topics()
-   get_topic_details('/cmd_vel')
-   get_topic_details('/odom')  # or feedback topic
-   ```
-
-2. **Start monitoring feedback in parallel** (if possible):
-   ```
-   subscribe_for_duration(topic='/odom', msg_type='nav_msgs/msg/Odometry', duration=10.0)
-   ```
-
-3. **Send control commands:**
-   ```
-   publish_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', msg={'linear': {'x': 0.5}, 'angular': {'z': 0.2}})
-   ```
-
-4. **Verify the robot responded** by checking the feedback messages.
-
-## Related Tools
-
-- **Node Tools:** `get_nodes()`, `get_node_details()` - Find which nodes publish/subscribe to topics
-- **Service Tools:** `get_services()`, `call_service()` - Some services provide topic information
-- **Parameter Tools:** `get_parameters()`, `set_parameter()` (ROS 2 only)
-- **Connection Tools:** `connect_to_robot()`, `detect_ros_version()`
+- **`test-server-tools`** - High-level overview of all ROS MCP Server tools
 """

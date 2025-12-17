@@ -15,10 +15,22 @@ def register_test_parameters_tools_prompts(mcp):
         Returns:
             str: Comprehensive guide for testing parameter tools
         """
-        return """# Testing ROS Parameter Tools
+        return """# Testing ROS Parameter Tools - Detailed Guide
 
-This guide will help you test and explore the parameter tools available in the ROS MCP Server.
+This is a detailed guide for testing parameter tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
+
 **Note: Parameter tools work only with ROS 2.**
+
+## When to Use This Guide
+
+Use this detailed guide when:
+- The main parameter tools from `test-server-tools` are not working
+- You need step-by-step instructions for each parameter tool
+- You need troubleshooting help for specific parameter tool issues
+- You want to understand parameter tool details and advanced usage
+- You need to test parameter resources or advanced features
+
+For a quick high-level overview, see `test-server-tools`.
 
 ## Prerequisites
 
@@ -173,15 +185,6 @@ Parameters can be of various types:
 - **String**: `'hello'`, `'world'`
 - **Arrays**: `'[1, 2, 3]'` (passed as string representation)
 
-## Testing Checklist
-
-- [ ] Get parameters for a node using `get_parameters('node_name')`
-- [ ] Check parameter existence using `has_parameter()`
-- [ ] Get a single parameter value using `get_parameter()`
-- [ ] Get detailed parameter information using `get_parameter_details()`
-- [ ] Set a parameter value using `set_parameter()`
-- [ ] Get parameters for multiple nodes
-- [ ] Delete a parameter using `delete_parameter()` (optional, be careful)
 
 ## Troubleshooting
 
@@ -209,35 +212,7 @@ Parameters can be of various types:
 - Parameter operations are ROS 2 only - they won't work with ROS 1
 - Some parameters may be read-only and cannot be modified
 
-## Example Workflow
+## Related Guides
 
-1. **Discover parameters for a node:**
-   ```
-   get_parameters('turtlesim')
-   ```
-
-2. **Check a specific parameter:**
-   ```
-   has_parameter('/turtlesim:background_r')
-   get_parameter('/turtlesim:background_r')
-   ```
-
-3. **Modify parameters:**
-   ```
-   set_parameter('/turtlesim:background_r', '255')
-   set_parameter('/turtlesim:background_g', '0')
-   set_parameter('/turtlesim:background_b', '0')
-   ```
-
-4. **Verify changes:**
-   ```
-   get_parameter_details('/turtlesim:background_r')
-   ```
-
-5. **Get parameters for multiple nodes:**
-   ```
-   get_parameters('turtlesim')
-   get_parameters('cam2image')
-   get_parameters('rosbridge_websocket')
-   ```
+- **`test-server-tools`** - High-level overview of all ROS MCP Server tools
 """
