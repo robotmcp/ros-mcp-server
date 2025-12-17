@@ -43,9 +43,8 @@ The ROS MCP Server provides the following service tools:
 
 1. **get_services()** - Get list of all available ROS services
 2. **get_service_type(service)** - Get the service type for a specific service
-3. **get_service_details(service_type)** - Get complete service details including request and response structures
-4. **get_service_providers(service)** - Get list of nodes that provide a specific service
-5. **call_service(service_name, service_type, request, timeout)** - Call a ROS service with specified request data
+3. **get_service_details(service)** - Get complete service details including request/response structures and provider nodes
+4. **call_service(service_name, service_type, request, timeout)** - Call a ROS service with specified request data
 
 Additionally, comprehensive information about all services is available as a resource:
 - **ros-mcp://ros-metadata/services/all** - Get detailed information about all services (types, providers)
@@ -104,74 +103,51 @@ get_service_type('/rosapi/services')
 
 ## Step 3: Get Service Details
 
-Get complete information about a service type, including request and response structures:
+Get complete information about a service, including request/response structures and provider nodes:
 
 ```
-get_service_details('service_type')
+get_service_details('/service_name')
 ```
 
 **Examples:**
 ```
-get_service_details('rosapi/Topics')
-get_service_details('std_srvs/Empty')
-get_service_details('geometry_msgs/Twist')
+get_service_details('/rosapi/topics')
+get_service_details('/clear')
+get_service_details('/turtle1/teleport_absolute')
 ```
 
 **Response includes:**
-- `service_type`: The service type
+- `service`: The service name
+- `type`: The service type
 - `request`: Request structure with fields and types
 - `response`: Response structure with fields and types
+- `providers`: List of nodes that provide this service
+- `provider_count`: Number of provider nodes
 - `note`: Important information about field name formatting
 
 **Example Response:**
 ```json
 {
-  "service_type": "rosapi/Topics",
+  "service": "/rosapi/topics",
+  "type": "rosapi_msgs/srv/Topics",
   "request": {
     "fields": {},
     "field_count": 0
   },
   "response": {
     "fields": {
-      "topics": "string[]",
-      "types": "string[]"
+      "topics": "string",
+      "types": "string"
     },
     "field_count": 2
   },
+  "providers": ["/rosapi"],
+  "provider_count": 1,
   "note": "Field names shown above are formatted for rosbridge (leading underscores removed). Use these exact field names when calling call_service()."
 }
 ```
 
-## Step 4: Get Service Providers
-
-Find out which node(s) provide a specific service:
-
-```
-get_service_providers('/service_name')
-```
-
-**Examples:**
-```
-get_service_providers('/rosapi/topics')
-get_service_providers('/clear')
-get_service_providers('/turtle1/teleport_absolute')
-```
-
-**Response includes:**
-- `service`: The service name
-- `providers`: List of nodes that provide this service
-- `provider_count`: Number of provider nodes
-
-**Example Response:**
-```json
-{
-  "service": "/rosapi/topics",
-  "providers": ["/rosapi"],
-  "provider_count": 1
-}
-```
-
-## Step 5: Get All Services Details (Resource)
+## Step 4: Get All Services Details (Resource)
 
 Get comprehensive information about all services at once using the resource:
 
@@ -288,14 +264,14 @@ This is often the first step to understand what services are available.
 
 ### Use Case 2: Understand a Service Before Calling It
 
-1. Get service type:
+1. Get service type (optional, can skip to step 2):
    ```
    get_service_type('/service_name')
    ```
 
-2. Get service details:
+2. Get complete service details (includes type, request/response, and providers):
    ```
-   get_service_details('service_type')
+   get_service_details('/service_name')
    ```
 
 3. Call the service with proper request format:
@@ -303,15 +279,7 @@ This is often the first step to understand what services are available.
    call_service('/service_name', 'service_type', {'field': 'value'})
    ```
 
-### Use Case 3: Find Which Node Provides a Service
-
-```
-get_service_providers('/service_name')
-```
-
-This helps you understand which node you're interacting with.
-
-### Use Case 4: Get Complete System Overview
+### Use Case 3: Get Complete System Overview
 
 **Access the resource:** `ros-mcp://ros-metadata/services/all`
 
@@ -320,11 +288,11 @@ This is useful for:
 - Finding service types and providers
 - Discovering services you might not know about
 
-### Use Case 5: Call a Service with Custom Request
+### Use Case 4: Call a Service with Custom Request
 
 1. Get service details to understand the request structure:
    ```
-   get_service_details('my_package/CustomService')
+   get_service_details('/my_service')
    ```
 
 2. Build the request dictionary using the field names from the details:
@@ -335,7 +303,7 @@ This is useful for:
    }
    ```
 
-3. Call the service:
+3. Call the service using the type from get_service_details:
    ```
    call_service('/my_service', 'my_package/CustomService', request)
    ```
@@ -344,8 +312,7 @@ This is useful for:
 
 - [ ] Get list of all services using `get_services()`
 - [ ] Get service type for a specific service using `get_service_type('/service_name')`
-- [ ] Get service details using `get_service_details('service_type')`
-- [ ] Get service providers using `get_service_providers('/service_name')`
+- [ ] Get complete service details (including providers) using `get_service_details('/service_name')`
 - [ ] Access all services details resource: `ros-mcp://ros-metadata/services/all`
 - [ ] Call a service with no parameters using `call_service()`
 - [ ] Call a service with parameters using `call_service()`
@@ -366,7 +333,7 @@ This is useful for:
 
 ### "Service not found" Error
 
-**Problem:** `get_service_type()` or `get_service_providers()` returns "Service not found"
+**Problem:** `get_service_type()` or `get_service_details()` returns "Service not found"
 
 **Solutions:**
 - Verify the service name is correct (case-sensitive)
@@ -419,11 +386,11 @@ This is useful for:
 ## Tips
 
 - **Start with `get_services()`** - Always start by discovering what services are available
-- **Use `get_service_details()` before calling** - Understand the request/response structure first
+- **Use `get_service_details()` before calling** - Understand the request/response structure and which node provides the service
 - **Field names matter** - Use the exact field names from `get_service_details()` (no leading underscores)
 - **Service names are case-sensitive** - `/Service` is different from `/service`
 - **Use the resource `ros-mcp://ros-metadata/services/all` for complete overview** - Provides comprehensive information about all services
-- **Check service providers** - Use `get_service_providers()` to know which node you're calling
+- **`get_service_details()` includes providers** - No need for a separate call to find which node provides a service
 - **Test with simple services first** - Start with services that have no parameters (like `/clear`)
 - **Handle timeouts** - Specify timeout for services that might be slow
 
@@ -431,7 +398,7 @@ This is useful for:
 
 ### With Node Tools
 
-1. Get service providers: `get_service_providers('/service_name')`
+1. Get service details: `get_service_details('/service_name')` (includes providers)
 2. Get node details: `get_node_details('/node_name')`
 3. See what other services the node provides
 
@@ -452,19 +419,14 @@ This is useful for:
    get_services()
    ```
 
-2. **Get service type:**
+2. **Get complete service details (includes type, request/response, and providers):**
    ```
-   get_service_type('/rosapi/topics')
-   ```
-
-3. **Get service details:**
-   ```
-   get_service_details('rosapi/Topics')
+   get_service_details('/rosapi/topics')
    ```
 
-4. **Call the service:**
+3. **Call the service:**
    ```
-   call_service('/rosapi/topics', 'rosapi/Topics', {})
+   call_service('/rosapi/topics', 'rosapi_msgs/srv/Topics', {})
    ```
 
 5. **Use the response:**
