@@ -137,7 +137,7 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
 
 def _handle_compressed_image(data_b64: str, result: dict) -> dict | None:
     """Handle compressed image data (JPEG/PNG already encoded)."""
-    path = "./camera/received_image_compressed.jpeg"
+    path = "./camera/received_image.jpeg"
     image_bytes = base64.b64decode(data_b64)
 
     with open(path, "wb") as f:
