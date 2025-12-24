@@ -1,0 +1,11 @@
+# SetInt.srv
+# Service for setting integer parameters
+#
+# Used by: speed_level, switch_gait
+
+# REQUEST
+int32 value           # The value to set
+---
+# RESPONSE
+bool success          # True if command was accepted
+string message        # Human-readable status message

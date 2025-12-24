@@ -1,0 +1,11 @@
+# SetFloat.srv
+# Service for setting float parameters
+#
+# Used by: body_height, foot_raise_height
+
+# REQUEST
+float64 value         # The value to set
+---
+# RESPONSE
+bool success          # True if command was accepted
+string message        # Human-readable status message

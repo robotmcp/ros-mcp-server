@@ -1,0 +1,13 @@
+# Trigger.srv
+# Simple trigger service for actions that don't require parameters
+#
+# Used by: stand_up, stand_down, recovery, balance, stop, damp,
+#          sit, rise_sit, hello, stretch, wallow, pose_on, pose_off,
+#          scrape, front_flip, front_jump, front_pounce,
+#          dance1, dance2, left_flip, back_flip
+
+# REQUEST - empty, no parameters needed
+---
+# RESPONSE
+bool success          # True if command was accepted
+string message        # Human-readable status message
