@@ -12,12 +12,11 @@ Architecture:
     [ROS 2 Node] --Queue--> [Backend Process] --SDK--> [Go2 Robot]
 """
 
-from multiprocessing import Queue
 import time
+from multiprocessing import Queue
 
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.go2.sport.sport_client import SportClient
-
 
 # Time interval between Move() calls (robot requires this delay)
 MOVE_INTERVAL = 0.5  # seconds

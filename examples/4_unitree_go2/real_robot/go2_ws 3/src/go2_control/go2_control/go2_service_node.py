@@ -85,15 +85,14 @@ ros2 service call /go2/body_height go2_interfaces/srv/SetFloat "{value: -0.1}"
 ros2 service call /go2/speed_level go2_interfaces/srv/SetInt "{value: 1}"
 """
 
-import rclpy
-from rclpy.node import Node
-from multiprocessing import Process, Queue
 import math
+from multiprocessing import Process, Queue
 
-from go2_interfaces.srv import Trigger, SetBool, Move, SetFloat, SetInt
+import rclpy
+from go2_interfaces.srv import Move, SetBool, SetFloat, SetInt, Trigger
+from rclpy.node import Node
 
 from go2_control.go2_backend import backend_loop
-
 
 # ============================================================
 # CONFIGURATION CONSTANTS
