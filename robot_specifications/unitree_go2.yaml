@@ -5,7 +5,37 @@ prompts: |
               The Unitree Go2 is a quadruped robot equipped with advanced sensors and mobility, designed for agile movement and versatile research or industrial applications.
               The Unitree Go2 robot uses many custom messages. Therefore, you don't need to use functions to check the topics.
 
-              Unitree Go2 Robot Basic Control Information:
+              Unitree Go2 Robot High-Level Control Information (RECOMMENDED):
+              The `go2_ws` workspace exposes robot actions as ROS 2 services. These are PREFERRED over manual topic publishing because they handle the control loop and logic automatically.
+              
+              Available Services:
+              1. Posture Control (Type: `go2_interfaces/srv/Trigger`):
+                 - `/go2/stand_up`: Stand up to default height.
+                 - `/go2/stand_down`: Lie down.
+                 - `/go2/sit`: Sit down.
+                 - `/go2/recovery`: Recover from fall or unknown state.
+                 - `/go2/balance`: Enter balance stand mode.
+
+              2. Movement Control (Type: `go2_interfaces/srv/Move`):
+                 - Service: `/go2/move`
+                 - Fields: `{vx: float, vy: float, vyaw: float, distance: float}`
+                 - `vx`: Forward/backward velocity (m/s).
+                 - `vy`: Left/right strafe velocity (m/s).
+                 - `vyaw`: Rotation velocity (rad/s).
+                 - `distance`: Target distance (for linear move) or angle (for rotation).
+                 - Note: The robot will automatically walk for the calculated duration and then stop.
+
+              3. Tricks/Special Actions (Type: `go2_interfaces/srv/Trigger`):
+                 - `/go2/dance1`, `/go2/dance2`
+                 - `/go2/hello`, `/go2/stretch`
+                 - `/go2/front_flip`, `/go2/back_flip`
+
+              - Example Service Calls:
+              call_service(service='/go2/stand_up', type='go2_interfaces/srv/Trigger')
+              call_service(service='/go2/sit', type='go2_interfaces/srv/Trigger')
+              call_service(service='/go2/move', type='go2_interfaces/srv/Move', request={'vx': 0.5, 'vy': 0.0, 'vyaw': 0.0, 'distance': 2.0})
+
+              Unitree Go2 Robot Basic Control Information (Low-Level):
               The Unitree Go2 robot is controlled via the /wirelesscontroller topic with the following parameters:
               *  ly: controls forward/backward movement, forward is positive, backward is negative (range: -1.0 to 1.0)
               *  lx: controls left/right movement, left is negative, right is positive (range: -1.0 to 1.0)
