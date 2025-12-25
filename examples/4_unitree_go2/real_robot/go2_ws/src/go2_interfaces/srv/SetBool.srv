@@ -1,0 +1,12 @@
+# SetBool.srv
+# Service for enabling/disabling robot features
+#
+# Used by: handstand, walk_upright, free_avoid, free_bound, 
+#          cross_step, free_jump, switch_joystick, continuous_gait
+
+# REQUEST
+bool enable           # True to enable, False to disable
+---
+# RESPONSE
+bool success          # True if command was accepted
+string message        # Human-readable status message

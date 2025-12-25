@@ -1,0 +1,35 @@
+# Move.srv
+# Movement service for the Go2 robot with distance-based control
+#
+# The robot will move at the specified velocities for the calculated
+# duration needed to cover the specified distance.
+#
+# COORDINATE FRAME:
+#   +X = Forward (robot's heading direction)
+#   +Y = Left (robot's left side)
+#   Positive vyaw = Counter-clockwise rotation (turn left)
+#
+# VELOCITY LIMITS (from SDK documentation):
+#   vx:   -2.5 to 3.8 m/s  (forward/backward)
+#   vy:   -1.0 to 1.0 m/s  (left/right strafe)
+#   vyaw: -4.0 to 4.0 rad/s (rotation)
+#
+# USAGE EXAMPLES:
+#   Move forward 1 meter:    vx=0.3, vy=0.0, vyaw=0.0, distance=1.0
+#   Move backward 0.5m:      vx=-0.3, vy=0.0, vyaw=0.0, distance=0.5
+#   Strafe left 1 meter:     vx=0.0, vy=0.2, vyaw=0.0, distance=1.0
+#   Strafe right 0.5m:       vx=0.0, vy=-0.2, vyaw=0.0, distance=0.5
+#   Turn left 90 degrees:    vx=0.0, vy=0.0, vyaw=0.5, distance=1.57 (radians)
+#   Turn right 180 degrees:  vx=0.0, vy=0.0, vyaw=-0.5, distance=3.14 (radians)
+
+# REQUEST
+float64 vx            # Forward velocity in m/s (positive=forward, negative=backward)
+float64 vy            # Lateral velocity in m/s (positive=left, negative=right)
+float64 vyaw          # Angular velocity in rad/s (positive=CCW/left, negative=CW/right)
+float64 distance      # Distance to travel in meters, OR angle in radians for pure rotation
+---
+# RESPONSE
+bool success          # True if command was accepted and executed
+string message        # Human-readable status message with execution details
+float64 estimated_time # Estimated time to complete the movement in seconds
+int32 iterations      # Number of control iterations that will be executed

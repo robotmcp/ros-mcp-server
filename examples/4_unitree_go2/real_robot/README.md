@@ -18,6 +18,9 @@ For more details, please refer to the [Unitree GO2 Documentation](https://suppor
 
 ## Quick Start
 ### 1. Network Setup
+
+#### 1.1 Assigning static IP to the robot though router configuration: 
+
 The Unitree GO2 and the user’s PC can be connected via SSH through the [GO2 Robot Interface](https://www.docs.quadruped.de/projects/go2/html/go2_driver.html#go2-network-interface).
 However, by default, the Unitree GO2 does not have internet access, so you need to configure the router as described below to allow the Unitree GO2 to connect to the internet.
 
@@ -56,6 +59,62 @@ However, by default, the Unitree GO2 does not have internet access, so you need 
     
     - Note: Most routers can automatically detect the MAC address (depending on the model).
 
+--- 
+
+#### 1.2 Assigning Dynamic IP
+
+**Note**: Use the following method when you **do not have** admin access to the router 
+
+**Steps**: 
+- **Connect your robot to the computer:**
+
+    - Connect the `Unitree GO2` to your computer via ethernet
+    - Go to your network settings, and the select the one where the robot is connected. 
+    - Inside the `TCP/IP` section, change the IP Address to `192.168.123.100` with a subnet mask of `255.255.255.0`
+    - Use `ifconfig/ipconfig`. The robot should be connected to your computer at the IP address `192.168.123.18`
+    
+    - Connect to the robot at: 
+
+        ```
+        ssh unitree@192.168.123.18 
+        ```
+
+- **Connect your robot to the shared Wi-Fi:**
+
+    - Open the following file inside the terminal: 
+        ```
+        sudo nano /etc/wpa_supplicant/wpa_supplicant.conf
+        ```
+    - Add the following: 
+        ```
+        ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
+        update_config=1
+        country=IN
+
+        network={
+            ssid="Wifi Name"
+            psk="Password"
+        }
+        ```
+    
+    - Reset the connection to `wlan0` to connect to wifi: 
+        ```
+        sudo pkill wpa_supplicant
+        sudo rm -rf /var/run/wpa_supplicant/wlan0
+        sudo ip link set wlan0 down
+        sudo ip link set wlan0 up
+        sudo wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant/wpa_supplicant.conf
+        sudo dhclient -v wlan0
+        ```
+    
+        **Tip:** You add the following commands in an executable shell script to avoid running the commands everytime manually    
+
+    - The robot should be assigned with a dynamic IP in the format `10.x.x.x`
+    - `SSH` into the robot using the assigned IP in a new terminal 
+    
+    - After a successful connection you can remove the ethernet from your computer and the robot 
+
+
 - **Check Connectivity**
     - After completing the above steps, check the connectivity between your PC and the Unitree Go2.
     - You can use the `ping` command in the terminal to verify the connection:
@@ -69,6 +128,11 @@ However, by default, the Unitree GO2 does not have internet access, so you need 
         ```
         ssh -X unitree@192.168.123.18
         ```
+        or
+        ```
+        ssh -X unitree@10.x.x.x     #USE YOUR ASSIGNED IP
+        ```
+
     - The default password is `123`.
     - After logging in, you can select the ROS version (ROS1 Noetic or ROS2 Foxy). In this example, Select ROS2 Foxy.  
     <img src="../images/unitree_go2_real_ssh.png" width="500">
@@ -81,14 +145,36 @@ However, by default, the Unitree GO2 does not have internet access, so you need 
         ```
     - If you receive replies, the internet connection is working properly.
 
+
+--- 
+
 ### 2. Install rosbridge (Unitree GO2 side)
 On the Unitree GO2, install rosbridge to enable communication with the **ros-mcp-server**.
 ```bash
 sudo apt install ros-foxy-rosbridge-server
 ```
 
-### 3. Build `unitree_go` package
-[`unitree_go`](https://github.com/unitreerobotics/unitree_ros2) is a ROS2 package provided by Unitree Robotics for controlling the Unitree GO2 robot. It includes various functionalities such as motion control, sensor data processing, and more.
+### 3. Choose and Build Control Package
+You have two options for controlling the robot.
+
+### Option A: Using the `go2_ws` workspace
+The `go2_ws` workspace exposes the different GO2 sports mode functions as ROS2 services, which the MCP can call to control the robot. 
+
+Examples of different actions as service nodes:
+- **Posture**: `/go2/stand_up`, `/go2/sit`, `/go2/recovery`, `/go2/balance`
+- **Movement**: `/go2/move` (Handles velocity *and* distance/duration automatically)
+- **Tricks**: `/go2/dance1`, `/go2/front_flip`, `/go2/hello`, `/go2/stretch`
+
+**[See detailed setup instructions in go2_ws/README.md](./go2_ws/README.md)**
+
+**Setup Summary:**
+1. Install dependencies (`unitree_sdk2py`).
+2. Copy the `go2_ws` folder to the robot.
+3. Build the workspace on the robot using `colcon build`.
+
+#### Option B: Standard `unitree_go` Package
+[`unitree_go`](https://github.com/unitreerobotics/unitree_ros2) is the official ROS2 package provided by Unitree Robotics. It provides low-level control and standard topics but fewer high-level "skills" out of the box.
+
 To build the `unitree_go` package, follow these steps:
 - **clone the repository** (User PC side)
     ```bash
@@ -109,6 +195,8 @@ To build the `unitree_go` package, follow these steps:
     source ~/.bashrc
     ```
 
+--- 
+
 ### 4. Setup Camera Script (User PC side)
 By default, the Unitree GO2 publishes camera data through a custom topic called `/frontvideostream`. To convert this custom topic into a standard ROS2 topic, you can upload and run the following script on the Unitree GO2.
 
@@ -124,6 +212,8 @@ By default, the Unitree GO2 publishes camera data through a custom topic called 
     ```
     If the camera is working properly, you should see the camera feed from the `/camera/rgb/image_raw` topic.
     
+--- 
+
 ### 5. Launch rosbridge and camera script (Unitree GO2 side)
 To enable communication between the **Unitree GO2** and the **ros-mcp-server**, you need to launch the following commands:
 
