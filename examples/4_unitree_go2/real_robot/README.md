@@ -87,9 +87,9 @@ On the Unitree GO2, install rosbridge to enable communication with the **ros-mcp
 sudo apt install ros-foxy-rosbridge-server
 ```
 
-### 3. Build `unitree_go` package
-[`unitree_go`](https://github.com/unitreerobotics/unitree_ros2) is a ROS2 package provided by Unitree Robotics for controlling the Unitree GO2 robot. It includes various functionalities such as motion control, sensor data processing, and more.
-To build the `unitree_go` package, follow these steps:
+### 3. Build `unitree_ros2` package
+[`unitree_ros2`](https://github.com/unitreerobotics/unitree_ros2) is a ROS2 package provided by Unitree Robotics for controlling the Unitree GO2 robot. It includes various functionalities such as motion control, sensor data processing, and more.
+To build the `unitree_ros2` package, follow these steps:
 - **clone the repository** (User PC side)
     ```bash
     git clone https://github.com/unitreerobotics/unitree_ros2.git
