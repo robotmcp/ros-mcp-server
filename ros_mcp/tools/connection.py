@@ -1,5 +1,6 @@
 """Connection tools for ROS MCP."""
 
+import time
 from typing import Union
 
 from fastmcp import FastMCP
@@ -82,3 +83,31 @@ def register_connection_tools(
             dict: Contains ping and port check results with detailed status information.
         """
         return ping_ip_and_port(ip, port, ping_timeout, port_timeout)
+
+    @mcp.tool(
+        description=(
+            "Ping the MCP server with a timestamp to measure round-trip latency.\n"
+            "Send a Unix timestamp (in milliseconds) and receive the latency in milliseconds.\n"
+            "Example:\n"
+            "ping_latency(client_timestamp_ms=1705847123456)"
+        )
+    )
+    def ping_latency(client_timestamp_ms: int) -> dict:
+        """
+        Measure round-trip latency to the MCP server.
+
+        Args:
+            client_timestamp_ms (int): Unix timestamp in milliseconds from the client.
+
+        Returns:
+            dict: Contains client timestamp, server timestamp, and calculated latency.
+        """
+        server_timestamp_ms = int(time.time() * 1000)
+        latency_ms = server_timestamp_ms - client_timestamp_ms
+
+        return {
+            "client_timestamp_ms": client_timestamp_ms,
+            "server_timestamp_ms": server_timestamp_ms,
+            "latency_ms": latency_ms,
+            "latency_seconds": latency_ms / 1000.0,
+        }
