@@ -104,17 +104,14 @@ def register_connection_tools(
         Returns:
             dict: Contains current UTC time in HH:MM:SS format.
         """
+
         def get_current_time() -> str:
             return datetime.now(timezone.utc).strftime("%H:%M:%S")
 
         if use_progress:
             for i in range(10):
                 current_time = get_current_time()
-                await ctx.report_progress(
-                    progress=i + 1,
-                    total=10,
-                    message=f"UTC: {current_time}"
-                )
+                await ctx.report_progress(progress=i + 1, total=10, message=f"UTC: {current_time}")
                 if i < 9:
                     await asyncio.sleep(1)
 
