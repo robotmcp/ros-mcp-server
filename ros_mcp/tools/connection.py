@@ -1,9 +1,10 @@
 """Connection tools for ROS MCP."""
 
-import time
+import asyncio
+from datetime import datetime, timezone
 from typing import Union
 
-from fastmcp import FastMCP
+from fastmcp import FastMCP, Context
 
 from ros_mcp.utils.network_utils import ping_ip_and_port
 from ros_mcp.utils.websocket import WebSocketManager
@@ -86,28 +87,38 @@ def register_connection_tools(
 
     @mcp.tool(
         description=(
-            "Ping the MCP server with a timestamp to measure round-trip latency.\n"
-            "Send a Unix timestamp (in milliseconds) and receive the latency in milliseconds.\n"
-            "Example:\n"
-            "ping_latency(client_timestamp_ms=1705847123456)"
+            "Get the current server time in HH:MM:SS format (UTC).\n"
+            "Compare with time.is to measure latency.\n"
+            "If use_progress=True, sends time updates every second for 10 seconds.\n"
+            "If use_progress=False, returns time once."
         )
     )
-    def ping_latency(client_timestamp_ms: int) -> dict:
+    async def get_time(ctx: Context, use_progress: bool = False) -> dict:
         """
-        Measure round-trip latency to the MCP server.
+        Get current server time for latency measurement.
 
         Args:
-            client_timestamp_ms (int): Unix timestamp in milliseconds from the client.
+            ctx: MCP context for progress reporting.
+            use_progress: If True, send 10 seconds of progress updates.
 
         Returns:
-            dict: Contains client timestamp, server timestamp, and calculated latency.
+            dict: Contains current UTC time in HH:MM:SS format.
         """
-        server_timestamp_ms = int(time.time() * 1000)
-        latency_ms = server_timestamp_ms - client_timestamp_ms
+        def get_current_time() -> str:
+            return datetime.now(timezone.utc).strftime("%H:%M:%S")
+
+        if use_progress:
+            for i in range(10):
+                current_time = get_current_time()
+                await ctx.report_progress(
+                    progress=i + 1,
+                    total=10,
+                    message=f"UTC: {current_time}"
+                )
+                if i < 9:
+                    await asyncio.sleep(1)
 
         return {
-            "client_timestamp_ms": client_timestamp_ms,
-            "server_timestamp_ms": server_timestamp_ms,
-            "latency_ms": latency_ms,
-            "latency_seconds": latency_ms / 1000.0,
+            "utc_time": get_current_time(),
+            "compare_with": "https://time.is/UTC",
         }
