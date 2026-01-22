@@ -4,13 +4,15 @@ This module provides the register() function called by submodule_integration.py.
 It reads its own configuration from environment variables, keeping ROS-specific
 configuration encapsulated within this submodule.
 """
-import os
+
 import logging
+import os
 
 from fastmcp import FastMCP
-from ros_mcp.tools import register_all_tools
-from ros_mcp.resources import register_all_resources
+
 from ros_mcp.prompts import register_all_prompts
+from ros_mcp.resources import register_all_resources
+from ros_mcp.tools import register_all_tools
 from ros_mcp.utils.websocket import WebSocketManager
 
 logger = logging.getLogger(__name__)
