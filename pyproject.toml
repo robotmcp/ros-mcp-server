@@ -28,6 +28,7 @@ dev = [
     "pytest",         # for tests
     "pytest-timeout", # test timeouts for E2E tests
     "pytest-cov",     # coverage reporting
+    "pytest-asyncio", # async test support
 ]
 
 [project.scripts]
@@ -71,6 +72,8 @@ python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
 addopts = "-v --tb=short"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
 markers = [
     "e2e: end-to-end tests requiring ROS 2 Docker container",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
