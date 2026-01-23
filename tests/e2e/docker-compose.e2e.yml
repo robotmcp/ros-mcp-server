@@ -19,6 +19,7 @@ services:
       bash -c "source /opt/ros/humble/setup.bash &&
                ros2 run turtlesim turtlesim_node &
                sleep 2 &&
+               ros2 run rosapi rosapi_node &
                ros2 run rosbridge_server rosbridge_websocket"
     healthcheck:
       test: ["CMD", "bash", "-c", "source /opt/ros/humble/setup.bash && ros2 topic list | grep -q /turtle1/pose"]

@@ -13,7 +13,7 @@ services:
       # Disable display for headless testing
       - QT_QPA_PLATFORM=offscreen
     ports:
-      - "9091:9090"  # Use different port to allow both ROS1 and ROS2 to run simultaneously
+      - "9091:9091"  # Use different port to allow both ROS1 and ROS2 to run simultaneously
     stdin_open: true
     tty: true
     command: >
@@ -22,7 +22,7 @@ services:
                sleep 3 &&
                rosrun turtlesim turtlesim_node &
                sleep 2 &&
-               roslaunch rosbridge_server rosbridge_websocket.launch"
+               roslaunch rosbridge_server rosbridge_websocket.launch port:=9091"
     healthcheck:
       test: ["CMD", "bash", "-c", "source /opt/ros/noetic/setup.bash && rostopic list | grep -q /turtle1/pose"]
       interval: 5s

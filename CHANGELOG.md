@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-01-23
+
+### Fixed
+- E2E tests: Added missing `rosapi_node` to ROS 2 docker-compose startup command
+- E2E tests: Fixed ROS 1 docker-compose port mismatch (rosbridge Host header validation)
+- E2E tests: Fixed ROS 1 compatibility in parameter tests (handle "null" response)
+- E2E tests: Added proper ROS version skip for ROS 2-only tests (actions, ListParameters)
+
 ## [2.5.0] - 2026-01-23
 
 ### Added
@@ -138,6 +146,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Release Date | Key Changes |
 |---------|--------------|-------------|
+| 2.5.1 | 2026-01-23 | E2E test infrastructure fixes for ROS 1/ROS 2 |
+| 2.5.0 | 2026-01-23 | ROS 1 E2E testing support |
 | 2.4.0 | 2026-01-23 | Bug fixes, new E2E tests, documentation updates |
 | 2.3.0 | 2026-01-23 | Comprehensive test suite, GitHub Actions CI |
 | 2.2.1 | 2026-01-15 | Parent server integration, packaging fixes |
@@ -145,7 +155,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 | 2.1.7 | 2025-12-01 | uvx installation, TurtleBot3 example |
 | 2.1.0 | 2025-11-15 | Initial public release |
 
-[Unreleased]: https://github.com/robotmcp/ros-mcp-server/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/robotmcp/ros-mcp-server/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/robotmcp/ros-mcp-server/compare/v2.5.0...v2.5.1
+[2.5.0]: https://github.com/robotmcp/ros-mcp-server/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/robotmcp/ros-mcp-server/compare/v2.3.0...v2.4.0
 [2.3.0]: https://github.com/robotmcp/ros-mcp-server/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/robotmcp/ros-mcp-server/compare/v2.2.0...v2.2.1

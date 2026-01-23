@@ -50,8 +50,8 @@ class TestGetParameter:
         # Should return empty value or unsuccessful
         if "values" in response:
             value = response["values"].get("value", "")
-            # Empty or quoted empty string indicates not found
-            assert value in ["", '""', None] or not response["values"].get("successful", True)
+            # Empty, quoted empty string, or "null" indicates not found
+            assert value in ["", '""', None, "null"] or not response["values"].get("successful", True)
 
 
 class TestSetParameter:
@@ -109,8 +109,11 @@ class TestSetParameter:
 class TestGetParameters:
     """E2E tests for listing parameters."""
 
-    def test_list_turtlesim_parameters(self, ws_manager):
+    def test_list_turtlesim_parameters(self, ws_manager, ros_version):
         """List all parameters for turtlesim node."""
+        if ros_version == "1":
+            pytest.skip("rcl_interfaces/srv/ListParameters is ROS 2 specific")
+
         message = {
             "op": "call_service",
             "service": "/turtlesim/list_parameters",
@@ -170,7 +173,8 @@ class TestHasParameter:
         # Should have empty value or unsuccessful
         if "values" in response:
             value = response["values"].get("value", "")
-            assert value in ["", '""', None] or not response["values"].get("successful", True)
+            # Empty, quoted empty string, or "null" indicates not found
+            assert value in ["", '""', None, "null"] or not response["values"].get("successful", True)
 
 
 class TestParameterIntegration:

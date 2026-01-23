@@ -18,8 +18,11 @@ pytestmark = [pytest.mark.e2e, pytest.mark.ros2]
 class TestGetActions:
     """E2E tests for get_actions functionality."""
 
-    def test_get_actions_returns_rotate_absolute(self, ws_manager, turtlesim_actions, rosapi_services_type):
+    def test_get_actions_returns_rotate_absolute(self, ws_manager, turtlesim_actions, rosapi_services_type, ros_version):
         """Verify turtlesim rotate_absolute action exists."""
+        if ros_version == "1":
+            pytest.skip("Actions are not supported in ROS 1")
+
         # First check if the action_servers service is available
         services_msg = {
             "op": "call_service",
