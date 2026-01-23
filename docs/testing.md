@@ -1,6 +1,107 @@
 # Testing Guide for ROS MCP Server
 
-This guide explains how to test the ROS MCP Server using prompts and resources.
+This guide explains how to test the ROS MCP Server using prompts, resources, and automated tests.
+
+## Running Automated Tests
+
+The ROS MCP Server includes a comprehensive test suite with unit tests and end-to-end (E2E) tests.
+
+### Test Structure
+
+```
+tests/
+├── utils/              # Unit tests for utility modules
+│   ├── test_config_utils.py
+│   ├── test_network_utils.py
+│   └── test_websocket.py
+├── tools/              # Unit tests for tool modules
+│   ├── test_actions.py
+│   ├── test_images.py
+│   ├── test_nodes.py
+│   ├── test_parameters.py
+│   └── test_robot_config.py
+└── e2e/                # End-to-end tests (require Docker)
+    ├── conftest.py     # Shared fixtures
+    ├── test_e2e_topics.py
+    ├── test_e2e_services.py
+    ├── test_e2e_actions.py
+    ├── test_e2e_nodes.py
+    ├── test_e2e_parameters.py
+    ├── test_e2e_prompts.py
+    ├── test_e2e_resources.py
+    ├── test_e2e_main.py
+    ├── test_e2e_integration.py
+    ├── test_e2e_error_handling.py
+    ├── test_e2e_images.py
+    └── test_e2e_robot_config.py
+```
+
+### Running Unit Tests
+
+Unit tests can be run without any external dependencies:
+
+```bash
+# Run all unit tests
+pytest tests/utils tests/tools -v
+
+# Run with coverage report
+pytest tests/utils tests/tools -v --cov=ros_mcp --cov-report=term-missing
+
+# Run specific test file
+pytest tests/tools/test_actions.py -v
+
+# Run tests matching a pattern
+pytest tests/ -k "test_get" -v
+```
+
+### Running E2E Tests
+
+E2E tests require a ROS 2 environment with turtlesim running in Docker:
+
+```bash
+# Start the ROS 2 environment
+docker compose -f tests/e2e/docker-compose.e2e.yml up -d
+
+# Wait for rosbridge to be ready (typically 10-30 seconds)
+sleep 30
+
+# Run E2E tests
+pytest tests/e2e/ -v -m e2e
+
+# Run specific E2E test category
+pytest tests/e2e/test_e2e_topics.py -v -m e2e
+
+# Stop the Docker environment
+docker compose -f tests/e2e/docker-compose.e2e.yml down
+```
+
+### Pytest Markers
+
+The test suite uses the following markers:
+
+- `@pytest.mark.e2e` - End-to-end tests requiring ROS environment
+- `@pytest.mark.asyncio` - Async tests using pytest-asyncio
+
+Configure pytest in `pyproject.toml`:
+
+```toml
+[tool.pytest.ini_options]
+markers = [
+    "e2e: End-to-end tests requiring ROS environment",
+]
+asyncio_mode = "auto"
+```
+
+### CI/CD
+
+The GitHub Actions workflow automatically runs:
+- Unit tests on every push and pull request
+- E2E tests on every push and pull request (using Docker)
+- Coverage reporting
+
+See `.github/workflows/test.yml` for the full configuration.
+
+---
 
 ## Prerequisites
 

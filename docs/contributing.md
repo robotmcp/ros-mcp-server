@@ -49,6 +49,41 @@ Thank you for contributing!
 
 ---
 
+## Testing
+
+Before submitting a pull request, please run the test suite to ensure your changes don't break existing functionality.
+
+### Running Unit Tests
+
+```bash
+# Run all unit tests
+pytest tests/utils tests/tools -v
+
+# Run with coverage
+pytest tests/utils tests/tools -v --cov=ros_mcp --cov-report=term-missing
+```
+
+### Running E2E Tests (requires Docker)
+
+```bash
+# Start ROS environment
+docker compose -f tests/e2e/docker-compose.e2e.yml up -d
+
+# Run E2E tests
+pytest tests/e2e/ -v -m e2e
+
+# Stop environment
+docker compose -f tests/e2e/docker-compose.e2e.yml down
+```
+
+### Writing Tests
+
+- Unit tests go in `tests/utils/` or `tests/tools/`
+- E2E tests go in `tests/e2e/` with the `@pytest.mark.e2e` marker
+- Use fixtures from `conftest.py` for shared setup
+
+---
+
 ## Style & CI
 We use **Ruff** for both linting and formatting. CI requires:
 - `ruff format --check .`

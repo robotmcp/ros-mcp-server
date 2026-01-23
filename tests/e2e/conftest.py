@@ -185,3 +185,45 @@ def reset_turtle_fixture(ws_manager):
     yield
     # Optionally reset after test too
     reset_turtle(ws_manager)
+
+
+@pytest.fixture
+def ws_manager_tiny_timeout(wait_for_rosbridge, rosbridge_host, rosbridge_port):
+    """WebSocketManager with very short timeout for testing timeout behavior."""
+    manager = WebSocketManager(rosbridge_host, rosbridge_port, default_timeout=0.5)
+    yield manager
+    manager.close()
+
+
+@pytest.fixture
+def invalid_ws_manager():
+    """WebSocketManager with invalid host for error testing."""
+    manager = WebSocketManager("192.0.2.1", 9090, default_timeout=1.0)  # TEST-NET-1 - guaranteed unreachable
+    yield manager
+    manager.close()
+
+
+@pytest.fixture(scope="session")
+def mcp_server(wait_for_rosbridge, rosbridge_host, rosbridge_port):
+    """
+    Full MCP server instance with all tools, resources, and prompts registered.
+
+    This fixture provides access to the configured FastMCP server for testing
+    registration of tools, resources, and prompts.
+    """
+    from fastmcp import FastMCP
+
+    from ros_mcp.prompts import register_all_prompts
+    from ros_mcp.resources import register_all_resources
+    from ros_mcp.tools import register_all_tools
+    from ros_mcp.utils.websocket import WebSocketManager
+
+    mcp = FastMCP("ros-mcp-server-test")
+    ws_manager = WebSocketManager(rosbridge_host, rosbridge_port, default_timeout=10.0)
+
+    register_all_tools(mcp, ws_manager, rosbridge_ip=rosbridge_host, rosbridge_port=rosbridge_port)
+    register_all_resources(mcp, ws_manager)
+    register_all_prompts(mcp)
+
+    yield mcp
+    ws_manager.close()

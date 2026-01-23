@@ -22,7 +22,7 @@ def _safe_check_parameter_exists(
             return True
         # Strip quotes (handles cases like '""' which represents empty string)
         stripped = value.strip('"').strip("'")
-        return not stripped or stripped == ""
+        return not stripped
 
     message = {
         "op": "call_service",
@@ -744,7 +744,10 @@ def register_parameter_tools(
                     clean_value.startswith("-") and clean_value[1:].isdigit()
                 ):
                     param_type = "int"
-                elif "." in clean_value and clean_value.replace(".", "").replace("-", "").isdigit():
+                elif (
+                    clean_value.count(".") == 1
+                    and clean_value.replace(".", "").replace("-", "").isdigit()
+                ):
                     param_type = "float"
                 elif param_value.startswith('"') and param_value.endswith('"'):
                     param_type = "string"

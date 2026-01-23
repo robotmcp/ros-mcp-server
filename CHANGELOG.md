@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-01-23
+
+### Added
+- 6 new E2E test files covering prompts, resources, integration, error handling, and images
+- New fixtures: `ws_manager_tiny_timeout`, `invalid_ws_manager`, `mcp_server`
+- Tests for MCP server registration (tools, resources, prompts)
+- Tests for CLI argument parsing
+- Multi-tool workflow integration tests
+- Error handling and edge case tests
+- Image detection and parsing tests
+
+### Fixed
+- Critical: Fixed `locals()` usage for undefined `action_interfaces` variable in actions.py
+- High: Fixed resource leak in `subscribe_once` and `subscribe_for_duration` (added try/finally)
+- High: Fixed race condition with negative timeout in `send_action_goal`
+- Medium: Fixed silent exception handling - now logs exceptions instead of bare `pass`
+- Medium: Fixed float type inference error for values like "1.2.3" in parameters.py
+- Medium: Fixed unchecked WebSocket state before sending messages
+- Medium: Fixed misleading `__enter__` docstring in WebSocketManager
+- Medium: Simplified redundant condition in `_is_empty_value`
+- Low: Added exception handling in publish loop
+- Low: Added timeout validation in `send_action_goal`
+- Low: Fixed inconsistent bounds checking in action details parsing
+
+### Changed
+- Action support now marked as implemented (was "upcoming")
+- Improved context manager usage in async action goal sending
+- Updated test documentation with automated testing section
+
 ## [2.3.0] - 2026-01-23
 
 ### Added
@@ -93,12 +122,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 | Version | Release Date | Key Changes |
 |---------|--------------|-------------|
+| 2.4.0 | 2026-01-23 | Bug fixes, new E2E tests, documentation updates |
+| 2.3.0 | 2026-01-23 | Comprehensive test suite, GitHub Actions CI |
 | 2.2.1 | 2026-01-15 | Parent server integration, packaging fixes |
 | 2.2.0 | 2025-12-20 | Major modularization, MCP resources/prompts |
 | 2.1.7 | 2025-12-01 | uvx installation, TurtleBot3 example |
 | 2.1.0 | 2025-11-15 | Initial public release |
 
-[Unreleased]: https://github.com/robotmcp/ros-mcp-server/compare/v2.2.1...HEAD
+[Unreleased]: https://github.com/robotmcp/ros-mcp-server/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/robotmcp/ros-mcp-server/compare/v2.3.0...v2.4.0
+[2.3.0]: https://github.com/robotmcp/ros-mcp-server/compare/v2.2.1...v2.3.0
 [2.2.1]: https://github.com/robotmcp/ros-mcp-server/compare/v2.2.0...v2.2.1
 [2.2.0]: https://github.com/robotmcp/ros-mcp-server/compare/v2.1.7...v2.2.0
 [2.1.7]: https://github.com/robotmcp/ros-mcp-server/compare/v2.1.0...v2.1.7
