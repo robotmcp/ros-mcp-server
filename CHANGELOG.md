@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-01-23
+
+### Added
+- ROS 1 (Noetic) E2E testing support alongside ROS 2 (Humble)
+- New Docker configurations: `Dockerfile.ros1`, `Dockerfile.ros2`, `docker-compose.ros1.yml`
+- ROS version-aware fixtures for cross-version compatibility
+- New pytest markers: `ros1`, `ros2` for version-specific test filtering
+- Command line option `--ros-version=1|2` for pytest
+- ROS version-aware rosapi service type fixtures
+
+### Changed
+- E2E tests now support both ROS 1 and ROS 2 environments
+- Updated test documentation with ROS 1/ROS 2 testing instructions
+- Refactored E2E tests to use ROS version-aware message and service types
+- Actions and parameters tests marked as ROS 2-only (appropriate for their APIs)
+
 ## [2.4.0] - 2026-01-23
 
 ### Added

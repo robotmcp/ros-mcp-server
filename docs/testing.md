@@ -56,7 +56,9 @@ pytest tests/ -k "test_get" -v
 
 ### Running E2E Tests
 
-E2E tests require a ROS 2 environment with turtlesim running in Docker:
+E2E tests require a ROS environment with turtlesim running in Docker. The test suite supports both ROS 1 (Noetic) and ROS 2 (Humble).
+
+#### ROS 2 E2E Tests (Default)
 
 ```bash
 # Start the ROS 2 environment
@@ -65,7 +67,7 @@ docker compose -f tests/e2e/docker-compose.e2e.yml up -d
 # Wait for rosbridge to be ready (typically 10-30 seconds)
 sleep 30
 
-# Run E2E tests
+# Run E2E tests (default is ROS 2)
 pytest tests/e2e/ -v -m e2e
 
 # Run specific E2E test category
@@ -75,11 +77,53 @@ pytest tests/e2e/test_e2e_topics.py -v -m e2e
 docker compose -f tests/e2e/docker-compose.e2e.yml down
 ```
 
+#### ROS 1 E2E Tests
+
+```bash
+# Start the ROS 1 environment (uses port 9091)
+docker compose -f tests/e2e/docker-compose.ros1.yml up -d
+
+# Wait for rosbridge to be ready
+sleep 30
+
+# Run E2E tests with ROS 1
+pytest tests/e2e/ -v -m e2e --ros-version=1
+
+# Run only tests compatible with ROS 1 (excludes ros2-only tests)
+pytest tests/e2e/ -v -m "e2e and not ros2" --ros-version=1
+
+# Stop the Docker environment
+docker compose -f tests/e2e/docker-compose.ros1.yml down
+```
+
+#### Running Both ROS Versions
+
+```bash
+# Start both environments simultaneously
+docker compose -f tests/e2e/docker-compose.e2e.yml up -d
+docker compose -f tests/e2e/docker-compose.ros1.yml up -d
+
+# Wait for both to be ready
+sleep 30
+
+# Run ROS 2 tests
+pytest tests/e2e/ -v -m e2e --ros-version=2
+
+# Run ROS 1 tests (excludes ROS 2-only tests)
+pytest tests/e2e/ -v -m "e2e and not ros2" --ros-version=1
+
+# Stop both environments
+docker compose -f tests/e2e/docker-compose.e2e.yml down
+docker compose -f tests/e2e/docker-compose.ros1.yml down
+```
+
 ### Pytest Markers
 
 The test suite uses the following markers:
 
 - `@pytest.mark.e2e` - End-to-end tests requiring ROS environment
+- `@pytest.mark.ros1` - Tests specific to ROS 1
+- `@pytest.mark.ros2` - Tests specific to ROS 2 (e.g., actions, parameters)
 - `@pytest.mark.asyncio` - Async tests using pytest-asyncio
 
 Configure pytest in `pyproject.toml`:
@@ -88,9 +132,17 @@ Configure pytest in `pyproject.toml`:
 [tool.pytest.ini_options]
 markers = [
     "e2e: End-to-end tests requiring ROS environment",
+    "ros1: Tests specific to ROS 1",
+    "ros2: Tests specific to ROS 2",
 ]
 asyncio_mode = "auto"
 ```
+
+### Command Line Options
+
+The test suite supports the following command line options:
+
+- `--ros-version=1|2` - Specify ROS version to test against (default: 2)
 
 ### CI/CD
 

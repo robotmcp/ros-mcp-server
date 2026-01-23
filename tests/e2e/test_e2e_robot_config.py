@@ -1,4 +1,4 @@
-"""E2E tests for robot config operations with real ROS 2 turtlesim."""
+"""E2E tests for robot config operations with real ROS turtlesim."""
 
 import pytest
 
@@ -8,12 +8,15 @@ pytestmark = pytest.mark.e2e
 class TestDetectRosVersion:
     """E2E tests for ROS version detection."""
 
-    def test_detect_ros2_version(self, ws_manager):
-        """Detect ROS 2 version via rosapi."""
+    def test_detect_ros_version(self, ws_manager, ros_version, rosapi_get_ros_version_type):
+        """Detect ROS version via rosapi."""
+        if rosapi_get_ros_version_type is None:
+            pytest.skip("get_ros_version service not available in ROS 1")
+
         message = {
             "op": "call_service",
             "service": "/rosapi/get_ros_version",
-            "type": "rosapi_msgs/srv/GetROSVersion",
+            "type": rosapi_get_ros_version_type,
             "args": {},
             "id": "detect_ros_version_e2e",
         }
@@ -26,27 +29,37 @@ class TestDetectRosVersion:
             version = values.get("version")
             distro = values.get("distro")
 
-            # Should detect ROS 2 (version may be int or string)
-            assert str(version) == "2", f"Expected ROS 2, got version {version}"
+            # Should detect the expected ROS version (may be int or string)
+            assert str(version) == ros_version, f"Expected ROS {ros_version}, got version {version}"
             # Should have a valid distro name
             assert distro, "Expected distro name"
-            # Common ROS 2 distros
-            valid_distros = [
-                "humble",
-                "iron",
-                "jazzy",
-                "rolling",
-                "foxy",
-                "galactic",
-            ]
-            assert any(d in distro.lower() for d in valid_distros), f"Unexpected distro: {distro}"
 
-    def test_ros_version_response_format(self, ws_manager):
-        """Verify ROS version response has expected format."""
+            if ros_version == "2":
+                # Common ROS 2 distros
+                valid_distros = [
+                    "humble",
+                    "iron",
+                    "jazzy",
+                    "rolling",
+                    "foxy",
+                    "galactic",
+                ]
+                assert any(d in distro.lower() for d in valid_distros), f"Unexpected distro: {distro}"
+            else:
+                # ROS 1 distros
+                valid_distros = ["noetic", "melodic"]
+                assert any(d in distro.lower() for d in valid_distros), f"Unexpected distro: {distro}"
+
+    @pytest.mark.ros2
+    def test_ros_version_response_format(self, ws_manager, rosapi_get_ros_version_type):
+        """Verify ROS version response has expected format (ROS 2 only)."""
+        if rosapi_get_ros_version_type is None:
+            pytest.skip("get_ros_version service not available in ROS 1")
+
         message = {
             "op": "call_service",
             "service": "/rosapi/get_ros_version",
-            "type": "rosapi_msgs/srv/GetROSVersion",
+            "type": rosapi_get_ros_version_type,
             "args": {},
             "id": "ros_version_format_e2e",
         }
@@ -66,12 +79,12 @@ class TestDetectRosVersion:
 class TestRosbridgeConnection:
     """E2E tests for verifying rosbridge is working."""
 
-    def test_rosbridge_services_available(self, ws_manager):
+    def test_rosbridge_services_available(self, ws_manager, rosapi_services_type):
         """Verify essential rosbridge services are available."""
         message = {
             "op": "call_service",
             "service": "/rosapi/services",
-            "type": "rosapi_msgs/srv/Services",
+            "type": rosapi_services_type,
             "args": {},
             "id": "check_rosbridge_services",
         }
@@ -92,12 +105,12 @@ class TestRosbridgeConnection:
         for service in essential_services:
             assert service in services, f"Missing essential service: {service}"
 
-    def test_rosbridge_topics_available(self, ws_manager):
+    def test_rosbridge_topics_available(self, ws_manager, rosapi_topics_type):
         """Verify topics can be listed."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi_msgs/srv/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "check_rosbridge_topics",
         }
@@ -117,13 +130,19 @@ class TestRosbridgeConnection:
 class TestRobotConfigIntegration:
     """Integration tests for robot configuration."""
 
-    def test_detect_version_and_list_capabilities(self, ws_manager):
-        """Detect ROS version and list available capabilities."""
+    @pytest.mark.ros2
+    def test_detect_version_and_list_capabilities(
+        self, ws_manager, rosapi_get_ros_version_type, rosapi_services_type
+    ):
+        """Detect ROS version and list available capabilities (ROS 2 only)."""
+        if rosapi_get_ros_version_type is None:
+            pytest.skip("get_ros_version service not available in ROS 1")
+
         # 1. Get ROS version
         version_msg = {
             "op": "call_service",
             "service": "/rosapi/get_ros_version",
-            "type": "rosapi_msgs/srv/GetROSVersion",
+            "type": rosapi_get_ros_version_type,
             "args": {},
             "id": "integration_get_version",
         }
@@ -134,12 +153,12 @@ class TestRobotConfigIntegration:
         version = version_response.get("values", {}).get("version", "unknown")
 
         # 2. Based on version, check for ROS 2 specific services
-        if version == "2":
+        if str(version) == "2":
             # Check for ROS 2 specific services like action_servers
             services_msg = {
                 "op": "call_service",
                 "service": "/rosapi/services",
-                "type": "rosapi_msgs/srv/Services",
+                "type": rosapi_services_type,
                 "args": {},
                 "id": "integration_get_services",
             }
@@ -153,30 +172,18 @@ class TestRobotConfigIntegration:
             param_services = [s for s in services if "param" in s.lower()]
             assert len(param_services) > 0, "ROS 2 should have parameter services"
 
-    def test_full_system_check(self, ws_manager):
-        """Comprehensive system check: version, nodes, topics, services."""
+    def test_full_system_check(
+        self, ws_manager, ros_version, rosapi_nodes_type, rosapi_topics_type, rosapi_services_type
+    ):
+        """Comprehensive system check: nodes, topics, services."""
         results = {}
-
-        # Check version
-        version_msg = {
-            "op": "call_service",
-            "service": "/rosapi/get_ros_version",
-            "type": "rosapi_msgs/srv/GetROSVersion",
-            "args": {},
-            "id": "system_check_version",
-        }
-
-        with ws_manager:
-            version_response = ws_manager.request(version_msg, timeout=10.0)
-
-        results["version"] = version_response.get("values", {}).get("version")
-        results["distro"] = version_response.get("values", {}).get("distro")
+        results["version"] = ros_version
 
         # Check nodes
         nodes_msg = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "system_check_nodes",
         }
@@ -190,7 +197,7 @@ class TestRobotConfigIntegration:
         topics_msg = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi_msgs/srv/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "system_check_topics",
         }
@@ -204,7 +211,7 @@ class TestRobotConfigIntegration:
         services_msg = {
             "op": "call_service",
             "service": "/rosapi/services",
-            "type": "rosapi_msgs/srv/Services",
+            "type": rosapi_services_type,
             "args": {},
             "id": "system_check_services",
         }
@@ -214,8 +221,8 @@ class TestRobotConfigIntegration:
 
         results["service_count"] = len(services_response.get("values", {}).get("services", []))
 
-        # Verify we got valid data (version may be int or string)
-        assert str(results["version"]) == "2", "Should be ROS 2"
+        # Verify we got valid data
+        assert str(results["version"]) == ros_version, f"Should be ROS {ros_version}"
         assert results["node_count"] > 0, "Should have nodes running"
         assert results["topic_count"] > 0, "Should have topics available"
         assert results["service_count"] > 0, "Should have services available"

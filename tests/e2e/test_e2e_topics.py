@@ -1,4 +1,4 @@
-"""E2E tests for topic operations with real ROS 2 turtlesim."""
+"""E2E tests for topic operations with real ROS turtlesim."""
 
 import json
 import math
@@ -14,12 +14,12 @@ pytestmark = pytest.mark.e2e
 class TestGetTopics:
     """E2E tests for get_topics functionality."""
 
-    def test_get_topics_returns_turtlesim_topics(self, ws_manager, turtlesim_topics):
+    def test_get_topics_returns_turtlesim_topics(self, ws_manager, turtlesim_topics, rosapi_topics_type):
         """Verify turtlesim topics exist in topic list."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "get_topics_e2e",
         }
@@ -34,12 +34,12 @@ class TestGetTopics:
         for expected_topic in turtlesim_topics:
             assert expected_topic in topics, f"Expected {expected_topic} in topics"
 
-    def test_get_topics_returns_types(self, ws_manager):
+    def test_get_topics_returns_types(self, ws_manager, rosapi_topics_type):
         """Verify topic types are returned correctly."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "get_topics_types_e2e",
         }
@@ -62,12 +62,12 @@ class TestGetTopics:
 class TestGetTopicType:
     """E2E tests for get_topic_type functionality."""
 
-    def test_get_topic_type_cmd_vel(self, ws_manager):
+    def test_get_topic_type_cmd_vel(self, ws_manager, rosapi_topic_type_type):
         """Verify type of cmd_vel topic."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topic_type",
-            "type": "rosapi/TopicType",
+            "type": rosapi_topic_type_type,
             "args": {"topic": "/turtle1/cmd_vel"},
             "id": "get_topic_type_e2e",
         }
@@ -79,12 +79,12 @@ class TestGetTopicType:
         topic_type = response["values"].get("type", "")
         assert "Twist" in topic_type, f"Expected Twist type, got {topic_type}"
 
-    def test_get_topic_type_pose(self, ws_manager):
+    def test_get_topic_type_pose(self, ws_manager, rosapi_topic_type_type):
         """Verify type of pose topic."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topic_type",
-            "type": "rosapi/TopicType",
+            "type": rosapi_topic_type_type,
             "args": {"topic": "/turtle1/pose"},
             "id": "get_topic_type_pose_e2e",
         }
@@ -100,12 +100,12 @@ class TestGetTopicType:
 class TestSubscribeOnce:
     """E2E tests for subscribe_once functionality."""
 
-    def test_subscribe_once_pose(self, ws_manager):
+    def test_subscribe_once_pose(self, ws_manager, msg_type_pose):
         """Subscribe to pose topic and verify message structure."""
         subscribe_msg = {
             "op": "subscribe",
             "topic": "/turtle1/pose",
-            "type": "turtlesim/msg/Pose",
+            "type": msg_type_pose,
         }
 
         with ws_manager:
@@ -133,9 +133,9 @@ class TestSubscribeOnce:
         assert "linear_velocity" in received_msg, "Pose should have linear_velocity"
         assert "angular_velocity" in received_msg, "Pose should have angular_velocity"
 
-    def test_subscribe_once_pose_values_reasonable(self, ws_manager):
+    def test_subscribe_once_pose_values_reasonable(self, ws_manager, msg_type_pose):
         """Verify pose values are within expected bounds."""
-        pose = get_turtle_pose(ws_manager)
+        pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
 
         assert pose is not None, "Should receive pose"
         # Turtlesim window is 11x11
@@ -148,16 +148,18 @@ class TestSubscribeOnce:
 class TestPublishCmdVel:
     """E2E tests for publishing to cmd_vel topic."""
 
-    def test_publish_cmd_vel_moves_turtle(self, ws_manager):
+    def test_publish_cmd_vel_moves_turtle(
+        self, ws_manager, service_type_empty, service_type_teleport, msg_type_twist, msg_type_pose
+    ):
         """Verify publishing to cmd_vel moves the turtle."""
         # First, reset turtle and get initial pose
-        reset_turtle(ws_manager)
+        reset_turtle(ws_manager, service_type_empty)
         time.sleep(0.5)
-        initial_pose = get_turtle_pose(ws_manager)
+        initial_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert initial_pose is not None, "Should get initial pose"
 
         # Teleport to known position
-        teleport_turtle(ws_manager, 5.5, 5.5, 0.0)
+        teleport_turtle(ws_manager, 5.5, 5.5, 0.0, service_type_teleport)
         time.sleep(0.3)
 
         # Now publish a movement command
@@ -166,7 +168,7 @@ class TestPublishCmdVel:
             advertise_msg = {
                 "op": "advertise",
                 "topic": "/turtle1/cmd_vel",
-                "type": "geometry_msgs/msg/Twist",
+                "type": msg_type_twist,
             }
             ws_manager.send(advertise_msg)
             time.sleep(0.2)
@@ -199,7 +201,7 @@ class TestPublishCmdVel:
 
         # Get new pose and verify movement
         time.sleep(0.3)
-        new_pose = get_turtle_pose(ws_manager)
+        new_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert new_pose is not None, "Should get new pose"
 
         # Turtle should have moved forward (x increased since facing right at theta=0)
@@ -207,14 +209,16 @@ class TestPublishCmdVel:
             f"Turtle should have moved right, x was 5.5, now {new_pose['x']}"
         )
 
-    def test_publish_angular_rotates_turtle(self, ws_manager):
+    def test_publish_angular_rotates_turtle(
+        self, ws_manager, service_type_empty, service_type_teleport, msg_type_twist, msg_type_pose
+    ):
         """Verify publishing angular velocity rotates the turtle."""
         # Reset and teleport to known position/orientation
-        reset_turtle(ws_manager)
-        teleport_turtle(ws_manager, 5.5, 5.5, 0.0)
+        reset_turtle(ws_manager, service_type_empty)
+        teleport_turtle(ws_manager, 5.5, 5.5, 0.0, service_type_teleport)
         time.sleep(0.3)
 
-        initial_pose = get_turtle_pose(ws_manager)
+        initial_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         initial_theta = initial_pose["theta"]
 
         # Publish rotation command
@@ -222,7 +226,7 @@ class TestPublishCmdVel:
             advertise_msg = {
                 "op": "advertise",
                 "topic": "/turtle1/cmd_vel",
-                "type": "geometry_msgs/msg/Twist",
+                "type": msg_type_twist,
             }
             ws_manager.send(advertise_msg)
             time.sleep(0.2)
@@ -252,7 +256,7 @@ class TestPublishCmdVel:
             ws_manager.send({"op": "unadvertise", "topic": "/turtle1/cmd_vel"})
 
         time.sleep(0.3)
-        new_pose = get_turtle_pose(ws_manager)
+        new_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert new_pose is not None, "Should get new pose"
 
         # Theta should have changed
@@ -262,12 +266,12 @@ class TestPublishCmdVel:
 class TestSubscribeForDuration:
     """E2E tests for subscribing for a duration."""
 
-    def test_collect_multiple_pose_messages(self, ws_manager):
+    def test_collect_multiple_pose_messages(self, ws_manager, msg_type_pose):
         """Verify collecting multiple messages over time."""
         subscribe_msg = {
             "op": "subscribe",
             "topic": "/turtle1/pose",
-            "type": "turtlesim/msg/Pose",
+            "type": msg_type_pose,
         }
 
         messages = []

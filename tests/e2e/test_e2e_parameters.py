@@ -1,8 +1,14 @@
-"""E2E tests for parameter operations with real ROS 2 turtlesim."""
+"""E2E tests for parameter operations with real ROS 2 turtlesim.
+
+Parameter interfaces are significantly different between ROS 1 and ROS 2.
+ROS 2 uses node-namespaced parameters with rcl_interfaces, while ROS 1
+uses a global parameter server. This module tests ROS 2 specific functionality.
+"""
 
 import pytest
 
-pytestmark = pytest.mark.e2e
+# Mark all tests in this module as e2e and ros2-only
+pytestmark = [pytest.mark.e2e, pytest.mark.ros2]
 
 
 class TestGetParameter:

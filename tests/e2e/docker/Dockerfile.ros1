@@ -1,0 +1,20 @@
+# ROS1 Noetic with Turtlesim for E2E testing
+FROM osrf/ros:noetic-desktop
+
+ENV ROS_DISTRO=noetic
+SHELL ["/bin/bash", "-c"]
+
+# Install turtlesim and rosbridge packages
+RUN apt-get update && apt-get install -y \
+    ros-noetic-turtlesim \
+    ros-noetic-rosbridge-suite \
+    && rm -rf /var/lib/apt/lists/*
+
+# Auto-source ROS environment in container shell
+RUN echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc
+
+# Set working directory
+WORKDIR /ros_ws
+
+# Default command to keep container running
+CMD ["/bin/bash"]

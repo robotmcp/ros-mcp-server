@@ -1,7 +1,5 @@
 """E2E tests for MCP resources with real ROS environment."""
 
-import json
-
 import pytest
 
 pytestmark = pytest.mark.e2e
@@ -26,12 +24,12 @@ class TestRobotSpecsResources:
 class TestRosMetadataResources:
     """E2E tests for ROS metadata resources."""
 
-    def test_ros_metadata_all_returns_topics(self, ws_manager):
+    def test_ros_metadata_all_returns_topics(self, ws_manager, rosapi_topics_type):
         """Verify ROS metadata returns topics from running ROS system."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "metadata_topics_test",
         }
@@ -43,12 +41,12 @@ class TestRosMetadataResources:
         topics = response["values"].get("topics", [])
         assert len(topics) > 0, "Expected at least one topic from ROS system"
 
-    def test_ros_metadata_all_returns_services(self, ws_manager):
+    def test_ros_metadata_all_returns_services(self, ws_manager, rosapi_services_type):
         """Verify ROS metadata returns services from running ROS system."""
         message = {
             "op": "call_service",
             "service": "/rosapi/services",
-            "type": "rosapi/Services",
+            "type": rosapi_services_type,
             "args": {},
             "id": "metadata_services_test",
         }
@@ -60,12 +58,12 @@ class TestRosMetadataResources:
         services = response["values"].get("services", [])
         assert len(services) > 0, "Expected at least one service from ROS system"
 
-    def test_ros_metadata_all_returns_nodes(self, ws_manager):
+    def test_ros_metadata_all_returns_nodes(self, ws_manager, rosapi_nodes_type):
         """Verify ROS metadata returns nodes from running ROS system."""
         message = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "metadata_nodes_test",
         }
@@ -77,13 +75,13 @@ class TestRosMetadataResources:
         nodes = response["values"].get("nodes", [])
         assert len(nodes) > 0, "Expected at least one node from ROS system"
 
-    def test_ros_metadata_contains_turtlesim(self, ws_manager):
+    def test_ros_metadata_contains_turtlesim(self, ws_manager, rosapi_topics_type):
         """Verify ROS metadata contains turtlesim-related entries."""
         # Get topics
         topics_message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "metadata_turtlesim_topics_test",
         }

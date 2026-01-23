@@ -1,4 +1,7 @@
-"""E2E tests for action operations with real ROS 2 turtlesim."""
+"""E2E tests for action operations with real ROS 2 turtlesim.
+
+Actions are a ROS 2 specific feature and are not available in ROS 1.
+"""
 
 import json
 import math
@@ -8,19 +11,20 @@ import pytest
 
 from tests.e2e.conftest import get_turtle_pose, reset_turtle, teleport_turtle
 
-pytestmark = pytest.mark.e2e
+# Mark all tests in this module as e2e and ros2-only
+pytestmark = [pytest.mark.e2e, pytest.mark.ros2]
 
 
 class TestGetActions:
     """E2E tests for get_actions functionality."""
 
-    def test_get_actions_returns_rotate_absolute(self, ws_manager, turtlesim_actions):
+    def test_get_actions_returns_rotate_absolute(self, ws_manager, turtlesim_actions, rosapi_services_type):
         """Verify turtlesim rotate_absolute action exists."""
         # First check if the action_servers service is available
         services_msg = {
             "op": "call_service",
             "service": "/rosapi/services",
-            "type": "rosapi_msgs/srv/Services",
+            "type": rosapi_services_type,
             "args": {},
             "id": "check_action_servers_service",
         }
@@ -58,11 +62,13 @@ class TestGetActions:
 class TestSendRotateAbsoluteGoal:
     """E2E tests for sending action goals to rotate_absolute."""
 
-    def test_send_rotate_goal_basic(self, ws_manager):
+    def test_send_rotate_goal_basic(
+        self, ws_manager, service_type_empty, service_type_teleport, msg_type_pose
+    ):
         """Send a rotation goal and verify it's accepted."""
         # Reset turtle to known position
-        reset_turtle(ws_manager)
-        teleport_turtle(ws_manager, 5.5, 5.5, 0.0)
+        reset_turtle(ws_manager, service_type_empty)
+        teleport_turtle(ws_manager, 5.5, 5.5, 0.0, service_type_teleport)
         time.sleep(0.5)
 
         # Send action goal
@@ -102,7 +108,7 @@ class TestSendRotateAbsoluteGoal:
 
         # Verify turtle rotated
         time.sleep(0.5)
-        pose = get_turtle_pose(ws_manager)
+        pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         if pose and got_response:
             # Should be approximately 90 degrees (pi/2)
             expected_theta = math.pi / 2
@@ -113,10 +119,10 @@ class TestSendRotateAbsoluteGoal:
                 theta_diff = 2 * math.pi - theta_diff
             assert theta_diff < 0.2, f"Expected theta ~{expected_theta}, got {pose['theta']}"
 
-    def test_send_rotate_goal_with_feedback(self, ws_manager):
+    def test_send_rotate_goal_with_feedback(self, ws_manager, service_type_empty, service_type_teleport):
         """Send a rotation goal and verify feedback is received."""
-        reset_turtle(ws_manager)
-        teleport_turtle(ws_manager, 5.5, 5.5, 0.0)
+        reset_turtle(ws_manager, service_type_empty)
+        teleport_turtle(ws_manager, 5.5, 5.5, 0.0, service_type_teleport)
         time.sleep(0.5)
 
         goal_id = f"feedback_goal_{int(time.time() * 1000)}"
@@ -158,10 +164,10 @@ class TestSendRotateAbsoluteGoal:
 class TestCancelActionGoal:
     """E2E tests for canceling action goals."""
 
-    def test_cancel_action_goal(self, ws_manager):
+    def test_cancel_action_goal(self, ws_manager, service_type_empty, service_type_teleport):
         """Start a rotation and cancel it mid-way."""
-        reset_turtle(ws_manager)
-        teleport_turtle(ws_manager, 5.5, 5.5, 0.0)
+        reset_turtle(ws_manager, service_type_empty)
+        teleport_turtle(ws_manager, 5.5, 5.5, 0.0, service_type_teleport)
         time.sleep(0.5)
 
         # Start a long rotation
@@ -213,10 +219,10 @@ class TestCancelActionGoal:
 class TestActionStatus:
     """E2E tests for getting action status."""
 
-    def test_get_action_status_no_active_goals(self, ws_manager):
+    def test_get_action_status_no_active_goals(self, ws_manager, service_type_empty):
         """Get status when no goals are active."""
         # Reset to ensure no goals are running
-        reset_turtle(ws_manager)
+        reset_turtle(ws_manager, service_type_empty)
         time.sleep(1.0)
 
         # Subscribe to action status topic
@@ -252,14 +258,16 @@ class TestActionStatus:
 class TestActionIntegration:
     """Integration tests for action workflows."""
 
-    def test_rotate_then_check_pose(self, ws_manager):
+    def test_rotate_then_check_pose(
+        self, ws_manager, service_type_empty, service_type_teleport, msg_type_pose
+    ):
         """Complete workflow: rotate and verify final position."""
         # Setup
-        reset_turtle(ws_manager)
-        teleport_turtle(ws_manager, 5.5, 5.5, 0.0)
+        reset_turtle(ws_manager, service_type_empty)
+        teleport_turtle(ws_manager, 5.5, 5.5, 0.0, service_type_teleport)
         time.sleep(0.5)
 
-        initial_pose = get_turtle_pose(ws_manager)
+        initial_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert initial_pose is not None
         assert abs(initial_pose["theta"]) < 0.1, "Should start at theta ~0"
 
@@ -293,7 +301,7 @@ class TestActionIntegration:
 
         # Verify final pose
         time.sleep(0.5)
-        final_pose = get_turtle_pose(ws_manager)
+        final_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert final_pose is not None
 
         if completed:

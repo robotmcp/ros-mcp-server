@@ -1,6 +1,6 @@
 [project]
 name = "ros-mcp"
-version = "2.4.0"
+version = "2.5.0"
 description = "Connect AI Language Models with Robots on ROS using MCP"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -75,7 +75,9 @@ addopts = "-v --tb=short"
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "function"
 markers = [
-    "e2e: end-to-end tests requiring ROS 2 Docker container",
+    "e2e: end-to-end tests requiring ROS Docker container",
+    "ros1: tests specific to ROS 1",
+    "ros2: tests specific to ROS 2 (actions, parameters)",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 

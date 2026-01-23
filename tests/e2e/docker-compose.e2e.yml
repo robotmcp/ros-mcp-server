@@ -1,26 +1,25 @@
-# Docker Compose for E2E tests with ROS 2 turtlesim
-# Uses the existing Dockerfile from examples/5_docker_turtlesim/
+# Docker Compose for E2E tests with ROS 2 Humble turtlesim
+# Usage: docker compose -f tests/e2e/docker-compose.e2e.yml up -d
 
 services:
   ros2-turtlesim:
     build:
-      context: ../../examples/5_docker_turtlesim/docker
-      dockerfile: Dockerfile.turtlesim
+      context: ./docker
+      dockerfile: Dockerfile.ros2
     container_name: ros2-turtlesim-e2e
     environment:
       - ROS_DISTRO=humble
       # Disable display for headless testing
       - QT_QPA_PLATFORM=offscreen
-    volumes:
-      # Mount launch file into the container
-      - ../../examples/5_docker_turtlesim/launch_turtlesim.launch.py:/ros2_ws/launch/launch_turtlesim.launch.py:ro
     ports:
       - "9090:9090"
     stdin_open: true
     tty: true
     command: >
       bash -c "source /opt/ros/humble/setup.bash &&
-               ros2 launch /ros2_ws/launch/launch_turtlesim.launch.py"
+               ros2 run turtlesim turtlesim_node &
+               sleep 2 &&
+               ros2 run rosbridge_server rosbridge_websocket"
     healthcheck:
       test: ["CMD", "bash", "-c", "source /opt/ros/humble/setup.bash && ros2 topic list | grep -q /turtle1/pose"]
       interval: 5s

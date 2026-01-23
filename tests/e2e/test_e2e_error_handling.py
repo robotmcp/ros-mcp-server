@@ -69,13 +69,13 @@ class TestSubscriptionErrors:
 class TestServiceCallErrors:
     """E2E tests for service call error handling."""
 
-    def test_service_call_timeout(self, ws_manager_short_timeout):
+    def test_service_call_timeout(self, ws_manager_short_timeout, rosapi_topics_type):
         """Test service call with short timeout."""
         # This test verifies the timeout mechanism works
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "timeout_test",
         }
@@ -88,12 +88,12 @@ class TestServiceCallErrors:
             f"Expected valid response or error: {response}"
         )
 
-    def test_call_nonexistent_service(self, ws_manager):
+    def test_call_nonexistent_service(self, ws_manager, service_type_empty):
         """Test calling a service that doesn't exist."""
         message = {
             "op": "call_service",
             "service": "/nonexistent_service_12345",
-            "type": "std_srvs/srv/Empty",
+            "type": service_type_empty,
             "args": {},
             "id": "nonexistent_service_test",
         }
@@ -141,13 +141,13 @@ class TestServiceCallErrors:
 class TestWebSocketReconnection:
     """E2E tests for WebSocket reconnection behavior."""
 
-    def test_websocket_reconnection_after_close(self, ws_manager):
+    def test_websocket_reconnection_after_close(self, ws_manager, rosapi_topics_type):
         """Test WebSocket reconnects after manual close."""
         # First connection and request
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "reconnect_test_1",
         }
@@ -168,13 +168,13 @@ class TestWebSocketReconnection:
 
         assert "values" in response2, f"Second request after reconnect failed: {response2}"
 
-    def test_multiple_sequential_requests(self, ws_manager):
+    def test_multiple_sequential_requests(self, ws_manager, rosapi_topics_type):
         """Test multiple sequential requests on same connection."""
         for i in range(3):
             message = {
                 "op": "call_service",
                 "service": "/rosapi/topics",
-                "type": "rosapi/Topics",
+                "type": rosapi_topics_type,
                 "args": {},
                 "id": f"sequential_test_{i}",
             }
@@ -206,12 +206,12 @@ class TestInputValidation:
             # Empty topic should not return valid publish message
             assert data.get("op") != "publish" or data.get("topic") != ""
 
-    def test_invalid_message_type_handling(self, ws_manager):
+    def test_invalid_message_type_handling(self, ws_manager, rosapi_topic_type_type):
         """Test handling of invalid message type."""
         message = {
             "op": "call_service",
             "service": "/rosapi/topic_type",
-            "type": "rosapi/TopicType",
+            "type": rosapi_topic_type_type,
             "args": {"topic": "/nonexistent_topic_xyz"},
             "id": "invalid_type_test",
         }

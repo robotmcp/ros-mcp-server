@@ -13,13 +13,13 @@ pytestmark = pytest.mark.e2e
 class TestDiscoverAndSubscribe:
     """E2E tests for discover-then-subscribe workflows."""
 
-    def test_discover_topics_then_subscribe(self, ws_manager):
+    def test_discover_topics_then_subscribe(self, ws_manager, rosapi_topics_type, msg_type_pose):
         """Test workflow: discover topics, then subscribe to one."""
         # Step 1: Discover topics
         topics_message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "discover_topics",
         }
@@ -35,7 +35,7 @@ class TestDiscoverAndSubscribe:
         subscribe_message = {
             "op": "subscribe",
             "topic": "/turtle1/pose",
-            "type": "turtlesim/msg/Pose",
+            "type": msg_type_pose,
         }
 
         with ws_manager:
@@ -60,13 +60,13 @@ class TestDiscoverAndSubscribe:
 
         assert received, "Did not receive message from subscribed topic"
 
-    def test_discover_services_then_call(self, ws_manager):
+    def test_discover_services_then_call(self, ws_manager, rosapi_services_type, service_type_empty):
         """Test workflow: discover services, then call one."""
         # Step 1: Discover services
         services_message = {
             "op": "call_service",
             "service": "/rosapi/services",
-            "type": "rosapi/Services",
+            "type": rosapi_services_type,
             "args": {},
             "id": "discover_services",
         }
@@ -82,7 +82,7 @@ class TestDiscoverAndSubscribe:
         call_message = {
             "op": "call_service",
             "service": "/reset",
-            "type": "std_srvs/srv/Empty",
+            "type": service_type_empty,
             "args": {},
             "id": "call_reset",
         }
@@ -97,13 +97,15 @@ class TestDiscoverAndSubscribe:
 class TestTurtleControlWorkflow:
     """E2E tests for turtle control workflows."""
 
-    def test_spawn_turtle_control_kill(self, ws_manager):
+    def test_spawn_turtle_control_kill(
+        self, ws_manager, service_type_spawn, service_type_kill, msg_type_twist
+    ):
         """Test workflow: spawn turtle, control it, then kill it."""
         # Step 1: Spawn a new turtle
         spawn_message = {
             "op": "call_service",
             "service": "/spawn",
-            "type": "turtlesim/srv/Spawn",
+            "type": service_type_spawn,
             "args": {"x": 5.0, "y": 5.0, "theta": 0.0, "name": "test_turtle"},
             "id": "spawn_turtle",
         }
@@ -119,7 +121,7 @@ class TestTurtleControlWorkflow:
             advertise_msg = {
                 "op": "advertise",
                 "topic": "/test_turtle/cmd_vel",
-                "type": "geometry_msgs/msg/Twist",
+                "type": msg_type_twist,
             }
 
             publish_msg = {
@@ -139,13 +141,13 @@ class TestTurtleControlWorkflow:
         kill_message = {
             "op": "call_service",
             "service": "/kill",
-            "type": "turtlesim/srv/Kill",
+            "type": service_type_kill,
             "args": {"name": "test_turtle"},
             "id": "kill_turtle",
         }
 
         with ws_manager:
-            kill_response = ws_manager.request(kill_message, timeout=10.0)
+            ws_manager.request(kill_message, timeout=10.0)
 
         # Kill should succeed (or turtle didn't exist)
         # Both are acceptable outcomes for this test
@@ -154,16 +156,15 @@ class TestTurtleControlWorkflow:
 class TestRapidOperations:
     """E2E tests for rapid sequential operations."""
 
-    def test_rapid_sequential_topic_subscriptions(self, ws_manager):
+    def test_rapid_sequential_topic_subscriptions(self, ws_manager, msg_type_pose):
         """Test rapid subscribe/unsubscribe cycles."""
         topic = "/turtle1/pose"
-        msg_type = "turtlesim/msg/Pose"
 
         for i in range(5):
             subscribe_msg = {
                 "op": "subscribe",
                 "topic": topic,
-                "type": msg_type,
+                "type": msg_type_pose,
                 "id": f"rapid_sub_{i}",
             }
 
@@ -182,13 +183,13 @@ class TestRapidOperations:
 
             time.sleep(0.1)  # Brief pause between cycles
 
-    def test_rapid_service_calls(self, ws_manager):
+    def test_rapid_service_calls(self, ws_manager, rosapi_topics_type):
         """Test rapid service call sequences."""
         for i in range(5):
             message = {
                 "op": "call_service",
                 "service": "/rosapi/topics",
-                "type": "rosapi/Topics",
+                "type": rosapi_topics_type,
                 "args": {},
                 "id": f"rapid_call_{i}",
             }
@@ -203,10 +204,12 @@ class TestRapidOperations:
 class TestPublishSubscribeRoundtrip:
     """E2E tests for publish-subscribe roundtrip."""
 
-    def test_publish_subscribe_roundtrip(self, ws_manager, reset_turtle_fixture):
+    def test_publish_subscribe_roundtrip(
+        self, ws_manager, reset_turtle_fixture, msg_type_twist, msg_type_pose
+    ):
         """Test publishing to cmd_vel and observing pose change."""
         # Get initial pose
-        initial_pose = get_turtle_pose(ws_manager)
+        initial_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert initial_pose is not None, "Could not get initial pose"
         initial_x = initial_pose.get("x", 0)
 
@@ -215,7 +218,7 @@ class TestPublishSubscribeRoundtrip:
             ws_manager.send({
                 "op": "advertise",
                 "topic": "/turtle1/cmd_vel",
-                "type": "geometry_msgs/msg/Twist",
+                "type": msg_type_twist,
             })
             time.sleep(0.1)
 
@@ -230,7 +233,7 @@ class TestPublishSubscribeRoundtrip:
             ws_manager.send({"op": "unadvertise", "topic": "/turtle1/cmd_vel"})
 
         # Get new pose
-        new_pose = get_turtle_pose(ws_manager)
+        new_pose = get_turtle_pose(ws_manager, msg_type=msg_type_pose)
         assert new_pose is not None, "Could not get new pose"
         new_x = new_pose.get("x", 0)
 
@@ -241,13 +244,15 @@ class TestPublishSubscribeRoundtrip:
 class TestFullDiscoveryWorkflow:
     """E2E tests for full robot discovery workflow."""
 
-    def test_full_robot_discovery_workflow(self, ws_manager):
+    def test_full_robot_discovery_workflow(
+        self, ws_manager, rosapi_nodes_type, rosapi_topics_type, rosapi_services_type
+    ):
         """Test complete discovery workflow: nodes -> topics -> services."""
         # Step 1: Discover nodes
         nodes_message = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "discover_nodes",
         }
@@ -263,7 +268,7 @@ class TestFullDiscoveryWorkflow:
         topics_message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_topics_type,
             "args": {},
             "id": "discover_topics",
         }
@@ -281,7 +286,7 @@ class TestFullDiscoveryWorkflow:
         services_message = {
             "op": "call_service",
             "service": "/rosapi/services",
-            "type": "rosapi/Services",
+            "type": rosapi_services_type,
             "args": {},
             "id": "discover_services",
         }

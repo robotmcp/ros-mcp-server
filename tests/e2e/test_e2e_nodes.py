@@ -1,4 +1,4 @@
-"""E2E tests for node operations with real ROS 2 turtlesim."""
+"""E2E tests for node operations with real ROS turtlesim."""
 
 import pytest
 
@@ -8,12 +8,12 @@ pytestmark = pytest.mark.e2e
 class TestGetNodes:
     """E2E tests for get_nodes functionality."""
 
-    def test_get_nodes_returns_list(self, ws_manager):
+    def test_get_nodes_returns_list(self, ws_manager, rosapi_nodes_type):
         """Verify get_nodes returns a list of running nodes."""
         message = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "get_nodes_e2e",
         }
@@ -28,12 +28,12 @@ class TestGetNodes:
         assert isinstance(nodes, list)
         assert len(nodes) > 0, "Should have at least one node running"
 
-    def test_get_nodes_contains_turtlesim(self, ws_manager):
+    def test_get_nodes_contains_turtlesim(self, ws_manager, rosapi_nodes_type):
         """Verify turtlesim node is in the list."""
         message = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "get_nodes_turtlesim_e2e",
         }
@@ -47,12 +47,12 @@ class TestGetNodes:
         turtlesim_nodes = [n for n in nodes if "turtlesim" in n.lower()]
         assert len(turtlesim_nodes) > 0, f"Expected turtlesim node in {nodes}"
 
-    def test_get_nodes_contains_rosbridge(self, ws_manager):
+    def test_get_nodes_contains_rosbridge(self, ws_manager, rosapi_nodes_type):
         """Verify rosbridge node is in the list."""
         message = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "get_nodes_rosbridge_e2e",
         }
@@ -70,13 +70,13 @@ class TestGetNodes:
 class TestGetNodeDetails:
     """E2E tests for get_node_details functionality."""
 
-    def test_get_turtlesim_node_details(self, ws_manager):
+    def test_get_turtlesim_node_details(self, ws_manager, rosapi_nodes_type, rosapi_node_details_type):
         """Get details for turtlesim node."""
         # First get the turtlesim node name
         nodes_msg = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "get_nodes_for_details",
         }
@@ -94,7 +94,7 @@ class TestGetNodeDetails:
         details_msg = {
             "op": "call_service",
             "service": "/rosapi/node_details",
-            "type": "rosapi/NodeDetails",
+            "type": rosapi_node_details_type,
             "args": {"node": turtlesim_node},
             "id": "get_node_details_e2e",
         }
@@ -117,13 +117,13 @@ class TestGetNodeDetails:
             f"Expected cmd_vel subscriber in {subscribers}"
         )
 
-    def test_get_node_details_has_services(self, ws_manager):
+    def test_get_node_details_has_services(self, ws_manager, rosapi_nodes_type, rosapi_node_details_type):
         """Verify node details include services."""
         # Get turtlesim node
         nodes_msg = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "get_nodes_for_services",
         }
@@ -140,7 +140,7 @@ class TestGetNodeDetails:
         details_msg = {
             "op": "call_service",
             "service": "/rosapi/node_details",
-            "type": "rosapi/NodeDetails",
+            "type": rosapi_node_details_type,
             "args": {"node": turtlesim_node},
             "id": "get_node_services_e2e",
         }
@@ -161,13 +161,13 @@ class TestGetNodeDetails:
 class TestNodeIntegration:
     """Integration tests for node operations."""
 
-    def test_list_nodes_then_get_details(self, ws_manager):
+    def test_list_nodes_then_get_details(self, ws_manager, rosapi_nodes_type, rosapi_node_details_type):
         """Workflow: list nodes then get details for each."""
         # Get all nodes
         nodes_msg = {
             "op": "call_service",
             "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "type": rosapi_nodes_type,
             "args": {},
             "id": "integration_get_nodes",
         }
@@ -183,7 +183,7 @@ class TestNodeIntegration:
         details_msg = {
             "op": "call_service",
             "service": "/rosapi/node_details",
-            "type": "rosapi/NodeDetails",
+            "type": rosapi_node_details_type,
             "args": {"node": first_node},
             "id": "integration_get_details",
         }
