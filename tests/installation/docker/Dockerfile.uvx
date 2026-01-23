@@ -1,0 +1,26 @@
+# Test: uvx ros-mcp installation (as documented)
+# This Dockerfile verifies the primary documented installation method works.
+#
+# Usage: docker build -f tests/installation/docker/Dockerfile.uvx .
+
+FROM python:3.10-slim
+
+# Install curl for downloading uv
+RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install uv (as documented in installation.md)
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Add uv to PATH
+ENV PATH="/root/.local/bin:$PATH"
+
+# Verify uv is installed
+RUN uv --version
+
+# Run ros-mcp using uvx (as documented)
+# This downloads and runs ros-mcp in an isolated environment
+RUN uvx ros-mcp --help
+
+# Final success message
+RUN echo "SUCCESS: uvx ros-mcp installation works correctly"

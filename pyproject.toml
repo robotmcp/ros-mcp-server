@@ -79,6 +79,7 @@ markers = [
     "ros1: tests specific to ROS 1",
     "ros2: tests specific to ROS 2 (actions, parameters)",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "installation: installation tests using Docker containers",
 ]
 
 # ---------------- Coverage configuration ----------------
