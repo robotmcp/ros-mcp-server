@@ -1,10 +1,5 @@
 """Tests for ros_mcp.tools.services module."""
 
-import json
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 from tests.conftest import MockWebSocketManager
 
 
@@ -60,9 +55,7 @@ class TestGetServices:
 
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
-        ws_manager.add_response(
-            {"result": False, "values": {"message": "Service not available"}}
-        )
+        ws_manager.add_response({"result": False, "values": {"message": "Service not available"}})
 
         register_service_tools(mcp, ws_manager)
 
@@ -229,9 +222,7 @@ class TestCallService:
 
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
-        ws_manager.add_response(
-            {"op": "service_response", "result": True, "values": {}}
-        )
+        ws_manager.add_response({"op": "service_response", "result": True, "values": {}})
 
         register_service_tools(mcp, ws_manager)
 
@@ -306,9 +297,7 @@ class TestCallService:
 
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
-        ws_manager.add_response(
-            {"op": "status", "level": "error", "msg": "Service not found"}
-        )
+        ws_manager.add_response({"op": "status", "level": "error", "msg": "Service not found"})
 
         register_service_tools(mcp, ws_manager)
 
@@ -396,9 +385,7 @@ class TestServiceIntegration:
             {"result": True, "values": {"type": "turtlesim/srv/TeleportAbsolute"}}
         )
         # Third: call_service response
-        ws_manager.add_response(
-            {"op": "service_response", "result": True, "values": {}}
-        )
+        ws_manager.add_response({"op": "service_response", "result": True, "values": {}})
 
         register_service_tools(mcp, ws_manager)
 
@@ -409,9 +396,7 @@ class TestServiceIntegration:
         assert "/turtle1/teleport_absolute" in services_result["services"]
 
         # Step 2: Get service type
-        type_result = tools.get("get_service_type").fn(
-            service="/turtle1/teleport_absolute"
-        )
+        type_result = tools.get("get_service_type").fn(service="/turtle1/teleport_absolute")
         assert type_result["type"] == "turtlesim/srv/TeleportAbsolute"
 
         # Step 3: Call the service

@@ -7,12 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-01-23
+
 ### Added
-- Comprehensive unit test suite for utility modules and tools
+- Comprehensive unit test suite with 239 tests achieving 62% code coverage
+- Tests for all major tool modules: actions, parameters, nodes, images, robot_config
 - End-to-end (E2E) tests with ROS 2 turtlesim in Docker
-- GitHub Actions workflow for automated E2E testing
+- GitHub Actions workflow for automated unit and E2E testing
 - API reference documentation (`docs/api-reference.md`)
 - pytest configuration in pyproject.toml with coverage support
+- pytest-asyncio support for async test functions
+
+### Changed
+- Improved code quality with ruff linting and formatting
+- Lazy imports in `ros_mcp/__init__.py` for optional dependencies
 
 ## [2.2.1] - 2026-01-15
 

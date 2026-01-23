@@ -8,7 +8,6 @@ import pytest
 
 from tests.e2e.conftest import get_turtle_pose, reset_turtle, teleport_turtle
 
-
 pytestmark = pytest.mark.e2e
 
 
@@ -192,7 +191,6 @@ class TestCancelActionGoal:
 
             # Wait for cancellation or result
             end_time = time.time() + 5.0
-            cancelled = False
 
             while time.time() < end_time:
                 response = ws_manager.receive(timeout=1.0)
@@ -206,7 +204,6 @@ class TestCancelActionGoal:
                     elif op == "status":
                         # Might get status about cancellation
                         if "cancel" in data.get("msg", "").lower():
-                            cancelled = True
                             break
 
         # Note: Cancel might or might not succeed depending on timing

@@ -12,10 +12,7 @@ Or directly:
 """
 
 import json
-import tempfile
-from pathlib import Path
-from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -336,7 +333,10 @@ def mock_ping_port_closed():
         "ip": "127.0.0.1",
         "port": 9090,
         "ping": {"success": True, "error": None, "response_time_ms": 0.5},
-        "port_check": {"open": False, "error": "Port 9090 is closed or unreachable (error code: 111)"},
+        "port_check": {
+            "open": False,
+            "error": "Port 9090 is closed or unreachable (error code: 111)",
+        },
         "overall_status": "IP_reachable_port_closed. The robot is reachable but ROS_bridge is unreachable. Check if ROS_bridge is running as well as firewall settings.",
     }
 
@@ -347,7 +347,11 @@ def mock_ping_unreachable():
     return {
         "ip": "192.168.1.200",
         "port": 9090,
-        "ping": {"success": False, "error": "Ping failed with return code 1", "response_time_ms": None},
+        "ping": {
+            "success": False,
+            "error": "Ping failed with return code 1",
+            "response_time_ms": None,
+        },
         "port_check": {"open": False, "error": "Port 9090 connection timeout after 2.0 seconds"},
         "overall_status": "IP_unreachable. Check if the IP address is correct, the robot is powered on & connected to the network. Also check network and firewall settings.",
     }

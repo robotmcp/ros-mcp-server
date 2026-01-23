@@ -1,7 +1,8 @@
 """Tests for ros_mcp.tools.robot_config module."""
 
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
 
 from ros_mcp.tools.robot_config import register_robot_config_tools
 
@@ -16,6 +17,7 @@ class MockFastMCP:
         def decorator(func):
             self.tools[func.__name__] = func
             return func
+
         return decorator
 
 
@@ -37,10 +39,7 @@ class TestGetVerifiedRobotSpec:
 
     def test_robot_not_found(self, robot_config_tools):
         """Test when robot spec doesn't exist."""
-        with patch(
-            "ros_mcp.tools.robot_config.get_verified_robot_spec_util",
-            return_value={}
-        ):
+        with patch("ros_mcp.tools.robot_config.get_verified_robot_spec_util", return_value={}):
             result = robot_config_tools["get_verified_robot_spec"]("nonexistent_robot")
 
         assert "error" in result
@@ -50,7 +49,7 @@ class TestGetVerifiedRobotSpec:
         """Test when multiple configs match."""
         with patch(
             "ros_mcp.tools.robot_config.get_verified_robot_spec_util",
-            return_value={"robot1": {}, "robot2": {}}
+            return_value={"robot1": {}, "robot2": {}},
         ):
             result = robot_config_tools["get_verified_robot_spec"]("robot")
 
@@ -59,15 +58,9 @@ class TestGetVerifiedRobotSpec:
 
     def test_single_config_found(self, robot_config_tools):
         """Test when exactly one config is found."""
-        expected_config = {
-            "test_robot": {
-                "type": "mobile",
-                "prompts": "Test robot prompts"
-            }
-        }
+        expected_config = {"test_robot": {"type": "mobile", "prompts": "Test robot prompts"}}
         with patch(
-            "ros_mcp.tools.robot_config.get_verified_robot_spec_util",
-            return_value=expected_config
+            "ros_mcp.tools.robot_config.get_verified_robot_spec_util", return_value=expected_config
         ):
             result = robot_config_tools["get_verified_robot_spec"]("test_robot")
 
@@ -89,10 +82,7 @@ class TestGetVerifiedRobotsList:
         """Test that tool returns a list of robots."""
         with patch(
             "ros_mcp.tools.robot_config.get_verified_robots_list_util",
-            return_value={
-                "robot_specifications": ["robot1", "robot2", "robot3"],
-                "count": 3
-            }
+            return_value={"robot_specifications": ["robot1", "robot2", "robot3"], "count": 3},
         ):
             result = robot_config_tools["get_verified_robots_list"]()
 
@@ -103,7 +93,7 @@ class TestGetVerifiedRobotsList:
         """Test when no robots are available."""
         with patch(
             "ros_mcp.tools.robot_config.get_verified_robots_list_util",
-            return_value={"robot_specifications": [], "count": 0}
+            return_value={"robot_specifications": [], "count": 0},
         ):
             result = robot_config_tools["get_verified_robots_list"]()
 
@@ -124,12 +114,7 @@ class TestDetectRosVersion:
 
     def test_ros2_detected(self, robot_config_tools, mock_ws_manager):
         """Test ROS 2 version detection."""
-        mock_ws_manager.add_response({
-            "values": {
-                "version": "2",
-                "distro": "humble"
-            }
-        })
+        mock_ws_manager.add_response({"values": {"version": "2", "distro": "humble"}})
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -138,10 +123,12 @@ class TestDetectRosVersion:
 
     def test_ros1_fallback(self, robot_config_tools, mock_ws_manager):
         """Test ROS 1 detection when ROS 2 service fails."""
-        mock_ws_manager.add_responses([
-            {},  # ROS 2 detection fails (no version in values)
-            {"values": {"value": '"noetic\n"'}}  # ROS 1 fallback
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {},  # ROS 2 detection fails (no version in values)
+                {"values": {"value": '"noetic\n"'}},  # ROS 1 fallback
+            ]
+        )
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -150,10 +137,12 @@ class TestDetectRosVersion:
 
     def test_ros1_with_dict_value(self, robot_config_tools, mock_ws_manager):
         """Test ROS 1 detection with dict response."""
-        mock_ws_manager.add_responses([
-            {},  # ROS 2 detection fails
-            {"values": {"value": "melodic"}}
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {},  # ROS 2 detection fails
+                {"values": {"value": "melodic"}},
+            ]
+        )
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -162,10 +151,12 @@ class TestDetectRosVersion:
 
     def test_detection_failure(self, robot_config_tools, mock_ws_manager):
         """Test when neither ROS version can be detected."""
-        mock_ws_manager.add_responses([
-            {},  # ROS 2 fails
-            {}   # ROS 1 fails
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {},  # ROS 2 fails
+                {},  # ROS 1 fails
+            ]
+        )
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -182,9 +173,7 @@ class TestDetectRosVersion:
 
     def test_ros2_humble(self, robot_config_tools, mock_ws_manager):
         """Test ROS 2 Humble detection."""
-        mock_ws_manager.add_response({
-            "values": {"version": "2", "distro": "humble"}
-        })
+        mock_ws_manager.add_response({"values": {"version": "2", "distro": "humble"}})
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -193,9 +182,7 @@ class TestDetectRosVersion:
 
     def test_ros2_iron(self, robot_config_tools, mock_ws_manager):
         """Test ROS 2 Iron detection."""
-        mock_ws_manager.add_response({
-            "values": {"version": "2", "distro": "iron"}
-        })
+        mock_ws_manager.add_response({"values": {"version": "2", "distro": "iron"}})
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -204,9 +191,7 @@ class TestDetectRosVersion:
 
     def test_ros2_rolling(self, robot_config_tools, mock_ws_manager):
         """Test ROS 2 Rolling detection."""
-        mock_ws_manager.add_response({
-            "values": {"version": "2", "distro": "rolling"}
-        })
+        mock_ws_manager.add_response({"values": {"version": "2", "distro": "rolling"}})
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -215,10 +200,12 @@ class TestDetectRosVersion:
 
     def test_distro_string_cleaning(self, robot_config_tools, mock_ws_manager):
         """Test that distro string is properly cleaned."""
-        mock_ws_manager.add_responses([
-            {},  # ROS 2 fails
-            {"values": {"value": '"noetic\\n"'}}  # Has quotes and newline
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {},  # ROS 2 fails
+                {"values": {"value": '"noetic\\n"'}},  # Has quotes and newline
+            ]
+        )
 
         result = robot_config_tools["detect_ros_version"]()
 
@@ -247,9 +234,7 @@ class TestRobotConfigToolsIntegration:
 
     def test_detect_version_then_connect(self, robot_config_tools, mock_ws_manager):
         """Test detecting ROS version workflow."""
-        mock_ws_manager.add_response({
-            "values": {"version": "2", "distro": "humble"}
-        })
+        mock_ws_manager.add_response({"values": {"version": "2", "distro": "humble"}})
 
         version_result = robot_config_tools["detect_ros_version"]()
 
@@ -265,7 +250,7 @@ class TestRobotConfigToolsRegistration:
         expected_tools = [
             "get_verified_robot_spec",
             "get_verified_robots_list",
-            "detect_ros_version"
+            "detect_ros_version",
         ]
 
         for tool_name in expected_tools:

@@ -1,9 +1,8 @@
 """Tests for ros_mcp.tools.parameters module."""
 
 import pytest
-from unittest.mock import MagicMock, patch
 
-from ros_mcp.tools.parameters import register_parameter_tools, _safe_check_parameter_exists
+from ros_mcp.tools.parameters import _safe_check_parameter_exists, register_parameter_tools
 
 
 class MockFastMCP:
@@ -16,6 +15,7 @@ class MockFastMCP:
         def decorator(func):
             self.tools[func.__name__] = func
             return func
+
         return decorator
 
 
@@ -37,9 +37,7 @@ class TestSafeCheckParameterExists:
 
     def test_parameter_exists(self, mock_ws_manager):
         """Test when parameter exists with value."""
-        mock_ws_manager.add_response({
-            "values": {"value": "255", "successful": True}
-        })
+        mock_ws_manager.add_response({"values": {"value": "255", "successful": True}})
 
         exists, reason, response = _safe_check_parameter_exists(
             "/turtlesim:background_b", mock_ws_manager
@@ -51,9 +49,9 @@ class TestSafeCheckParameterExists:
 
     def test_parameter_not_exists_empty_value(self, mock_ws_manager):
         """Test when parameter doesn't exist (empty value)."""
-        mock_ws_manager.add_response({
-            "values": {"value": '""', "successful": False, "reason": "Parameter not found"}
-        })
+        mock_ws_manager.add_response(
+            {"values": {"value": '""', "successful": False, "reason": "Parameter not found"}}
+        )
 
         exists, reason, response = _safe_check_parameter_exists(
             "/nonexistent:param", mock_ws_manager
@@ -66,35 +64,28 @@ class TestSafeCheckParameterExists:
         """Test when no response is received."""
         mock_ws_manager.add_response(None)
 
-        exists, reason, response = _safe_check_parameter_exists(
-            "/test:param", mock_ws_manager
-        )
+        exists, reason, response = _safe_check_parameter_exists("/test:param", mock_ws_manager)
 
         assert exists is False
         assert "No response" in reason
 
     def test_result_format_response(self, mock_ws_manager):
         """Test with 'result' format response instead of 'values'."""
-        mock_ws_manager.add_response({
-            "result": {"value": "100", "successful": True}
-        })
+        mock_ws_manager.add_response({"result": {"value": "100", "successful": True}})
 
-        exists, reason, response = _safe_check_parameter_exists(
-            "/test:param", mock_ws_manager
-        )
+        exists, reason, response = _safe_check_parameter_exists("/test:param", mock_ws_manager)
 
         assert exists is True
 
     def test_exception_handling(self, mock_ws_manager):
         """Test exception handling."""
+
         def raise_error(msg):
             raise ConnectionError("Connection lost")
 
         mock_ws_manager.request = raise_error
 
-        exists, reason, response = _safe_check_parameter_exists(
-            "/test:param", mock_ws_manager
-        )
+        exists, reason, response = _safe_check_parameter_exists("/test:param", mock_ws_manager)
 
         assert exists is False
         assert "Error" in reason
@@ -119,9 +110,7 @@ class TestGetParameter:
 
     def test_successful_get_parameter(self, parameter_tools, mock_ws_manager):
         """Test getting an existing parameter."""
-        mock_ws_manager.add_response({
-            "values": {"value": "255", "successful": True, "reason": ""}
-        })
+        mock_ws_manager.add_response({"values": {"value": "255", "successful": True, "reason": ""}})
 
         result = parameter_tools["get_parameter"]("/turtlesim:background_b")
 
@@ -131,9 +120,9 @@ class TestGetParameter:
 
     def test_parameter_not_found(self, parameter_tools, mock_ws_manager):
         """Test getting a non-existent parameter."""
-        mock_ws_manager.add_response({
-            "values": {"value": "", "successful": False, "reason": "Parameter not found"}
-        })
+        mock_ws_manager.add_response(
+            {"values": {"value": "", "successful": False, "reason": "Parameter not found"}}
+        )
 
         result = parameter_tools["get_parameter"]("/nonexistent:param")
 
@@ -143,9 +132,11 @@ class TestGetParameter:
     def test_string_response_fallback(self, parameter_tools, mock_ws_manager):
         """Test handling of string response (malformed)."""
         # First call for existence check
-        mock_ws_manager.add_responses([
-            {"values": {"value": "test"}},  # Exists
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": "test"}},  # Exists
+            ]
+        )
 
         # Mock to return string for the actual get
         original_request = mock_ws_manager.request
@@ -173,10 +164,12 @@ class TestSetParameter:
 
     def test_successful_set_parameter(self, parameter_tools, mock_ws_manager):
         """Test setting a parameter successfully."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "100"}},  # Existence check
-            {"values": {"successful": True, "reason": ""}}  # Set response
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": "100"}},  # Existence check
+                {"values": {"successful": True, "reason": ""}},  # Set response
+            ]
+        )
 
         result = parameter_tools["set_parameter"]("/turtlesim:background_b", "100")
 
@@ -186,10 +179,12 @@ class TestSetParameter:
 
     def test_set_parameter_failure(self, parameter_tools, mock_ws_manager):
         """Test when set parameter fails."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": ""}},  # Doesn't exist
-            {"values": {"successful": False, "reason": "Read-only parameter"}}
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": ""}},  # Doesn't exist
+                {"values": {"successful": False, "reason": "Read-only parameter"}},
+            ]
+        )
 
         result = parameter_tools["set_parameter"]("/readonly:param", "value")
 
@@ -224,9 +219,7 @@ class TestHasParameter:
 
     def test_parameter_exists(self, parameter_tools, mock_ws_manager):
         """Test when parameter exists."""
-        mock_ws_manager.add_response({
-            "values": {"value": "255", "successful": True}
-        })
+        mock_ws_manager.add_response({"values": {"value": "255", "successful": True}})
 
         result = parameter_tools["has_parameter"]("/turtlesim:background_b")
 
@@ -236,9 +229,9 @@ class TestHasParameter:
 
     def test_parameter_not_exists(self, parameter_tools, mock_ws_manager):
         """Test when parameter doesn't exist."""
-        mock_ws_manager.add_response({
-            "values": {"value": "", "successful": False, "reason": "Not found"}
-        })
+        mock_ws_manager.add_response(
+            {"values": {"value": "", "successful": False, "reason": "Not found"}}
+        )
 
         result = parameter_tools["has_parameter"]("/nonexistent:param")
 
@@ -258,9 +251,9 @@ class TestDeleteParameter:
 
     def test_delete_nonexistent_parameter(self, parameter_tools, mock_ws_manager):
         """Test deleting a parameter that doesn't exist."""
-        mock_ws_manager.add_response({
-            "values": {"value": "", "successful": False, "reason": "Not found"}
-        })
+        mock_ws_manager.add_response(
+            {"values": {"value": "", "successful": False, "reason": "Not found"}}
+        )
 
         result = parameter_tools["delete_parameter"]("/nonexistent:param")
 
@@ -269,10 +262,12 @@ class TestDeleteParameter:
 
     def test_successful_delete(self, parameter_tools, mock_ws_manager):
         """Test successful parameter deletion."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "255", "successful": True}},  # Exists
-            {"values": {"successful": True, "reason": ""}}  # Delete response
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": "255", "successful": True}},  # Exists
+                {"values": {"successful": True, "reason": ""}},  # Delete response
+            ]
+        )
 
         result = parameter_tools["delete_parameter"]("/turtlesim:background_b")
 
@@ -281,10 +276,12 @@ class TestDeleteParameter:
 
     def test_delete_failure(self, parameter_tools, mock_ws_manager):
         """Test when delete fails."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "255", "successful": True}},  # Exists
-            {"values": {"successful": False, "reason": "Permission denied"}}
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": "255", "successful": True}},  # Exists
+                {"values": {"successful": False, "reason": "Permission denied"}},
+            ]
+        )
 
         result = parameter_tools["delete_parameter"]("/protected:param")
 
@@ -319,13 +316,9 @@ class TestGetParameters:
 
     def test_successful_get_parameters(self, parameter_tools, mock_ws_manager):
         """Test getting parameters for a node."""
-        mock_ws_manager.add_response({
-            "values": {
-                "result": {
-                    "names": ["background_r", "background_g", "background_b"]
-                }
-            }
-        })
+        mock_ws_manager.add_response(
+            {"values": {"result": {"names": ["background_r", "background_g", "background_b"]}}}
+        )
 
         result = parameter_tools["get_parameters"]("/turtlesim")
 
@@ -335,9 +328,7 @@ class TestGetParameters:
 
     def test_node_name_normalization(self, parameter_tools, mock_ws_manager):
         """Test that node name is normalized with leading slash."""
-        mock_ws_manager.add_response({
-            "values": {"result": {"names": []}}
-        })
+        mock_ws_manager.add_response({"values": {"result": {"names": []}}})
 
         result = parameter_tools["get_parameters"]("turtlesim")
 
@@ -345,9 +336,7 @@ class TestGetParameters:
 
     def test_trailing_slash_removal(self, parameter_tools, mock_ws_manager):
         """Test that trailing slash is removed."""
-        mock_ws_manager.add_response({
-            "values": {"result": {"names": []}}
-        })
+        mock_ws_manager.add_response({"values": {"result": {"names": []}}})
 
         result = parameter_tools["get_parameters"]("/turtlesim/")
 
@@ -364,10 +353,9 @@ class TestGetParameters:
 
     def test_service_call_failure(self, parameter_tools, mock_ws_manager):
         """Test when service call fails."""
-        mock_ws_manager.add_response({
-            "result": False,
-            "values": {"message": "Service not available"}
-        })
+        mock_ws_manager.add_response(
+            {"result": False, "values": {"message": "Service not available"}}
+        )
 
         result = parameter_tools["get_parameters"]("/turtlesim")
 
@@ -375,6 +363,7 @@ class TestGetParameters:
 
     def test_exception_handling(self, parameter_tools, mock_ws_manager):
         """Test exception handling."""
+
         def raise_error(msg, timeout=None):
             raise ConnectionError("Connection lost")
 
@@ -397,9 +386,9 @@ class TestGetParameterDetails:
 
     def test_parameter_not_found(self, parameter_tools, mock_ws_manager):
         """Test when parameter doesn't exist."""
-        mock_ws_manager.add_response({
-            "values": {"value": "", "successful": False, "reason": "Not found"}
-        })
+        mock_ws_manager.add_response(
+            {"values": {"value": "", "successful": False, "reason": "Not found"}}
+        )
 
         result = parameter_tools["get_parameter_details"]("/nonexistent:param")
 
@@ -408,15 +397,16 @@ class TestGetParameterDetails:
 
     def test_successful_get_details(self, parameter_tools, mock_ws_manager):
         """Test getting full parameter details."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "255", "successful": True}},  # Get param
-            {"values": {  # Describe parameters
-                "descriptors": [{
-                    "type": "int",
-                    "description": "Blue background color"
-                }]
-            }}
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": "255", "successful": True}},  # Get param
+                {
+                    "values": {  # Describe parameters
+                        "descriptors": [{"type": "int", "description": "Blue background color"}]
+                    }
+                },
+            ]
+        )
 
         result = parameter_tools["get_parameter_details"]("/turtlesim:background_b")
 
@@ -428,10 +418,12 @@ class TestGetParameterDetails:
 
     def test_type_inference_bool(self, parameter_tools, mock_ws_manager):
         """Test type inference for boolean values."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "true", "successful": True}},
-            {"values": {"descriptors": []}}  # No type info
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": "true", "successful": True}},
+                {"values": {"descriptors": []}},  # No type info
+            ]
+        )
 
         result = parameter_tools["get_parameter_details"]("/node:bool_param")
 
@@ -439,10 +431,9 @@ class TestGetParameterDetails:
 
     def test_type_inference_int(self, parameter_tools, mock_ws_manager):
         """Test type inference for integer values."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "42", "successful": True}},
-            {"values": {"descriptors": []}}
-        ])
+        mock_ws_manager.add_responses(
+            [{"values": {"value": "42", "successful": True}}, {"values": {"descriptors": []}}]
+        )
 
         result = parameter_tools["get_parameter_details"]("/node:int_param")
 
@@ -450,10 +441,9 @@ class TestGetParameterDetails:
 
     def test_type_inference_negative_int(self, parameter_tools, mock_ws_manager):
         """Test type inference for negative integer."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "-10", "successful": True}},
-            {"values": {"descriptors": []}}
-        ])
+        mock_ws_manager.add_responses(
+            [{"values": {"value": "-10", "successful": True}}, {"values": {"descriptors": []}}]
+        )
 
         result = parameter_tools["get_parameter_details"]("/node:neg_param")
 
@@ -461,10 +451,9 @@ class TestGetParameterDetails:
 
     def test_type_inference_float(self, parameter_tools, mock_ws_manager):
         """Test type inference for float values."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": "3.14", "successful": True}},
-            {"values": {"descriptors": []}}
-        ])
+        mock_ws_manager.add_responses(
+            [{"values": {"value": "3.14", "successful": True}}, {"values": {"descriptors": []}}]
+        )
 
         result = parameter_tools["get_parameter_details"]("/node:float_param")
 
@@ -472,10 +461,12 @@ class TestGetParameterDetails:
 
     def test_type_inference_string(self, parameter_tools, mock_ws_manager):
         """Test type inference for string values."""
-        mock_ws_manager.add_responses([
-            {"values": {"value": '"hello world"', "successful": True}},
-            {"values": {"descriptors": []}}
-        ])
+        mock_ws_manager.add_responses(
+            [
+                {"values": {"value": '"hello world"', "successful": True}},
+                {"values": {"descriptors": []}},
+            ]
+        )
 
         result = parameter_tools["get_parameter_details"]("/node:str_param")
 
@@ -483,9 +474,7 @@ class TestGetParameterDetails:
 
     def test_describe_parameters_failure(self, parameter_tools, mock_ws_manager):
         """Test when describe_parameters fails but get_param succeeds."""
-        mock_ws_manager.add_response({
-            "values": {"value": "255", "successful": True}
-        })
+        mock_ws_manager.add_response({"values": {"value": "255", "successful": True}})
 
         # Make the second call fail
         call_count = [0]

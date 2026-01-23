@@ -8,7 +8,6 @@ import pytest
 
 from tests.e2e.conftest import get_turtle_pose, reset_turtle, teleport_turtle
 
-
 pytestmark = pytest.mark.e2e
 
 
@@ -204,7 +203,9 @@ class TestPublishCmdVel:
         assert new_pose is not None, "Should get new pose"
 
         # Turtle should have moved forward (x increased since facing right at theta=0)
-        assert new_pose["x"] > 5.5, f"Turtle should have moved right, x was 5.5, now {new_pose['x']}"
+        assert new_pose["x"] > 5.5, (
+            f"Turtle should have moved right, x was 5.5, now {new_pose['x']}"
+        )
 
     def test_publish_angular_rotates_turtle(self, ws_manager):
         """Verify publishing angular velocity rotates the turtle."""
@@ -255,7 +256,7 @@ class TestPublishCmdVel:
         assert new_pose is not None, "Should get new pose"
 
         # Theta should have changed
-        assert new_pose["theta"] != initial_theta, f"Turtle should have rotated"
+        assert new_pose["theta"] != initial_theta, "Turtle should have rotated"
 
 
 class TestSubscribeForDuration:

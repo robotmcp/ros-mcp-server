@@ -1,10 +1,5 @@
 """Tests for ros_mcp.tools.topics module."""
 
-import json
-from unittest.mock import MagicMock, patch
-
-import pytest
-
 from tests.conftest import MockWebSocketManager
 
 
@@ -62,9 +57,7 @@ class TestGetTopics:
 
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
-        ws_manager.add_response(
-            {"result": False, "values": {"message": "Service not available"}}
-        )
+        ws_manager.add_response({"result": False, "values": {"message": "Service not available"}})
 
         register_topic_tools(mcp, ws_manager)
 
@@ -106,9 +99,7 @@ class TestGetTopicType:
 
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
-        ws_manager.add_response(
-            {"result": True, "values": {"type": "geometry_msgs/msg/Twist"}}
-        )
+        ws_manager.add_response({"result": True, "values": {"type": "geometry_msgs/msg/Twist"}})
 
         register_topic_tools(mcp, ws_manager)
 
@@ -177,9 +168,7 @@ class TestSubscribeOnce:
         tools = mcp._tool_manager._tools
         subscribe_once_tool = tools.get("subscribe_once")
 
-        result = subscribe_once_tool.fn(
-            topic="/turtle1/pose", msg_type="turtlesim/msg/Pose"
-        )
+        result = subscribe_once_tool.fn(topic="/turtle1/pose", msg_type="turtlesim/msg/Pose")
 
         assert "msg" in result
         assert result["msg"]["x"] == 5.544444561004639
@@ -235,9 +224,7 @@ class TestSubscribeOnce:
         tools = mcp._tool_manager._tools
         subscribe_once_tool = tools.get("subscribe_once")
 
-        result = subscribe_once_tool.fn(
-            topic="/test", msg_type="std_msgs/String", timeout=0.1
-        )
+        result = subscribe_once_tool.fn(topic="/test", msg_type="std_msgs/String", timeout=0.1)
 
         assert "error" in result
         assert "timeout" in result["error"].lower()
@@ -256,9 +243,7 @@ class TestSubscribeOnce:
         tools = mcp._tool_manager._tools
         subscribe_once_tool = tools.get("subscribe_once")
 
-        result = subscribe_once_tool.fn(
-            topic="/test", msg_type="std_msgs/String", timeout=-1.0
-        )
+        result = subscribe_once_tool.fn(topic="/test", msg_type="std_msgs/String", timeout=-1.0)
 
         assert "error" in result
 
@@ -276,9 +261,7 @@ class TestSubscribeOnce:
         tools = mcp._tool_manager._tools
         subscribe_once_tool = tools.get("subscribe_once")
 
-        result = subscribe_once_tool.fn(
-            topic="/test", msg_type="std_msgs/String", queue_length=0
-        )
+        result = subscribe_once_tool.fn(topic="/test", msg_type="std_msgs/String", queue_length=0)
 
         assert "error" in result
 
@@ -290,18 +273,14 @@ class TestSubscribeOnce:
 
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
-        ws_manager.add_response(
-            {"op": "status", "level": "error", "msg": "Topic not found"}
-        )
+        ws_manager.add_response({"op": "status", "level": "error", "msg": "Topic not found"})
 
         register_topic_tools(mcp, ws_manager)
 
         tools = mcp._tool_manager._tools
         subscribe_once_tool = tools.get("subscribe_once")
 
-        result = subscribe_once_tool.fn(
-            topic="/test", msg_type="std_msgs/String", timeout=0.5
-        )
+        result = subscribe_once_tool.fn(topic="/test", msg_type="std_msgs/String", timeout=0.5)
 
         assert "error" in result
 
@@ -368,9 +347,7 @@ class TestPublishOnce:
         tools = mcp._tool_manager._tools
         publish_once_tool = tools.get("publish_once")
 
-        result = publish_once_tool.fn(
-            topic="/test", msg_type="", msg={"data": "test"}
-        )
+        result = publish_once_tool.fn(topic="/test", msg_type="", msg={"data": "test"})
 
         assert "error" in result
 
@@ -388,9 +365,7 @@ class TestPublishOnce:
         tools = mcp._tool_manager._tools
         publish_once_tool = tools.get("publish_once")
 
-        result = publish_once_tool.fn(
-            topic="/test", msg_type="std_msgs/String", msg={}
-        )
+        result = publish_once_tool.fn(topic="/test", msg_type="std_msgs/String", msg={})
 
         assert "error" in result
 

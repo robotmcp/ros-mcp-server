@@ -168,6 +168,7 @@ def get_turtle_pose(ws_manager, timeout: float = 5.0):
             response = ws_manager.receive(timeout=0.5)
             if response:
                 import json
+
                 data = json.loads(response)
                 if data.get("op") == "publish" and data.get("topic") == "/turtle1/pose":
                     # Unsubscribe

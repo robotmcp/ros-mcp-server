@@ -1,7 +1,6 @@
 """Tests for ros_mcp.tools.nodes module."""
 
 import pytest
-from unittest.mock import MagicMock
 
 from ros_mcp.tools.nodes import register_node_tools
 
@@ -16,6 +15,7 @@ class MockFastMCP:
         def decorator(func):
             self.tools[func.__name__] = func
             return func
+
         return decorator
 
 
@@ -37,12 +37,9 @@ class TestGetNodes:
 
     def test_returns_node_list(self, node_tools, mock_ws_manager):
         """Test that get_nodes returns list of nodes."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "nodes": ["/turtlesim", "/rosbridge_websocket", "/rosapi"]
-            }
-        })
+        mock_ws_manager.add_response(
+            {"result": True, "values": {"nodes": ["/turtlesim", "/rosbridge_websocket", "/rosapi"]}}
+        )
 
         result = node_tools["get_nodes"]()
 
@@ -53,10 +50,7 @@ class TestGetNodes:
 
     def test_empty_node_list(self, node_tools, mock_ws_manager):
         """Test when no nodes are running."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {"nodes": []}
-        })
+        mock_ws_manager.add_response({"result": True, "values": {"nodes": []}})
 
         result = node_tools["get_nodes"]()
 
@@ -66,10 +60,9 @@ class TestGetNodes:
 
     def test_service_call_failure(self, node_tools, mock_ws_manager):
         """Test when service call fails."""
-        mock_ws_manager.add_response({
-            "result": False,
-            "values": {"message": "Service unavailable"}
-        })
+        mock_ws_manager.add_response(
+            {"result": False, "values": {"message": "Service unavailable"}}
+        )
 
         result = node_tools["get_nodes"]()
 
@@ -113,18 +106,20 @@ class TestGetNodeDetails:
 
     def test_successful_get_node_details(self, node_tools, mock_ws_manager):
         """Test getting details for an existing node."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": ["/turtle1/pose", "/turtle1/color_sensor"],
-                "subscribing": ["/turtle1/cmd_vel"],
-                "services": [
-                    "/turtle1/set_pen",
-                    "/turtle1/teleport_absolute",
-                    "/turtle1/teleport_relative"
-                ]
+        mock_ws_manager.add_response(
+            {
+                "result": True,
+                "values": {
+                    "publishing": ["/turtle1/pose", "/turtle1/color_sensor"],
+                    "subscribing": ["/turtle1/cmd_vel"],
+                    "services": [
+                        "/turtle1/set_pen",
+                        "/turtle1/teleport_absolute",
+                        "/turtle1/teleport_relative",
+                    ],
+                },
             }
-        })
+        )
 
         result = node_tools["get_node_details"]("/turtlesim")
 
@@ -138,14 +133,9 @@ class TestGetNodeDetails:
 
     def test_node_not_found(self, node_tools, mock_ws_manager):
         """Test when node doesn't exist."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": [],
-                "subscribing": [],
-                "services": []
-            }
-        })
+        mock_ws_manager.add_response(
+            {"result": True, "values": {"publishing": [], "subscribing": [], "services": []}}
+        )
 
         result = node_tools["get_node_details"]("/nonexistent_node")
 
@@ -154,10 +144,7 @@ class TestGetNodeDetails:
 
     def test_service_call_failure(self, node_tools, mock_ws_manager):
         """Test when service call fails."""
-        mock_ws_manager.add_response({
-            "result": False,
-            "values": {"message": "Node not found"}
-        })
+        mock_ws_manager.add_response({"result": False, "values": {"message": "Node not found"}})
 
         result = node_tools["get_node_details"]("/turtlesim")
 
@@ -166,14 +153,12 @@ class TestGetNodeDetails:
 
     def test_only_publishers(self, node_tools, mock_ws_manager):
         """Test node with only publishers."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": ["/topic1", "/topic2"],
-                "subscribing": [],
-                "services": []
+        mock_ws_manager.add_response(
+            {
+                "result": True,
+                "values": {"publishing": ["/topic1", "/topic2"], "subscribing": [], "services": []},
             }
-        })
+        )
 
         result = node_tools["get_node_details"]("/publisher_node")
 
@@ -183,14 +168,12 @@ class TestGetNodeDetails:
 
     def test_only_subscribers(self, node_tools, mock_ws_manager):
         """Test node with only subscribers."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": [],
-                "subscribing": ["/input_topic"],
-                "services": []
+        mock_ws_manager.add_response(
+            {
+                "result": True,
+                "values": {"publishing": [], "subscribing": ["/input_topic"], "services": []},
             }
-        })
+        )
 
         result = node_tools["get_node_details"]("/subscriber_node")
 
@@ -200,14 +183,12 @@ class TestGetNodeDetails:
 
     def test_only_services(self, node_tools, mock_ws_manager):
         """Test node with only services."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": [],
-                "subscribing": [],
-                "services": ["/my_service"]
+        mock_ws_manager.add_response(
+            {
+                "result": True,
+                "values": {"publishing": [], "subscribing": [], "services": ["/my_service"]},
             }
-        })
+        )
 
         result = node_tools["get_node_details"]("/service_node")
 
@@ -217,14 +198,9 @@ class TestGetNodeDetails:
 
     def test_node_name_with_special_characters(self, node_tools, mock_ws_manager):
         """Test node name with special characters in ID."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": ["/data"],
-                "subscribing": [],
-                "services": []
-            }
-        })
+        mock_ws_manager.add_response(
+            {"result": True, "values": {"publishing": ["/data"], "subscribing": [], "services": []}}
+        )
 
         result = node_tools["get_node_details"]("/my_robot/sensor_node")
 
@@ -235,13 +211,15 @@ class TestGetNodeDetails:
 
     def test_missing_values_in_response(self, node_tools, mock_ws_manager):
         """Test when response has partial data."""
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": ["/topic1"]
-                # Missing subscribing and services
+        mock_ws_manager.add_response(
+            {
+                "result": True,
+                "values": {
+                    "publishing": ["/topic1"]
+                    # Missing subscribing and services
+                },
             }
-        })
+        )
 
         result = node_tools["get_node_details"]("/partial_node")
 
@@ -256,23 +234,24 @@ class TestNodeToolsIntegration:
     def test_get_nodes_then_details(self, node_tools, mock_ws_manager):
         """Test getting nodes then getting details for each."""
         # First get nodes
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {"nodes": ["/turtlesim", "/rosbridge"]}
-        })
+        mock_ws_manager.add_response(
+            {"result": True, "values": {"nodes": ["/turtlesim", "/rosbridge"]}}
+        )
 
         nodes_result = node_tools["get_nodes"]()
         assert nodes_result["node_count"] == 2
 
         # Then get details for first node
-        mock_ws_manager.add_response({
-            "result": True,
-            "values": {
-                "publishing": ["/turtle1/pose"],
-                "subscribing": ["/turtle1/cmd_vel"],
-                "services": ["/spawn"]
+        mock_ws_manager.add_response(
+            {
+                "result": True,
+                "values": {
+                    "publishing": ["/turtle1/pose"],
+                    "subscribing": ["/turtle1/cmd_vel"],
+                    "services": ["/spawn"],
+                },
             }
-        })
+        )
 
         details_result = node_tools["get_node_details"]("/turtlesim")
         assert details_result["node"] == "/turtlesim"

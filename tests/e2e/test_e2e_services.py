@@ -1,13 +1,11 @@
 """E2E tests for service operations with real ROS 2 turtlesim."""
 
-import json
 import math
 import time
 
 import pytest
 
 from tests.e2e.conftest import get_turtle_pose, reset_turtle, teleport_turtle
-
 
 pytestmark = pytest.mark.e2e
 
@@ -127,7 +125,9 @@ class TestCallTeleportAbsolute:
         pose = get_turtle_pose(ws_manager)
         assert pose is not None
         # Allow some tolerance for theta comparison
-        assert abs(pose["theta"] - target_theta) < 0.1, f"theta should be ~{target_theta}, got {pose['theta']}"
+        assert abs(pose["theta"] - target_theta) < 0.1, (
+            f"theta should be ~{target_theta}, got {pose['theta']}"
+        )
 
 
 class TestCallSpawnService:
@@ -145,9 +145,7 @@ class TestCallSpawnService:
         }
 
         with ws_manager:
-            topics_response = ws_manager.request(topics_msg, timeout=10.0)
-
-        initial_topics = topics_response.get("values", {}).get("topics", [])
+            ws_manager.request(topics_msg, timeout=10.0)
 
         # Spawn a new turtle
         spawn_msg = {

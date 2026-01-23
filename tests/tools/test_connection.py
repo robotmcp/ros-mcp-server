@@ -1,8 +1,6 @@
 """Tests for ros_mcp.tools.connection module."""
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from tests.conftest import MockWebSocketManager
 
@@ -19,9 +17,7 @@ class TestConnectToRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             # Find the registered tool
@@ -45,9 +41,7 @@ class TestConnectToRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             tools = mcp._tool_manager._tools
@@ -68,9 +62,7 @@ class TestConnectToRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager("127.0.0.1", 9090)
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             tools = mcp._tool_manager._tools
@@ -90,9 +82,7 @@ class TestConnectToRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_port_closed
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_port_closed):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             tools = mcp._tool_manager._tools
@@ -115,9 +105,7 @@ class TestPingRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_success):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             tools = mcp._tool_manager._tools
@@ -139,9 +127,7 @@ class TestPingRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_unreachable
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_unreachable):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             tools = mcp._tool_manager._tools
@@ -169,9 +155,7 @@ class TestPingRobot:
             tools = mcp._tool_manager._tools
             ping_tool = tools.get("ping_robot")
 
-            ping_tool.fn(
-                ip="127.0.0.1", port=9090, ping_timeout=5.0, port_timeout=3.0
-            )
+            ping_tool.fn(ip="127.0.0.1", port=9090, ping_timeout=5.0, port_timeout=3.0)
 
             mock_ping.assert_called_with("127.0.0.1", 9090, 5.0, 3.0)
 
@@ -184,9 +168,7 @@ class TestPingRobot:
         mcp = FastMCP("test")
         ws_manager = MockWebSocketManager()
 
-        with patch(
-            "ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_port_closed
-        ):
+        with patch("ros_mcp.tools.connection.ping_ip_and_port", return_value=mock_ping_port_closed):
             register_connection_tools(mcp, ws_manager, "127.0.0.1", 9090)
 
             tools = mcp._tool_manager._tools

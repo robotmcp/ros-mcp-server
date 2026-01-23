@@ -45,7 +45,9 @@ class TestGetVerifiedRobotSpecUtil:
         # Monkeypatch to use our temp directory
         monkeypatch.setattr(
             "ros_mcp.utils.config_utils.Path.__truediv__",
-            lambda self, other: temp_robot_specs if "robot_specifications" in str(other) else self / other,
+            lambda self, other: temp_robot_specs
+            if "robot_specifications" in str(other)
+            else self / other,
         )
         # This test would need the actual robot_specifications directory
         # For now, test with actual project structure

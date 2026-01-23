@@ -2,13 +2,13 @@
 
 import os
 import tempfile
+
 import pytest
-from unittest.mock import MagicMock, patch
 from PIL import Image as PILImage
 
 from ros_mcp.tools.images import (
-    convert_expects_image_hint,
     _encode_image_to_imagecontent,
+    convert_expects_image_hint,
     register_image_tools,
 )
 
@@ -23,6 +23,7 @@ class MockFastMCP:
         def decorator(func):
             self.tools[func.__name__] = func
             return func
+
         return decorator
 
 
@@ -154,9 +155,7 @@ class TestAnalyzePreviouslyReceivedImage:
 
     def test_image_not_found(self, image_tools):
         """Test when image file doesn't exist."""
-        result = image_tools["analyze_previously_received_image"](
-            "/nonexistent/path/image.jpeg"
-        )
+        result = image_tools["analyze_previously_received_image"]("/nonexistent/path/image.jpeg")
 
         assert "error" in result
         assert "No image found" in result["error"]
@@ -187,9 +186,7 @@ class TestAnalyzePreviouslyReceivedImage:
 
     def test_custom_path(self, image_tools, temp_image):
         """Test with custom image path."""
-        result = image_tools["analyze_previously_received_image"](
-            image_path=temp_image
-        )
+        result = image_tools["analyze_previously_received_image"](image_path=temp_image)
 
         assert "error" not in result if isinstance(result, dict) else True
 

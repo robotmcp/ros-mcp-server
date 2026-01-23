@@ -3,8 +3,6 @@
 import socket
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from ros_mcp.utils.network_utils import ping_ip_and_port
 
 
@@ -136,7 +134,10 @@ class TestPingIpAndPort:
         result = ping_ip_and_port("invalid.hostname", 9090, ping_timeout=1.0, port_timeout=1.0)
 
         assert result["port_check"]["open"] is False
-        assert "DNS" in result["port_check"]["error"] or "resolution" in result["port_check"]["error"].lower()
+        assert (
+            "DNS" in result["port_check"]["error"]
+            or "resolution" in result["port_check"]["error"].lower()
+        )
 
     @patch("ros_mcp.utils.network_utils.subprocess.run")
     def test_response_time_extraction(self, mock_run):
