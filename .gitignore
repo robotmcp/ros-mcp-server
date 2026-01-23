@@ -179,6 +179,3 @@ pyrightconfig.json
 
 # camera
 camera/*
-
-# tests
-tests/
