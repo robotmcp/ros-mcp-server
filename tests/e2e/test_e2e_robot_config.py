@@ -26,8 +26,8 @@ class TestDetectRosVersion:
             version = values.get("version")
             distro = values.get("distro")
 
-            # Should detect ROS 2
-            assert version == "2", f"Expected ROS 2, got version {version}"
+            # Should detect ROS 2 (version may be int or string)
+            assert str(version) == "2", f"Expected ROS 2, got version {version}"
             # Should have a valid distro name
             assert distro, "Expected distro name"
             # Common ROS 2 distros
@@ -214,8 +214,8 @@ class TestRobotConfigIntegration:
 
         results["service_count"] = len(services_response.get("values", {}).get("services", []))
 
-        # Verify we got valid data
-        assert results["version"] == "2", "Should be ROS 2"
+        # Verify we got valid data (version may be int or string)
+        assert str(results["version"]) == "2", "Should be ROS 2"
         assert results["node_count"] > 0, "Should have nodes running"
         assert results["topic_count"] > 0, "Should have topics available"
         assert results["service_count"] > 0, "Should have services available"
