@@ -5,8 +5,9 @@
 
 FROM python:3.10-slim
 
-# Install git for potential development workflows
-RUN apt-get update && apt-get install -y --no-install-recommends git && \
+# Install git and OpenCV dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git libgl1 libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy the repository (build context should be repo root)

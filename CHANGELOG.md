@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-01-24
+
+### Added
+- Installation tests now support testing specific git branches via `--branch` option
+- Installation tests now support testing from custom repositories via `--repo-url` option
+- New `git_branch` and `repo_url` pytest fixtures for installation tests
+- OpenCV system dependencies (`libgl1`, `libglib2.0-0`) to installation test Dockerfiles
+
+### Changed
+- **Breaking**: Installation tests now install from git instead of PyPI
+  - Enables testing branches/PRs before publishing
+  - `Dockerfile.pip-pypi` replaced with `Dockerfile.pip-git`
+- All installation Dockerfiles updated to use git-based installation
+- Updated testing documentation with installation test instructions
+
+### Fixed
+- Installation tests now correctly check Docker build output (stderr, not stdout)
+- Fixed OpenCV import error in installation tests (missing system libraries)
+
 ## [2.5.1] - 2026-01-23
 
 ### Fixed

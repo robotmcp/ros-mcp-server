@@ -1,12 +1,19 @@
-# Test: uvx ros-mcp installation (as documented)
-# This Dockerfile verifies the primary documented installation method works.
+# Test: uvx ros-mcp installation from git
+# This Dockerfile verifies the uvx installation method works with a git branch.
 #
-# Usage: docker build -f tests/installation/docker/Dockerfile.uvx .
+# Usage: docker build -f tests/installation/docker/Dockerfile.uvx \
+#          --build-arg REPO_URL=https://github.com/robotmcp/ros-mcp-server.git \
+#          --build-arg BRANCH=main .
 
 FROM python:3.10-slim
 
-# Install curl for downloading uv
-RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates && \
+# Build arguments for git-based installation
+ARG REPO_URL=https://github.com/robotmcp/ros-mcp-server.git
+ARG BRANCH=main
+
+# Install curl for downloading uv, git, and OpenCV dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates git libgl1 libglib2.0-0 && \
     rm -rf /var/lib/apt/lists/*
 
 # Install uv (as documented in installation.md)
@@ -18,9 +25,9 @@ ENV PATH="/root/.local/bin:$PATH"
 # Verify uv is installed
 RUN uv --version
 
-# Run ros-mcp using uvx (as documented)
-# This downloads and runs ros-mcp in an isolated environment
-RUN uvx ros-mcp --help
+# Run ros-mcp using uvx from git repository
+# This downloads and runs ros-mcp from the specified branch
+RUN uvx --from "git+${REPO_URL}@${BRANCH}" ros-mcp --help
 
 # Final success message
-RUN echo "SUCCESS: uvx ros-mcp installation works correctly"
+RUN echo "SUCCESS: uvx ros-mcp installation from git+${REPO_URL}@${BRANCH} works correctly"

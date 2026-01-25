@@ -2,10 +2,12 @@
 Tests for source-based installation using uv sync.
 
 These tests verify the development installation workflow.
+Source tests use the local repository (current branch).
 """
 
-import pytest
 from pathlib import Path
+
+import pytest
 
 from .conftest import build_docker_image, cleanup_docker_image
 
@@ -33,9 +35,7 @@ def test_uv_source_install(repo_root: Path, docker_dir: Path):
         )
 
         assert result.returncode == 0, (
-            f"uv sync from source failed:\n"
-            f"STDOUT:\n{result.stdout}\n"
-            f"STDERR:\n{result.stderr}"
+            f"uv sync from source failed:\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
         )
 
     finally:
@@ -52,14 +52,11 @@ def test_uv_source_with_dev_dependencies(repo_root: Path, docker_dir: Path):
     """
     # Modify Dockerfile to include dev dependencies
     dockerfile_content = (docker_dir / "Dockerfile.uv-source").read_text()
-    dockerfile_content = dockerfile_content.replace(
-        "RUN uv sync",
-        "RUN uv sync --extra dev"
-    )
+    dockerfile_content = dockerfile_content.replace("RUN uv sync", "RUN uv sync --extra dev")
     # Also verify pytest is available
     dockerfile_content = dockerfile_content.replace(
         'RUN echo "SUCCESS: uv sync from source works correctly"',
-        'RUN uv run pytest --version && echo "SUCCESS: uv sync with dev dependencies works correctly"'
+        'RUN uv run pytest --version && echo "SUCCESS: uv sync with dev dependencies works correctly"',
     )
 
     temp_dockerfile = docker_dir / "Dockerfile.uv-source-dev"
@@ -97,8 +94,7 @@ def test_uv_source_python_versions(repo_root: Path, docker_dir: Path, python_ver
     """
     dockerfile_content = (docker_dir / "Dockerfile.uv-source").read_text()
     dockerfile_content = dockerfile_content.replace(
-        "FROM python:3.10-slim",
-        f"FROM python:{python_version}-slim"
+        "FROM python:3.10-slim", f"FROM python:{python_version}-slim"
     )
 
     temp_dockerfile = docker_dir / f"Dockerfile.uv-source-{python_version}"

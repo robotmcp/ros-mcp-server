@@ -20,20 +20,30 @@ tests/
 │   ├── test_nodes.py
 │   ├── test_parameters.py
 │   └── test_robot_config.py
-└── e2e/                # End-to-end tests (require Docker)
-    ├── conftest.py     # Shared fixtures
-    ├── test_e2e_topics.py
-    ├── test_e2e_services.py
-    ├── test_e2e_actions.py
-    ├── test_e2e_nodes.py
-    ├── test_e2e_parameters.py
-    ├── test_e2e_prompts.py
-    ├── test_e2e_resources.py
-    ├── test_e2e_main.py
-    ├── test_e2e_integration.py
-    ├── test_e2e_error_handling.py
-    ├── test_e2e_images.py
-    └── test_e2e_robot_config.py
+├── e2e/                # End-to-end tests (require Docker)
+│   ├── conftest.py     # Shared fixtures
+│   ├── test_e2e_topics.py
+│   ├── test_e2e_services.py
+│   ├── test_e2e_actions.py
+│   ├── test_e2e_nodes.py
+│   ├── test_e2e_parameters.py
+│   ├── test_e2e_prompts.py
+│   ├── test_e2e_resources.py
+│   ├── test_e2e_main.py
+│   ├── test_e2e_integration.py
+│   ├── test_e2e_error_handling.py
+│   ├── test_e2e_images.py
+│   └── test_e2e_robot_config.py
+└── installation/       # Installation tests (require Docker)
+    ├── conftest.py     # Docker build helpers
+    ├── docker/         # Dockerfiles for testing
+    │   ├── Dockerfile.uvx
+    │   ├── Dockerfile.pip-git
+    │   ├── Dockerfile.pip-source
+    │   └── Dockerfile.uv-source
+    ├── test_uvx_install.py
+    ├── test_pip_install.py
+    └── test_source_install.py
 ```
 
 ### Running Unit Tests
@@ -117,11 +127,55 @@ docker compose -f tests/e2e/docker-compose.e2e.yml down
 docker compose -f tests/e2e/docker-compose.ros1.yml down
 ```
 
+### Running Installation Tests
+
+Installation tests verify that the package can be installed correctly using different methods (uvx, pip, uv). These tests use Docker to create clean Python environments and install from git.
+
+```bash
+# Run all installation tests (uses current branch by default)
+pytest tests/installation -v
+
+# Test a specific branch
+pytest tests/installation -v --branch=feat/new-feature
+
+# Test a specific tag/release
+pytest tests/installation -v --branch=v2.5.0
+
+# Test from a different repository (e.g., a fork)
+pytest tests/installation -v --repo-url=https://github.com/user/fork.git --branch=main
+
+# Run only uvx installation tests
+pytest tests/installation/test_uvx_install.py -v
+
+# Run only pip installation tests
+pytest tests/installation/test_pip_install.py -v
+```
+
+#### Installation Test Categories
+
+| Test File | What It Tests |
+|-----------|---------------|
+| `test_uvx_install.py` | `uvx --from git+URL@branch ros-mcp` installation |
+| `test_pip_install.py` | `pip install git+URL@branch` and `pip install .` |
+| `test_source_install.py` | `uv sync` development workflow |
+
+#### Multi-Python Version Testing
+
+Installation tests run against Python 3.10, 3.11, and 3.12:
+
+```bash
+# These are parametrized tests that run automatically
+pytest tests/installation/test_pip_install.py::test_pip_install_python_versions -v
+pytest tests/installation/test_source_install.py::test_uv_source_python_versions -v
+```
+
 ### Pytest Markers
 
 The test suite uses the following markers:
 
 - `@pytest.mark.e2e` - End-to-end tests requiring ROS environment
+- `@pytest.mark.installation` - Installation tests requiring Docker
+- `@pytest.mark.slow` - Slow tests (installation tests)
 - `@pytest.mark.ros1` - Tests specific to ROS 1
 - `@pytest.mark.ros2` - Tests specific to ROS 2 (e.g., actions, parameters)
 - `@pytest.mark.asyncio` - Async tests using pytest-asyncio

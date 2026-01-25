@@ -1,0 +1,32 @@
+# Test: pip install ros-mcp from git
+# This Dockerfile verifies that pip installation from git works.
+#
+# Usage: docker build -f tests/installation/docker/Dockerfile.pip-git \
+#          --build-arg REPO_URL=https://github.com/robotmcp/ros-mcp-server.git \
+#          --build-arg BRANCH=main .
+
+FROM python:3.10-slim
+
+# Build arguments for git-based installation
+ARG REPO_URL=https://github.com/robotmcp/ros-mcp-server.git
+ARG BRANCH=main
+
+# Install git and OpenCV dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git libgl1 libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip to latest
+RUN pip install --upgrade pip
+
+# Install ros-mcp from git (specific branch)
+RUN pip install "git+${REPO_URL}@${BRANCH}"
+
+# Verify the installation works
+RUN ros-mcp --help
+
+# Verify the package is importable
+RUN python -c "import ros_mcp; print('ros-mcp installed from git successfully')"
+
+# Final success message
+RUN echo "SUCCESS: pip install from git+${REPO_URL}@${BRANCH} works correctly"

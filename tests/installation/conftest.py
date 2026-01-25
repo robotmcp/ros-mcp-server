@@ -2,11 +2,32 @@
 Pytest configuration and fixtures for installation tests.
 
 These tests use Docker to verify installation methods in clean environments.
+All tests install from git (current branch) to validate before publishing.
 """
 
 import subprocess
-import pytest
 from pathlib import Path
+
+import pytest
+
+# Default repository URL for git-based installation
+DEFAULT_REPO_URL = "https://github.com/robotmcp/ros-mcp-server.git"
+
+
+def pytest_addoption(parser):
+    """Add command line options for installation tests."""
+    parser.addoption(
+        "--branch",
+        action="store",
+        default=None,
+        help="Git branch/tag to test installation from (default: current branch)",
+    )
+    parser.addoption(
+        "--repo-url",
+        action="store",
+        default=DEFAULT_REPO_URL,
+        help=f"Git repository URL (default: {DEFAULT_REPO_URL})",
+    )
 
 
 def pytest_configure(config):
@@ -14,6 +35,23 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "installation: marks tests as installation tests (may be slow)"
     )
+
+
+def get_current_git_branch(repo_path: Path) -> str:
+    """Get the current git branch name from the repository."""
+    try:
+        result = subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            capture_output=True,
+            text=True,
+            cwd=repo_path,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except (subprocess.SubprocessError, FileNotFoundError):
+        pass
+    return "main"  # Fallback to main if git command fails
 
 
 @pytest.fixture(scope="module")
@@ -26,6 +64,21 @@ def repo_root() -> Path:
 def docker_dir() -> Path:
     """Return path to docker directory containing Dockerfiles."""
     return Path(__file__).parent / "docker"
+
+
+@pytest.fixture(scope="module")
+def git_branch(request, repo_root) -> str:
+    """Return the git branch to test installation from."""
+    branch = request.config.getoption("--branch")
+    if branch is None:
+        branch = get_current_git_branch(repo_root)
+    return branch
+
+
+@pytest.fixture(scope="module")
+def repo_url(request) -> str:
+    """Return the git repository URL."""
+    return request.config.getoption("--repo-url")
 
 
 def docker_available() -> bool:
