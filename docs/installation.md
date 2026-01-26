@@ -267,7 +267,7 @@ claude-desktop
 
 ```powershell
 # Use the following command in windows powershell
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
 Look up [documentation from uv](https://docs.astral.sh/uv/getting-started/installation/) for more information or in the case of any errors.
@@ -289,8 +289,8 @@ This will have Claude and the MCP server running within Windows.
 ### 2.2 Configure
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
-```bash
-~/.config/Claude/claude_desktop_config.json
+```powershell
+%APPDATA%\Claude\claude_desktop_config.json
 ```
 
 - Add the following to the `"mcpServers"` section of the JSON file:
@@ -318,14 +318,12 @@ This will have Claude and the MCP server running within Windows.
 <summary><strong> Troubleshooting </strong></summary>
 
 - If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, try completely shutting down Claude Desktop using the commands below and then restarting it. This could be a Claude Desktop caching issue.
-```bash
+```powershell
 # Completely terminate Claude Desktop processes
-pkill -f claude-desktop
-# Or alternatively
-killall claude-desktop
+Stop-Process -Name "Claude*" -Force
 
-# Restart Claude Desktop
-claude-desktop
+# Restart Claude Desktop by opening it from the Start Menu or running:
+Start-Process "$env:LOCALAPPDATA\Programs\claude-desktop\Claude.exe"
 ```
 
 </details>
@@ -521,7 +519,7 @@ uvx ros-mcp
    uvx ros-mcp --help
    
    # Example with custom settings
-   uvx ros-mcp --transport http --host 0.0.0.0 --port 8080
+   uvx ros-mcp --transport streamable-http --host 0.0.0.0 --port 8080
    ```
 
 2. **Check environment variables** (legacy): Ensure MCP_TRANSPORT, MCP_HOST, and MCP_PORT are set correctly

@@ -123,7 +123,6 @@ def register_action_tools(
 
         # First, get the action type
         action_type = "unknown"
-        action_interfaces = []  # Initialize before if/else block
 
         # Check if required service is available
         required_services = ["/rosapi/interfaces"]
@@ -165,6 +164,9 @@ def register_action_tools(
                         "suggestion": "This rosbridge version doesn't support interface listing services",
                     },
                 }
+
+        # Initialize action_interfaces before conditional blocks to avoid locals() usage
+        action_interfaces = []
 
         # Known action type mappings
         action_type_map = {
@@ -297,7 +299,11 @@ def register_action_tools(
 
                     fields = {}
                     field_details = {}
-                    for i, (name, ftype) in enumerate(zip(field_names, field_types)):
+                    # Validate field_names and field_types have the same length
+                    num_fields = min(len(field_names), len(field_types))
+                    for i in range(num_fields):
+                        name = field_names[i]
+                        ftype = field_types[i]
                         fields[name] = ftype
                         field_details[name] = {
                             "type": ftype,
@@ -342,7 +348,11 @@ def register_action_tools(
 
                     fields = {}
                     field_details = {}
-                    for i, (name, ftype) in enumerate(zip(field_names, field_types)):
+                    # Validate field_names and field_types have the same length
+                    num_fields = min(len(field_names), len(field_types))
+                    for i in range(num_fields):
+                        name = field_names[i]
+                        ftype = field_types[i]
                         fields[name] = ftype
                         field_details[name] = {
                             "type": ftype,
@@ -387,7 +397,11 @@ def register_action_tools(
 
                     fields = {}
                     field_details = {}
-                    for i, (name, ftype) in enumerate(zip(field_names, field_types)):
+                    # Validate field_names and field_types have the same length
+                    num_fields = min(len(field_names), len(field_types))
+                    for i in range(num_fields):
+                        name = field_names[i]
+                        ftype = field_types[i]
                         fields[name] = ftype
                         field_details[name] = {
                             "type": ftype,
@@ -542,8 +556,8 @@ def register_action_tools(
         action_name: str,
         action_type: str,
         goal: dict,
-        timeout: float = None,  # type: ignore[assignment]  # See issue #140
-        ctx: Context = None,  # type: ignore[assignment]  # See issue #140
+        timeout: float = None,
+        ctx: Context = None,
     ) -> dict:
         """
         Send a goal to a ROS action server. Works only with ROS 2.
@@ -571,6 +585,10 @@ def register_action_tools(
         if timeout is None:
             timeout = ws_manager.default_timeout
 
+        # Validate timeout
+        if timeout < 0:
+            return {"error": "timeout must be >= 0"}
+
         # Generate unique goal ID
         goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
 
@@ -586,25 +604,28 @@ def register_action_tools(
         }
 
         # Send the action goal through rosbridge
-        with ws_manager:
-            send_error = ws_manager.send(message)
-            if send_error:
-                return {
-                    "action": action_name,
-                    "action_type": action_type,
-                    "success": False,
-                    "error": f"Failed to send action goal: {send_error}",
-                }
+        # Note: We manage the connection manually to release the context during async sleep
+        send_error = ws_manager.send(message)
+        if send_error:
+            return {
+                "action": action_name,
+                "action_type": action_type,
+                "success": False,
+                "error": f"Failed to send action goal: {send_error}",
+            }
 
-            # Wait for action completion - handle both action_result and action_feedback
-            start_time = time.time()
-            last_feedback = None  # Store the last feedback message
-            feedback_count = 0  # Count feedback messages received
+        # Wait for action completion - handle both action_result and action_feedback
+        start_time = time.time()
+        last_feedback = None  # Store the last feedback message
+        feedback_count = 0  # Count feedback messages received
 
+        try:
             while time.time() - start_time < timeout:
                 elapsed_time = time.time() - start_time
+                # Ensure timeout is always positive to avoid race condition
+                remaining_timeout = max(0.1, timeout - elapsed_time)
 
-                response = ws_manager.receive(timeout - elapsed_time)
+                response = ws_manager.receive(remaining_timeout)
 
                 if response:
                     try:
@@ -619,8 +640,9 @@ def register_action_tools(
                                     await ctx.report_progress(
                                         progress=feedback_count, total=None, message=completion_msg
                                     )
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    # Log instead of silently ignoring
+                                    print(f"[Action] Progress report error: {e}", file=__import__('sys').stderr)
 
                             return {
                                 "action": action_name,
@@ -644,8 +666,9 @@ def register_action_tools(
                                     await ctx.report_progress(
                                         progress=feedback_count, total=None, message=feedback_msg
                                     )
-                                except Exception:
-                                    pass
+                                except Exception as e:
+                                    # Log instead of silently ignoring
+                                    print(f"[Action] Progress report error: {e}", file=__import__('sys').stderr)
 
                     except json.JSONDecodeError:
                         continue
@@ -663,8 +686,9 @@ def register_action_tools(
                         total=None,
                         message=f"Action timed out after {timeout} seconds (received {feedback_count} feedback messages)",
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    # Log instead of silently ignoring
+                    print(f"[Action] Progress report error: {e}", file=__import__('sys').stderr)
 
             result = {
                 "action": action_name,
@@ -680,6 +704,9 @@ def register_action_tools(
                 result["note"] = "Action timed out, but partial progress was made"
 
             return result
+        finally:
+            # Ensure connection is properly closed
+            ws_manager.close()
 
     @mcp.tool(
         description=(

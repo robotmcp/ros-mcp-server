@@ -22,7 +22,7 @@ def _safe_check_parameter_exists(
             return True
         # Strip quotes (handles cases like '""' which represents empty string)
         stripped = value.strip('"').strip("'")
-        return not stripped or stripped == ""
+        return not stripped
 
     message = {
         "op": "call_service",
@@ -241,14 +241,13 @@ def register_parameter_tools(
                     "successful": bool(result_data) if result_data is not None else True,
                     "reason": "",
                 }
-
-        # Fallback for unexpected response format
-        error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
-        )
-        return {"error": f"Failed to set parameter {name}: {error_msg}"}
+        else:
+            error_msg = (
+                response.get("values", {}).get("message", "Service call failed")
+                if response and isinstance(response, dict)
+                else "No response"
+            )
+            return {"error": f"Failed to set parameter {name}: {error_msg}"}
 
     @mcp.tool(
         description=(
@@ -745,7 +744,10 @@ def register_parameter_tools(
                     clean_value.startswith("-") and clean_value[1:].isdigit()
                 ):
                     param_type = "int"
-                elif "." in clean_value and clean_value.replace(".", "").replace("-", "").isdigit():
+                elif (
+                    clean_value.count(".") == 1
+                    and clean_value.replace(".", "").replace("-", "").isdigit()
+                ):
                     param_type = "float"
                 elif param_value.startswith('"') and param_value.endswith('"'):
                     param_type = "string"

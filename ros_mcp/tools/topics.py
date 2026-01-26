@@ -260,9 +260,9 @@ def register_topic_tools(
         topic: str = "",
         msg_type: str = "",
         expects_image: str = "auto",
-        timeout: float = None,  # type: ignore[assignment]  # See issue #140
-        queue_length: int = None,  # type: ignore[assignment]  # See issue #140
-        throttle_rate_ms: int = None,  # type: ignore[assignment]  # See issue #140
+        timeout: float = None,
+        queue_length: int = None,
+        throttle_rate_ms: int = None,
     ) -> dict:
         """
         Subscribe to a given ROS topic via rosbridge and return the first message received.
@@ -335,47 +335,47 @@ def register_topic_tools(
             if send_error:
                 return {"error": f"Failed to subscribe: {send_error}"}
 
-            # Loop until we receive the first message or timeout
-            end_time = time.time() + actual_timeout
-            while time.time() < end_time:
-                response = ws_manager.receive(timeout=0.5)  # non-blocking small timeout
-                if response is None:
-                    continue  # idle timeout: no frame this tick
+            try:
+                # Loop until we receive the first message or timeout
+                end_time = time.time() + actual_timeout
+                while time.time() < end_time:
+                    response = ws_manager.receive(timeout=0.5)  # non-blocking small timeout
+                    if response is None:
+                        continue  # idle timeout: no frame this tick
 
-                # Convert string hint to boolean for parse_input
-                expects_image_bool = convert_expects_image_hint(expects_image)
+                    # Convert string hint to boolean for parse_input
+                    expects_image_bool = convert_expects_image_hint(expects_image)
 
-                # Parse input with expects_image hint
-                msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
+                    # Parse input with expects_image hint
+                    msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
-                if not msg_data:
-                    continue  # parsing failed or empty
+                    if not msg_data:
+                        continue  # parsing failed or empty
 
-                # Check for status errors from rosbridge
-                if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                    return {"error": f"Rosbridge error: {msg_data.get('msg', 'Unknown error')}"}
+                    # Check for status errors from rosbridge
+                    if msg_data.get("op") == "status" and msg_data.get("level") == "error":
+                        return {"error": f"Rosbridge error: {msg_data.get('msg', 'Unknown error')}"}
 
-                # Check for the first published message
-                if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
-                    # Unsubscribe before returning the message
-                    unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
-                    ws_manager.send(unsubscribe_msg)
-                    # Return appropriate message based on whether image was actually parsed
-                    if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        return {
-                            "msg": filtered_msg,
-                            "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
-                        }
-                    else:
-                        return {"msg": msg_data.get("msg", {})}
+                    # Check for the first published message
+                    if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
+                        # Return appropriate message based on whether image was actually parsed
+                        if was_parsed_as_image:
+                            # Exclude the 'data' field from image messages as it's too large
+                            msg_content = msg_data.get("msg", {})
+                            filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
+                            return {
+                                "msg": filtered_msg,
+                                "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
+                            }
+                        else:
+                            return {"msg": msg_data.get("msg", {})}
 
-            # Timeout - unsubscribe and return error
-            unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
-            ws_manager.send(unsubscribe_msg)
-            return {"error": "Timeout waiting for message from topic"}
+                # Timeout
+                return {"error": "Timeout waiting for message from topic"}
+            finally:
+                # Always unsubscribe to prevent resource leaks
+                unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
+                ws_manager.send(unsubscribe_msg)
 
     @mcp.tool(
         description=(
@@ -392,8 +392,8 @@ def register_topic_tools(
         msg_type: str = "",
         duration: float = 5.0,
         max_messages: int = 100,
-        queue_length: int = None,  # type: ignore[assignment]  # See issue #140
-        throttle_rate_ms: int = None,  # type: ignore[assignment]  # See issue #140
+        queue_length: int = None,
+        throttle_rate_ms: int = None,
         expects_image: str = "auto",
     ) -> dict:
         """
@@ -477,45 +477,46 @@ def register_topic_tools(
             status_errors = []
             end_time = time.time() + duration
 
-            # Loop until duration expires or we hit max_messages
-            while time.time() < end_time and len(collected_messages) < max_messages:
-                response = ws_manager.receive(timeout=0.5)  # non-blocking small timeout
-                if response is None:
-                    continue  # idle timeout: no frame this tick
+            try:
+                # Loop until duration expires or we hit max_messages
+                while time.time() < end_time and len(collected_messages) < max_messages:
+                    response = ws_manager.receive(timeout=0.5)  # non-blocking small timeout
+                    if response is None:
+                        continue  # idle timeout: no frame this tick
 
-                # Convert string hint to boolean for parse_input
-                expects_image_bool = convert_expects_image_hint(expects_image)
+                    # Convert string hint to boolean for parse_input
+                    expects_image_bool = convert_expects_image_hint(expects_image)
 
-                # Parse input with expects_image hint
-                msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
+                    # Parse input with expects_image hint
+                    msg_data, was_parsed_as_image = parse_input(response, expects_image_bool)
 
-                if not msg_data:
-                    continue  # parsing failed or empty
+                    if not msg_data:
+                        continue  # parsing failed or empty
 
-                # Check for status errors from rosbridge
-                if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                    status_errors.append(msg_data.get("msg", "Unknown error"))
-                    continue
+                    # Check for status errors from rosbridge
+                    if msg_data.get("op") == "status" and msg_data.get("level") == "error":
+                        status_errors.append(msg_data.get("msg", "Unknown error"))
+                        continue
 
-                # Check for published messages matching our topic
-                if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
-                    # Add message based on whether it was actually parsed as image
-                    if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        collected_messages.append(
-                            {
-                                "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
-                                "msg": filtered_msg,
-                            }
-                        )
-                    else:
-                        collected_messages.append(msg_data.get("msg", {}))
-
-            # Unsubscribe when done
-            unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
-            ws_manager.send(unsubscribe_msg)
+                    # Check for published messages matching our topic
+                    if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
+                        # Add message based on whether it was actually parsed as image
+                        if was_parsed_as_image:
+                            # Exclude the 'data' field from image messages as it's too large
+                            msg_content = msg_data.get("msg", {})
+                            filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
+                            collected_messages.append(
+                                {
+                                    "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
+                                    "msg": filtered_msg,
+                                }
+                            )
+                        else:
+                            collected_messages.append(msg_data.get("msg", {}))
+            finally:
+                # Always unsubscribe to prevent resource leaks
+                unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
+                ws_manager.send(unsubscribe_msg)
 
         return {
             "topic": topic,
@@ -596,28 +597,32 @@ def register_topic_tools(
             try:
                 # publish loop
                 for i, (msg, delay) in enumerate(zip(messages, durations)):
-                    publish_msg = {"op": "publish", "topic": topic, "msg": msg}
+                    try:
+                        publish_msg = {"op": "publish", "topic": topic, "msg": msg}
 
-                    send_error = ws_manager.send(publish_msg)
-                    if send_error:
-                        errors.append(f"Message {i + 1}: {send_error}")
+                        send_error = ws_manager.send(publish_msg)
+                        if send_error:
+                            errors.append(f"Message {i + 1}: {send_error}")
+                            continue
+
+                        response = ws_manager.receive(timeout=1.0)
+                        if response:
+                            try:
+                                msg_data = json.loads(response)
+                                if msg_data.get("op") == "status" and msg_data.get("level") == "error":
+                                    errors.append(
+                                        f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
+                                    )
+                                    continue
+                            except json.JSONDecodeError:
+                                pass
+
+                        published_count += 1
+                        if delay:
+                            time.sleep(delay)
+                    except Exception as e:
+                        errors.append(f"Message {i + 1}: Unexpected error: {str(e)}")
                         continue
-
-                    response = ws_manager.receive(timeout=1.0)
-                    if response:
-                        try:
-                            msg_data = json.loads(response)
-                            if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                                errors.append(
-                                    f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
-                                )
-                                continue
-                        except json.JSONDecodeError:
-                            pass
-
-                    published_count += 1
-                    if delay:
-                        time.sleep(delay)
 
             finally:
                 # always unadvertise

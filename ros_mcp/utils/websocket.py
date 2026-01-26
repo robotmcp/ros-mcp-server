@@ -333,7 +333,7 @@ class WebSocketManager:
             if conn_error:
                 return conn_error  # failed to connect
 
-            if self.ws:
+            if self.ws and self.ws.connected:
                 try:
                     json_msg = json.dumps(message)  # ensure it's JSON-serializable
                     self.ws.send(json_msg)
@@ -423,9 +423,11 @@ class WebSocketManager:
                     self.ws = None
 
     def __enter__(self):
-        """Context manager entry - automatically connects."""
-        # Don't connect here since we want to maintain the existing pattern
-        # where request() handles connection automatically
+        """Context manager entry - returns self without connecting.
+
+        Connection is deferred to the first operation (send/receive/request)
+        to maintain the existing pattern where operations handle connection automatically.
+        """
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

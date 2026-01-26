@@ -67,7 +67,7 @@ The MCP server enables the Claude to interpret images from the robot's cameras, 
 - **Publish/subscribe to topics** → send commands or stream robot data in real time.  
 - **Call services (incl. custom)** → trigger robot functions directly.  
 - **Get/set parameters** → read or adjust robot settings on the fly.  
-- 🔜 **Action support** → upcoming support for ROS Actions.  
+- ✅ **Action support** → send action goals, get action status, and cancel goals (ROS 2 only).  
 - 🔜 **Permission controls** → manage access for safer deployments.  
 
 ---
