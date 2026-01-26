@@ -24,8 +24,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff",    # single tool for linting & formatting
-    "pytest"   # for tests
+    "ruff",           # single tool for linting & formatting
+    "pytest",         # for tests
+    "pytest-timeout", # test timeouts for E2E tests
+    "pytest-asyncio", # async test support
 ]
 
 [project.scripts]
@@ -61,6 +63,22 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 docstring-code-format = true
+
+# ---------------- Pytest configuration ----------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_classes = "Test*"
+python_functions = "test_*"
+addopts = "-v --tb=short"
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+    "e2e: end-to-end tests requiring ROS Docker container",
+    "ros1: tests specific to ROS 1",
+    "ros2: tests specific to ROS 2 (actions, parameters)",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+]
 
 # MCP Registry validation - required for PyPI package verification
 [tool.mcp]

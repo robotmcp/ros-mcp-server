@@ -1,0 +1,31 @@
+# Docker Compose for E2E tests with ROS 1 Noetic turtlesim
+# Usage: docker compose -f tests/e2e/docker-compose.ros1.yml up -d
+
+services:
+  ros1-turtlesim:
+    build:
+      context: ./docker
+      dockerfile: Dockerfile.ros1
+    container_name: ros1-turtlesim-e2e
+    environment:
+      - ROS_DISTRO=noetic
+      - ROS_MASTER_URI=http://localhost:11311
+      # Disable display for headless testing
+      - QT_QPA_PLATFORM=offscreen
+    ports:
+      - "9091:9091"  # Use different port to allow both ROS1 and ROS2 to run simultaneously
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "source /opt/ros/noetic/setup.bash &&
+               roscore &
+               sleep 3 &&
+               rosrun turtlesim turtlesim_node &
+               sleep 2 &&
+               roslaunch rosbridge_server rosbridge_websocket.launch port:=9091"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "source /opt/ros/noetic/setup.bash && rostopic list | grep -q /turtle1/pose"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 15s

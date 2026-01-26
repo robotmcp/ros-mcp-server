@@ -1,6 +1,76 @@
 # Testing Guide for ROS MCP Server
 
-This guide explains how to test the ROS MCP Server using prompts and resources.
+This guide explains how to test the ROS MCP Server using prompts, resources, and automated tests.
+
+## Running E2E Tests
+
+E2E tests require a ROS environment with turtlesim running in Docker. The test suite supports both ROS 1 (Noetic) and ROS 2 (Humble).
+
+### Prerequisites
+
+- Docker and Docker Compose installed
+- pytest (`pip install pytest pytest-timeout pytest-asyncio`)
+
+### ROS 2 E2E Tests (Default)
+
+```bash
+# Start the ROS 2 environment
+docker compose -f tests/e2e/docker-compose.e2e.yml up -d
+
+# Wait for rosbridge to be ready (typically 10-30 seconds)
+sleep 30
+
+# Run E2E tests (default is ROS 2)
+pytest tests/e2e/ -v -m e2e
+
+# Run specific E2E test category
+pytest tests/e2e/test_e2e_topics.py -v -m e2e
+
+# Stop the Docker environment
+docker compose -f tests/e2e/docker-compose.e2e.yml down
+```
+
+### ROS 1 E2E Tests
+
+```bash
+# Start the ROS 1 environment (uses port 9091)
+docker compose -f tests/e2e/docker-compose.ros1.yml up -d
+
+# Wait for rosbridge to be ready
+sleep 30
+
+# Run E2E tests with ROS 1
+pytest tests/e2e/ -v -m e2e --ros-version=1
+
+# Run only tests compatible with ROS 1 (excludes ros2-only tests)
+pytest tests/e2e/ -v -m "e2e and not ros2" --ros-version=1
+
+# Stop the Docker environment
+docker compose -f tests/e2e/docker-compose.ros1.yml down
+```
+
+### E2E Test Files
+
+| Test File | Description |
+|-----------|-------------|
+| `test_e2e_topics.py` | Topic listing, subscribing, publishing with real turtlesim |
+| `test_e2e_services.py` | Service calls (spawn, kill, teleport) with real turtlesim |
+| `test_e2e_nodes.py` | Node listing and details from real ROS |
+| `test_e2e_parameters.py` | Parameter get/set/list (ROS 2 specific) |
+| `test_e2e_actions.py` | Action server operations (ROS 2 specific) |
+| `test_e2e_images.py` | Image subscription and processing |
+| `test_e2e_robot_config.py` | ROS version detection and configuration |
+| `test_e2e_integration.py` | Multi-tool workflows |
+| `test_e2e_error_handling.py` | Invalid inputs, connection failures, timeouts |
+| `test_e2e_main.py` | CLI argument parsing, server initialization |
+| `test_e2e_prompts.py` | MCP prompt registration and content |
+| `test_e2e_resources.py` | MCP resource availability |
+
+### Pytest Markers
+
+- `@pytest.mark.e2e` - End-to-end tests requiring ROS environment
+- `@pytest.mark.ros1` - Tests specific to ROS 1
+- `@pytest.mark.ros2` - Tests specific to ROS 2 (e.g., actions, parameters)
 
 ## Prerequisites
 

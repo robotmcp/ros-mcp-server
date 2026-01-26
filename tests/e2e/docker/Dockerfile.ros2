@@ -1,0 +1,20 @@
+# ROS2 Humble with Turtlesim for E2E testing
+FROM osrf/ros:humble-desktop
+
+ENV ROS_DISTRO=humble
+SHELL ["/bin/bash", "-c"]
+
+# Install turtlesim and rosbridge packages
+RUN apt-get update && apt-get install -y \
+    ros-humble-turtlesim \
+    ros-humble-rosbridge-suite \
+    && rm -rf /var/lib/apt/lists/*
+
+# Auto-source ROS environment in container shell
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+# Set working directory
+WORKDIR /ros2_ws
+
+# Default command to keep container running
+CMD ["/bin/bash"]
