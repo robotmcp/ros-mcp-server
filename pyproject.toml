@@ -1,6 +1,6 @@
 [project]
 name = "ros-mcp"
-version = "3.0.0"
+version = "2.2.1"
 description = "Connect AI Language Models with Robots on ROS using MCP"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -24,13 +24,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "ruff",           # single tool for linting & formatting
-    "pytest",         # for tests
-    "pytest-timeout", # test timeouts
+    "ruff",    # single tool for linting & formatting
+    "pytest"   # for tests
 ]
 
 [project.scripts]
-ros-mcp = "ros_mcp.main:main"
+ros-mcp = "server:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
@@ -38,7 +37,8 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 include-package-data = true
-packages = ["ros_mcp", "ros_mcp.tools", "ros_mcp.utils", "ros_mcp.prompts", "ros_mcp.resources", "config", "robot_specifications"]
+py-modules = ["server"]
+packages = ["utils", "config", "robot_specifications"]
 
 [tool.setuptools.package-data]
 robot_specifications = ["*.yaml"]
@@ -62,18 +62,6 @@ quote-style = "double"
 indent-style = "space"
 skip-magic-trailing-comma = false
 docstring-code-format = true
-
-# ---------------- Pytest configuration ----------------
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-python_files = "test_*.py"
-python_classes = "Test*"
-python_functions = "test_*"
-addopts = "-v --tb=short"
-markers = [
-    "installation: installation tests using Docker containers",
-    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
-]
 
 # MCP Registry validation - required for PyPI package verification
 [tool.mcp]
