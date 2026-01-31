@@ -106,8 +106,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                             # If types aren't available, just return service names
                             # Types can be fetched separately if needed
                             metadata["services"] = [
-                                {"name": service, "type": "unknown"}
-                                for service in services
+                                {"name": service, "type": "unknown"} for service in services
                             ]
             except Exception as e:
                 metadata["errors"].append(f"Failed to get services: {str(e)}")
