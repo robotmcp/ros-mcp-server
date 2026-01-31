@@ -79,7 +79,7 @@ send_action_goal(action_name='/turtle1/rotate_absolute',
 
 ### Connection Tools
 - `connect_to_robot()` - Connect to ROS system
-- `ping_robot()` - Test connectivity
+- `ping_robots()` - Test connectivity for one or more robots
 - `detect_ros_version()` - Detect ROS version
 
 ### Discovery Tools
