@@ -74,7 +74,7 @@ def register_connection_tools(
         ),
     )
     def ping_robots(
-        targets: list[dict],
+        targets: list[dict] = None,  # type: ignore[assignment]  # See issue #140
         ping_timeout: float = 2.0,
         port_timeout: float = 2.0,
     ) -> dict:
@@ -91,6 +91,10 @@ def register_connection_tools(
         Returns:
             dict: Contains a 'results' list with ping and port check results for each target.
         """
+        # Set default value if targets is None
+        if targets is None:
+            targets = [{"ip": "127.0.0.1", "port": 9090}]
+
         # Validate targets is a non-empty list
         if not isinstance(targets, list):
             return {"error": "targets must be a list of dictionaries", "results": []}
