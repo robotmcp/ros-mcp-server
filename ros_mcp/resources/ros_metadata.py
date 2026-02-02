@@ -87,7 +87,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 services_message = {
                     "op": "call_service",
                     "service": "/rosapi/services",
-                    "type": "rosapi/Services",
+                    "type": "rosapi_msgs/srv/Services",
                     "args": {},
                     "id": "get_services_request",
                 }
@@ -96,10 +96,18 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     if response and "values" in response:
                         services = response["values"].get("services", [])
                         types = response["values"].get("types", [])
-                        metadata["services"] = [
-                            {"name": service, "type": service_type}
-                            for service, service_type in zip(services, types)
-                        ]
+                        # Handle case where types might be empty or missing
+                        if types and len(types) == len(services):
+                            metadata["services"] = [
+                                {"name": service, "type": service_type}
+                                for service, service_type in zip(services, types)
+                            ]
+                        else:
+                            # If types aren't available, just return service names
+                            # Types can be fetched separately if needed
+                            metadata["services"] = [
+                                {"name": service, "type": "unknown"} for service in services
+                            ]
             except Exception as e:
                 metadata["errors"].append(f"Failed to get services: {str(e)}")
 
