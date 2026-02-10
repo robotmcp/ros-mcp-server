@@ -1,0 +1,6 @@
+float32 target_altitude
+---
+bool success
+string message
+---
+float32 current_altitude
