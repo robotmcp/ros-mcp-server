@@ -8,7 +8,7 @@ This example guides you through controlling a real PX4-based drone using the ROS
 ## System Requirements
 - **Onboard Computer**: Ubuntu 24.04 (Noble) or compatible
 - **ROS2**: Jazzy Jalisco
-- **Flight Controller**: PX4 Autopilot (Connected via MicroXRCE-DDS)
+- **Flight Controller**: PX4 Autopilot (Connected via MAVLink)
 
 ## Setup & Installation
 
@@ -22,15 +22,18 @@ source install/setup.bash
 ```
 
 ### 2. Connect to Flight Controller
-Ensure your companion computer is connected to the Flight Controller (Pixhawk/Cube etc.) via serial or USB.
+Ensure your companion computer is connected to the Flight Controller (Pixhawk/Cube etc.) via serial (e.g., Telem2 port).
 
-Launch the MicroXRCE-DDS Agent:
+### 3. Launch MAVROS
+Start the MAVROS node to bridge MAVLink to ROS2 topics.
+
 ```bash
-MicroXRCEAgent serial --dev /dev/ttyACM0 -b 921600
+# Example: USB/Serial connection
+# Adjust fcu_url based on your device path and baudrate
+ros2 launch mavros px4.launch fcu_url:="serial:///dev/ttyACM0:921600"
 ```
-*(Adjust the device path and baudrate according to your hardware setup)*
 
-### 3. Launch the Control Node
+### 4. Launch the Control Node
 ```bash
 # In the drone_ws folder
 source install/setup.bash
