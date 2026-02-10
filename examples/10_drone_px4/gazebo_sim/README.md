@@ -56,7 +56,7 @@ chmod +x ./QGroundControl-x86_64.AppImage
 ### 4. Install This Package (rms-dronecmd)
 ```bash
 # Navigate to the workspace within this example
-cd examples/drone_px4/gazebo_sim/drone_ws
+cd examples/10_drone_px4/gazebo_sim/drone_ws
 colcon build --symlink-install
 source install/setup.bash
 ```
