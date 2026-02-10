@@ -146,4 +146,4 @@ The `drone_controller` node exposes these high-level actions:
         -   `float32 speed` (m/s, default 1.0)
         -   `float32 tolerance` (Arrival radius)
         -   `bool fly_through` (True = Continuous motion)
-        -   `int32 repeat`
+

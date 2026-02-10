@@ -22,7 +22,7 @@ prompts: |
        - `float32 tolerance` (Arrival radius in meters, default 0.2)
        - `uint8 reference_frame` (0=Relative to start, 1=Global NED)
        - `bool fly_through` (True=Smooth motion without stopping, False=Stop at each point)
-       - `int32 repeat` (Total executions: 1=Run once)
+
      - Instruction:
        - For smooth paths (e.g., circles, spirals, orbits), ALWAYS set `fly_through: true` and generate HIGH DENSITY points (at least 20-30 points).
        - For inspection or patrol (e.g., square, polygon), set `fly_through: false` to stop at corners.

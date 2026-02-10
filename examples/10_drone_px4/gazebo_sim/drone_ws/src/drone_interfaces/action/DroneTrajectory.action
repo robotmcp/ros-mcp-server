@@ -5,7 +5,7 @@ float32 tolerance
 uint8 reference_frame    # 0=Relative, 1=Local-NED
 
 bool fly_through
-int32 repeat
+
 ---
 # Result
 bool success

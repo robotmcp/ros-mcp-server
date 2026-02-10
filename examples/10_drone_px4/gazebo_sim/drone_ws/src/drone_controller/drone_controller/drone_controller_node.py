@@ -153,7 +153,6 @@ class DroneMCPBridge(Node):
             for p in req.points:
                 points.append((p.x, p.y, p.z))
 
-        loops = req.repeat if req.repeat > 0 else 1
         current_global_idx = 0
         
         feedback_msg = DroneTrajectory.Feedback()
@@ -166,69 +165,68 @@ class DroneMCPBridge(Node):
         setpoint_y = self.current_pose.pose.position.y
         setpoint_z = self.current_pose.pose.position.z
 
-        for loop_idx in range(loops):
-            for i, (tx, ty, tz) in enumerate(points):
-                target_x, target_y, target_z = float(tx), float(ty), float(tz)
-                setpoint_reached = False
+        for i, (tx, ty, tz) in enumerate(points):
+            target_x, target_y, target_z = float(tx), float(ty), float(tz)
+            setpoint_reached = False
 
-                while rclpy.ok():
-                    if goal_handle.is_cancel_requested:
-                        goal_handle.canceled()
-                        return DroneTrajectory.Result(success=False, message="Canceled")
+            while rclpy.ok():
+                if goal_handle.is_cancel_requested:
+                    goal_handle.canceled()
+                    return DroneTrajectory.Result(success=False, message="Canceled")
 
-                    dx = target_x - setpoint_x
-                    dy = target_y - setpoint_y
-                    dz = target_z - setpoint_z
-                    dist_to_target = math.sqrt(dx*dx + dy*dy + dz*dz)
+                dx = target_x - setpoint_x
+                dy = target_y - setpoint_y
+                dz = target_z - setpoint_z
+                dist_to_target = math.sqrt(dx*dx + dy*dy + dz*dz)
 
-                    if dist_to_target < (speed * dt):
-                        setpoint_x, setpoint_y, setpoint_z = target_x, target_y, target_z
-                        setpoint_reached = True
-                    else:
-                        step = speed * dt
-                        setpoint_x += (dx / dist_to_target) * step
-                        setpoint_y += (dy / dist_to_target) * step
-                        setpoint_z += (dz / dist_to_target) * step
-                        
-                        if abs(dx) > 0.1 or abs(dy) > 0.1:
-                            yaw = math.atan2(dy, dx)
-                            q = R.from_euler('z', yaw).as_quat()
-                            self.target_pose.pose.orientation.x = q[0]
-                            self.target_pose.pose.orientation.y = q[1]
-                            self.target_pose.pose.orientation.z = q[2]
-                            self.target_pose.pose.orientation.w = q[3]
-
-                    self.target_pose.pose.position.x = setpoint_x
-                    self.target_pose.pose.position.y = setpoint_y
-                    self.target_pose.pose.position.z = setpoint_z
+                if dist_to_target < (speed * dt):
+                    setpoint_x, setpoint_y, setpoint_z = target_x, target_y, target_z
+                    setpoint_reached = True
+                else:
+                    step = speed * dt
+                    setpoint_x += (dx / dist_to_target) * step
+                    setpoint_y += (dy / dist_to_target) * step
+                    setpoint_z += (dz / dist_to_target) * step
                     
-                    cx = self.current_pose.pose.position.x
-                    cy = self.current_pose.pose.position.y
-                    cz = self.current_pose.pose.position.z
+                    if abs(dx) > 0.1 or abs(dy) > 0.1:
+                        yaw = math.atan2(dy, dx)
+                        q = R.from_euler('z', yaw).as_quat()
+                        self.target_pose.pose.orientation.x = q[0]
+                        self.target_pose.pose.orientation.y = q[1]
+                        self.target_pose.pose.orientation.z = q[2]
+                        self.target_pose.pose.orientation.w = q[3]
 
-                    drone_dist_to_wp = math.sqrt((target_x-cx)**2 + (target_y-cy)**2 + (target_z-cz)**2)
-                    
-                    feedback_msg.current_point_index = current_global_idx
-                    feedback_msg.distance_remaining = drone_dist_to_wp
-                    goal_handle.publish_feedback(feedback_msg)
-
-                    tolerance = req.tolerance
-                    if tolerance <= 0.0:
-                        tolerance = 0.5 if req.fly_through else 0.2
-
-                    if req.fly_through:
-                        if setpoint_reached:
-                            break
-                    else:
-                        if setpoint_reached and drone_dist_to_wp < tolerance:
-                            break 
-                    
-                    time.sleep(dt)
+                self.target_pose.pose.position.x = setpoint_x
+                self.target_pose.pose.position.y = setpoint_y
+                self.target_pose.pose.position.z = setpoint_z
                 
-                if not req.fly_through:
-                    time.sleep(1.0)
+                cx = self.current_pose.pose.position.x
+                cy = self.current_pose.pose.position.y
+                cz = self.current_pose.pose.position.z
+
+                drone_dist_to_wp = math.sqrt((target_x-cx)**2 + (target_y-cy)**2 + (target_z-cz)**2)
                 
-                current_global_idx += 1
+                feedback_msg.current_point_index = current_global_idx
+                feedback_msg.distance_remaining = drone_dist_to_wp
+                goal_handle.publish_feedback(feedback_msg)
+
+                tolerance = req.tolerance
+                if tolerance <= 0.0:
+                    tolerance = 0.5 if req.fly_through else 0.2
+
+                if req.fly_through:
+                    if setpoint_reached:
+                        break
+                else:
+                    if setpoint_reached and drone_dist_to_wp < tolerance:
+                        break 
+                
+                time.sleep(dt)
+            
+            if not req.fly_through:
+                time.sleep(1.0)
+            
+            current_global_idx += 1
 
         goal_handle.succeed()
         return DroneTrajectory.Result(success=True, message="Trajectory complete")
