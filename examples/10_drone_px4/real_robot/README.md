@@ -7,16 +7,16 @@ This example guides you through controlling a real PX4-based drone using the ROS
 
 [![Real Robot Demo](../images/Real_Demo_Thumbnail.png)](https://www.youtube.com/watch?v=TRhr7QfWoTI)
 
-## Pixhawk Based Custom Drone
-
-![Drone](../images/Drone.png)
-
 **Note:** This setup shares the same ROS2 workspace as the Gazebo simulation example (`../drone_ws`).
 
 ## System Requirements
 - **Onboard Computer**: Ubuntu 24.04
 - **ROS2**: Jazzy Jalisco
 - **Flight Controller**: PX4 Autopilot (Connected via MAVLink)
+
+## Pixhawk Based Custom Drone
+
+![Drone](../images/Drone.png)
 
 ## Setup & Installation
 
