@@ -5,6 +5,8 @@ This is an example of ROS MCP server’s capabilities using **Gazebo** with the 
 
 This example demonstrates how to control a PX4-based drone using the MCP Server and custom ROS 2 Actions.
 
+[![Sim Demo](../images/Sim_Demo_Thumbnail.png)](https://www.youtube.com/watch?v=qVNO6Emfp_w)
+
 ## System Requirements
 This example requires a PC capable of running Gazebo and PX4 SITL.
 - **OS**: Ubuntu 24.04
