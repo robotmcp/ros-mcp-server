@@ -133,7 +133,7 @@ class DroneMCPBridge(Node):
 
     async def execute_trajectory(self, goal_handle):
         req = goal_handle.request
-        self.get_logger().info(f'Executing Trajectory with {len(req.points)} points. Frame={req.reference_frame}, FlyThrough={req.fly_through}')
+        self.get_logger().info(f'Executing Trajectory with {len(req.points)} points. FlyThrough={req.fly_through}')
 
         if not await self.prepare_for_flight():
             goal_handle.abort()
@@ -141,17 +141,10 @@ class DroneMCPBridge(Node):
 
         self.active_pattern = None 
         
-        # reference_frame: 0 = RELATIVE_TO_START, 1 = LOCAL_NED
+        # ALWAYS treat points as absolute LOCAL_NED coordinates
         points = []
-        if req.reference_frame == 0:
-            start_x = self.current_pose.pose.position.x
-            start_y = self.current_pose.pose.position.y
-            start_z = self.current_pose.pose.position.z 
-            for p in req.points:
-                points.append((start_x + p.x, start_y + p.y, start_z + p.z))
-        else:
-            for p in req.points:
-                points.append((p.x, p.y, p.z))
+        for p in req.points:
+            points.append((p.x, p.y, p.z))
 
         current_global_idx = 0
         

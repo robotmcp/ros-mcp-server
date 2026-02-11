@@ -2,7 +2,7 @@
 geometry_msgs/Point[] points
 float32 speed
 float32 tolerance
-uint8 reference_frame    # 0=Relative, 1=Local-NED
+
 
 bool fly_through
 

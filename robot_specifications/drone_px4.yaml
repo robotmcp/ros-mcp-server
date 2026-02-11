@@ -20,7 +20,7 @@ prompts: |
        - `geometry_msgs/Point[] points`
        - `float32 speed` (m/s, default 1.0, controls interpolation)
        - `float32 tolerance` (Arrival radius in meters, default 0.2)
-       - `uint8 reference_frame` (0=Relative to start, 1=Global NED)
+
        - `bool fly_through` (True=Smooth motion without stopping, False=Stop at each point)
 
      - Instruction:
