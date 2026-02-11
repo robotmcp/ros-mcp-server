@@ -34,7 +34,7 @@ make px4_sitl
 ### 2. Install MAVROS (ROS 2 Jazzy)
 ```bash
 cd ~
-sudo apt install ros-jazzy-mavros
+sudo apt install ros-jazzy-mavros-extras
 wget https://raw.githubusercontent.com/mavlink/mavros/ros2/mavros/scripts/install_geographiclib_datasets.sh
 sudo bash ./install_geographiclib_datasets.sh
 ```
