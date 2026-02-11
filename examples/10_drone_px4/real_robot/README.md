@@ -1,11 +1,11 @@
-# Example - PX4 Drone (Real Robot)
+# Example - PX4 Drone (Real)
 ![Static Badge](https://img.shields.io/badge/ROS2-Available-green)
 
 This example guides you through controlling a real PX4-based drone using the ROS MCP Server.
 
 ## Demo Video
 
-[![Real Robot Demo](../images/Real_Demo_Thumbnail.png)](https://www.youtube.com/watch?v=TRhr7QfWoTI)
+[![Real Demo](../images/Real_Demo_Thumbnail.png)](https://www.youtube.com/watch?v=TRhr7QfWoTI)
 
 **Note:** This setup shares the same ROS2 workspace as the Gazebo simulation example (`../drone_ws`).
 
