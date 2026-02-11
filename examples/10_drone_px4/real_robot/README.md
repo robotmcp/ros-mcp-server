@@ -6,7 +6,7 @@ This example guides you through controlling a real PX4-based drone using the ROS
 **Note:** This setup shares the same ROS2 workspace as the Gazebo simulation example (`../drone_ws`).
 
 ## System Requirements
-- **Onboard Computer**: Ubuntu 24.04 (Noble) or compatible
+- **Onboard Computer**: Ubuntu 24.04
 - **ROS2**: Jazzy Jalisco
 - **Flight Controller**: PX4 Autopilot (Connected via MAVLink)
 
@@ -22,7 +22,7 @@ source install/setup.bash
 ```
 
 ### 2. Connect to Flight Controller
-Ensure your companion computer is connected to the Flight Controller (Pixhawk/Cube etc.) via serial (e.g., Telem2 port).
+Ensure your companion computer is connected to the Flight Controller (Pixhawk)
 
 ### 3. Launch MAVROS
 Start the MAVROS node to bridge MAVLink to ROS2 topics.
@@ -46,6 +46,8 @@ ros2 run drone_controller bridge
 To enable communication with the **ros-mcp-server**:
 
 ```bash
+source /opt/ros/jazzy/setup.bash
+source install/setup.bash
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml 
 ```
 

@@ -102,6 +102,7 @@ To enable communication with the **ros-mcp-server**, run rosbridge in a new term
 **Terminal 5: ROS Bridge Server**
 ```bash
 source /opt/ros/jazzy/setup.bash
+source install/setup.bash
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml 
 ```
 
