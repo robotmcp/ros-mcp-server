@@ -3,7 +3,7 @@
 
 This is an example of ROS MCP server’s capabilities using **Gazebo** with the **PX4 Autopilot** drone simulation.
 
-This example demonstrates how to control a PX4-based drone using the MCP Server and custom ROS 2 Actions.
+This example demonstrates how to control a PX4-based drone using the MCP Server (Gemini CLI) and custom ROS 2 Actions.
 
 ## Demo Video
 
@@ -14,6 +14,7 @@ This example requires a PC capable of running Gazebo and PX4 SITL.
 - **OS**: Ubuntu 24.04
 - **ROS2**: Jazzy Jalisco
 - **Simulator**: Gazebo (Harmonic/Garden as used by PX4)
+- **Geimini CLI** (or other MCP Clients at your convenience)
 
 ## Prerequisites
 Before starting, ensure you have the following installed:
@@ -38,7 +39,7 @@ make px4_sitl
 ### 2. Install MAVROS (ROS 2 Jazzy)
 ```bash
 cd ~
-sudo apt install ros-jazzy-mavros-extras
+sudo apt install ros-jazzy-mavros ros-jazzy-mavros-extras
 wget https://raw.githubusercontent.com/mavlink/mavros/ros2/mavros/scripts/install_geographiclib_datasets.sh
 sudo bash ./install_geographiclib_datasets.sh
 ```
