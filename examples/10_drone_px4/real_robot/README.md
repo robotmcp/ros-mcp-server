@@ -14,7 +14,7 @@ This example guides you through controlling a real PX4-based drone using the ROS
 - **ROS2**: Jazzy Jalisco
 - **Flight Controller**: PX4 Autopilot (Connected via MAVLink)
 
-## Pixhawk Based Custom Drone
+### Pixhawk Based Custom Drone
 
 ![Drone](../images/Drone.png)
 
