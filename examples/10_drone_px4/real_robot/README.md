@@ -46,7 +46,8 @@ Start the MAVROS node to bridge MAVLink to ROS2 topics.
 ```bash
 # Example: USB/Serial connection
 # Adjust fcu_url based on your device path and baudrate
-ros2 launch mavros px4.launch fcu_url:="serial:///dev/ttyUSB0:921600" gcs_url:="udp://@127.0.0.1"
+# Adjust gcs_url to connect to the QGroundControl or other Ground Control Station software
+ros2 launch mavros px4.launch fcu_url:="serial://{$YOUR_SERIAL_PORT e.g. /dev/ttyUSB0}" gcs_url:="udp://@127.0.0.1"
 ```
 
 ### 4. Launch the Control Node
