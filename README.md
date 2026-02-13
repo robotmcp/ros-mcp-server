@@ -6,6 +6,7 @@
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![pip](https://img.shields.io/badge/pip-23.0%2B-blue)
 ![Dev Container](https://img.shields.io/badge/Dev-Container%20Ready-blue)
+[![AgentAudit Safe](https://img.shields.io/badge/AgentAudit-Safe-brightgreen?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJ3aGl0ZSI+PHBhdGggZD0iTTEyIDJMMyA3djVjMCA1LjU1IDMuODQgMTAuNzQgOSAxMiA1LjE2LTEuMjYgOS02LjQ1IDktMTJWN2wtOS01em0tMiAxNWwtNC00IDEuNDEtMS40MUwxMCAxNC4xN2w2LjU5LTYuNTlMOTggOS41OGwtOCA4eiIvPjwvc3ZnPg==)](https://www.agentaudit.dev/audit/ros-mcp-server)
 ![GitHub Repo stars](https://img.shields.io/github/stars/robotmcp/ros-mcp-server?style=social)
 ![GitHub last commit](https://img.shields.io/github/last-commit/robotmcp/ros-mcp-server)
 
