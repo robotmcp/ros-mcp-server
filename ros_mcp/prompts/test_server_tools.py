@@ -64,6 +64,13 @@ gdb_frame_locals(pid=12345, thread_id=1, frame_id=0)
 core_list_recent(limit=5)
 ```
 
+**Timing / rosbridge diagnostics**
+```python
+tf_time_snapshot()
+topic_age_probe('/turtle1/pose', msg_type='turtlesim/Pose', window_sec=8)
+rosbridge_lag_probe('/turtle1/pose', msg_type='turtlesim/Pose', seconds=12)
+```
+
 ## Useful Resources
 
 - `ros-mcp://ros-metadata/all`
