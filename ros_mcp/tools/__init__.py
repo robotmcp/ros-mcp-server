@@ -6,8 +6,8 @@ with a FastMCP instance.
 
 from fastmcp import FastMCP
 
-from ros_mcp.tools.actions import register_action_tools
 from ros_mcp.tools.connection import register_connection_tools
+from ros_mcp.tools.debug_process import register_debug_process_tools
 from ros_mcp.tools.images import register_image_tools
 from ros_mcp.tools.nodes import register_node_tools
 from ros_mcp.tools.parameters import register_parameter_tools
@@ -31,12 +31,12 @@ def register_all_tools(
         mcp: FastMCP instance to register tools with
         ws_manager: WebSocketManager instance to use for ROS connections
         rosbridge_ip: IP address of the rosbridge server (default: "127.0.0.1")
-        rosbridge_port: Port of the rosbridge server (default: 9090)
+        rosbridge_port: Port number of the rosbridge server (default: 9090)
     """
 
     # Register all tool categories
-    register_action_tools(mcp, ws_manager)
     register_connection_tools(mcp, ws_manager, rosbridge_ip, rosbridge_port)
+    register_debug_process_tools(mcp)
     register_robot_config_tools(mcp, ws_manager)
     register_image_tools(mcp)
     register_node_tools(mcp, ws_manager)

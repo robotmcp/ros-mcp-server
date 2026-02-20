@@ -1,9 +1,9 @@
 # ROS MCP Server 🧠⇄🤖
 
 ![Static Badge](https://img.shields.io/badge/ROS-Available-green)
-![Static Badge](https://img.shields.io/badge/ROS2-Available-green)
+![Static Badge](https://img.shields.io/badge/ROS1-Noetic-green)
 ![Static Badge](https://img.shields.io/badge/License-Apache%202.0-blue)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
+![Python](https://img.shields.io/badge/python-3.8%2B-blue)
 ![pip](https://img.shields.io/badge/pip-23.0%2B-blue)
 ![Dev Container](https://img.shields.io/badge/Dev-Container%20Ready-blue)
 ![GitHub Repo stars](https://img.shields.io/github/stars/robotmcp/ros-mcp-server?style=social)
@@ -18,7 +18,7 @@
 ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) with existing robots giving them bidirectional AI integration.  
 
 With no changes to existing robot source code, this enables:
-- 🗣 **Commanding the robot in natural language** → instructions are translated into ROS/ROS2 commands.  
+- 🗣 **Commanding the robot in natural language** → instructions are translated into ROS1 commands.  
 - 👀 **Giving AI full visibility** → subscribe to topics, call services, read sensor data, and monitor robot state in real time.  
 
 
@@ -26,7 +26,7 @@ With no changes to existing robot source code, this enables:
 
 - **No robot code changes** → only requires adding the `rosbridge` node.  
 - **True two-way communication** → LLMs can both *control* robots and *observe* everything happening in ROS (sensors, topics, parameters).  
-- **ROS1 & ROS2 support** → works with both versions out of the box.  
+- **ROS1 Noetic focused** → optimized for ROS1 workflows and tooling.  
 - **MCP-compatible** → integrates with any MCP-enabled LLM (Claude Desktop, Gemini, ChatGPT, and beyond).   
 
 ## 🎥 Examples in Action  
@@ -67,14 +67,14 @@ The MCP server enables the Claude to interpret images from the robot's cameras, 
 - **Publish/subscribe to topics** → send commands or stream robot data in real time.  
 - **Call services (incl. custom)** → trigger robot functions directly.  
 - **Get/set parameters** → read or adjust robot settings on the fly.  
-- 🔜 **Action support** → upcoming support for ROS Actions.  
+- 🧪 **Debug process tooling** → resolve node PID, capture gdb backtraces, and inspect core dumps.  
 - 🔜 **Permission controls** → manage access for safer deployments.  
 
 ---
 
 ## 🛠 Getting Started  
 
-The MCP server is version-agnostic (ROS1 or ROS2) and works with any MCP-compatible LLM.  
+The MCP server is focused on ROS1 (Noetic) and works with any MCP-compatible LLM.  
 
 <p align="center">
   <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/MCP_topology.png"/>

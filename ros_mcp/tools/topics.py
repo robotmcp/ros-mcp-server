@@ -268,7 +268,7 @@ def register_topic_tools(
         description=(
             "Subscribe to a ROS topic and return the first message received.\n"
             "Example:\n"
-            "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped')\n"
+            "subscribe_once(topic='/cmd_vel', msg_type='geometry_msgs/TwistStamped')\n"
             "subscribe_once(topic='/slow_topic', msg_type='my_package/SlowMsg', timeout=10.0)  # Use longer timeout for slow topics\n"
             "subscribe_once(topic='/high_rate_topic', msg_type='sensor_msgs/Image', timeout=5.0, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
             "subscribe_once(topic='/camera/image_raw', msg_type='sensor_msgs/Image', expects_image='true')  # Hint that this is an image for faster processing\n"
@@ -404,7 +404,7 @@ def register_topic_tools(
         description=(
             "Subscribe to a topic for a duration and collect messages.\n"
             "Example:\n"
-            "subscribe_for_duration(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', duration=5, max_messages=10)\n"
+            "subscribe_for_duration(topic='/cmd_vel', msg_type='geometry_msgs/TwistStamped', duration=5, max_messages=10)\n"
             "subscribe_for_duration(topic='/high_rate_topic', msg_type='sensor_msgs/Image', duration=10, queue_length=5, throttle_rate_ms=100)  # Control message buffering and rate\n"
             "subscribe_for_duration(topic='/camera/image_raw', msg_type='sensor_msgs/Image', duration=5, expects_image='true')  # Hint that this is an image for faster processing\n"
             "subscribe_for_duration(topic='/point_cloud', msg_type='sensor_msgs/PointCloud2', duration=5, expects_image='false')  # Skip image detection for non-image data"
@@ -555,7 +555,7 @@ def register_topic_tools(
         description=(
             "Publish a sequence of messages with delays.\n"
             "Example:\n"
-            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', "
+            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/TwistStamped', "
             "messages=[{'linear': {'x': 1.0}}, {'linear': {'x': 0.0}}], durations=[1, 2])"
         ),
         annotations=ToolAnnotations(
@@ -667,7 +667,7 @@ def register_topic_tools(
         description=(
             "Publish a single message to a ROS topic.\n"
             "Example:\n"
-            "publish_once(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', msg={'linear': {'x': 1.0}})"
+            "publish_once(topic='/cmd_vel', msg_type='geometry_msgs/TwistStamped', msg={'linear': {'x': 1.0}})"
         ),
         annotations=ToolAnnotations(
             title="Publish Once",
@@ -680,7 +680,7 @@ def register_topic_tools(
 
         Args:
             topic (str): ROS topic name (e.g., "/cmd_vel")
-            msg_type (str): ROS message type (e.g., "geometry_msgs/msg/Twist")
+            msg_type (str): ROS message type (e.g., "geometry_msgs/Twist")
             msg (dict): Message payload as a dictionary
 
         Returns:
