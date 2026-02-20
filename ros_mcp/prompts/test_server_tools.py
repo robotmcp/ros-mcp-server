@@ -63,7 +63,8 @@ gdb_thread_bt(pid=12345)
 gdb_frame_locals(pid=12345, thread_id=0, frame_id=0)  # auto thread pick
 py_stack_snapshot(pid=12345)
 core_list_recent(limit=5)
-repro_bundle_collect(node_name='/turtlesim')
+rr_status()
+repro_bundle_collect(node_name='/turtlesim', include_ros_graph=True, include_topic_sample=True, sample_topic='/turtle1/pose')
 classify_cpp_crash(signal_name='SIGSEGV', top_frame='#0 ...')
 ```
 

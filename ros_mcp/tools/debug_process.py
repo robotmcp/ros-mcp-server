@@ -344,6 +344,12 @@ def _classify_cpp_crash(signal_name: str, top_frame: str, raw_text: str = "") ->
         labels.append("unclassified")
         recommendations.append("Capture locals for top frames and rerun under sanitizer/rr.")
 
+    rr = _get_rr_status()
+    if rr.get("available"):
+        recommendations.append("rr is available: use `rr record` + `rr replay -d gdb` for deterministic replay.")
+    else:
+        recommendations.append("rr not detected: consider installing rr for replay debugging if environment supports it.")
+
     return {
         "labels": labels,
         "primary_label": labels[0],
@@ -538,6 +544,43 @@ def _capture_frame_locals(pid: int, thread_id: int, frame_id: int) -> dict[str, 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
     """Write JSON helper."""
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
+def _write_text(path: Path, content: str) -> None:
+    """Write plain text helper."""
+    path.write_text(content)
+
+
+def _get_rr_status() -> dict[str, Any]:
+    """Check rr availability and return quick usage hints."""
+    rr_bin = shutil.which("rr")
+    status: dict[str, Any] = {
+        "available": bool(rr_bin),
+        "path": rr_bin or "",
+        "hints": [],
+    }
+
+    if rr_bin:
+        status["hints"] = [
+            "Record run: rr record <your_node_command>",
+            "Replay debug: rr replay -d gdb",
+            "Use reverse-continue / reverse-step in replay for hard-to-reproduce bugs.",
+        ]
+    else:
+        status["hints"] = [
+            "Install rr for deterministic replay debugging (if kernel/CPU compatible).",
+            "Fallback: use gdb + core dumps + AddressSanitizer.",
+        ]
+
+    perf_path = Path("/proc/sys/kernel/perf_event_paranoid")
+    if perf_path.exists():
+        try:
+            value = perf_path.read_text().strip()
+            status["perf_event_paranoid"] = value
+        except Exception:
+            pass
+
+    return status
 
 
 def register_debug_process_tools(mcp: FastMCP) -> None:
@@ -788,6 +831,20 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=(
+            "Check whether rr (record/replay debugger) is available and show quick usage hints.\n"
+            "Example:\nrr_status()"
+        ),
+        annotations=ToolAnnotations(
+            title="RR Status",
+            readOnlyHint=True,
+        ),
+    )
+    def rr_status() -> dict:
+        """Return rr availability and usage hints."""
+        return _get_rr_status()
+
+    @mcp.tool(
+        description=(
             "List recent core dumps from systemd-coredump.\n"
             "Example:\ncore_list_recent(limit=10)"
         ),
@@ -913,9 +970,16 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
         pid: int = 0,
         out_dir: str = "./debug_bundles",
         depth: int = 40,
+        include_ros_graph: bool = True,
+        include_topic_sample: bool = False,
+        sample_topic: str = "",
+        sample_msg_count: int = 3,
+        sample_timeout_sec: float = 8.0,
     ) -> dict:
-        """Collect a minimal debug bundle (process, gdb backtrace, ROS node info)."""
+        """Collect a minimal debug bundle (process, gdb backtrace, ROS snapshots)."""
         depth = max(1, min(int(depth), 200))
+        sample_msg_count = max(1, min(int(sample_msg_count), 20))
+        sample_timeout_sec = max(1.0, min(float(sample_timeout_sec), 60.0))
 
         resolved = None
         selected_pid = int(pid) if int(pid) > 0 else 0
@@ -956,15 +1020,67 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             rosnode_info_text = (info.get("stdout", "") + "\n" + info.get("stderr", "")).strip()
             (bundle_path / "rosnode_info.txt").write_text(rosnode_info_text)
 
-        rosnode_list = _run(["rosnode", "list"], timeout=8.0)
-        (bundle_path / "rosnode_list.txt").write_text(
-            (rosnode_list.get("stdout", "") + "\n" + rosnode_list.get("stderr", "")).strip()
-        )
+        rosnode_list_path = ""
+        rostopic_list_path = ""
+        rosservice_list_path = ""
+        rosparam_list_path = ""
+
+        if include_ros_graph:
+            rosnode_list = _run(["rosnode", "list"], timeout=8.0)
+            rosnode_list_path = str(bundle_path / "rosnode_list.txt")
+            _write_text(
+                Path(rosnode_list_path),
+                (rosnode_list.get("stdout", "") + "\n" + rosnode_list.get("stderr", "")).strip(),
+            )
+
+            rostopic_list = _run(["rostopic", "list", "-v"], timeout=10.0)
+            rostopic_list_path = str(bundle_path / "rostopic_list_v.txt")
+            _write_text(
+                Path(rostopic_list_path),
+                (rostopic_list.get("stdout", "") + "\n" + rostopic_list.get("stderr", "")).strip(),
+            )
+
+            rosservice_list = _run(["rosservice", "list"], timeout=10.0)
+            rosservice_list_path = str(bundle_path / "rosservice_list.txt")
+            _write_text(
+                Path(rosservice_list_path),
+                (rosservice_list.get("stdout", "") + "\n" + rosservice_list.get("stderr", "")).strip(),
+            )
+
+            rosparam_list = _run(["rosparam", "list"], timeout=10.0)
+            rosparam_list_path = str(bundle_path / "rosparam_list.txt")
+            _write_text(
+                Path(rosparam_list_path),
+                (rosparam_list.get("stdout", "") + "\n" + rosparam_list.get("stderr", "")).strip(),
+            )
 
         coredump_list = _run(["coredumpctl", "--no-pager", "list", "--reverse", "--lines", "10"])
-        (bundle_path / "coredumpctl_list.txt").write_text(
-            (coredump_list.get("stdout", "") + "\n" + coredump_list.get("stderr", "")).strip()
+        coredump_list_path = str(bundle_path / "coredumpctl_list.txt")
+        _write_text(
+            Path(coredump_list_path),
+            (coredump_list.get("stdout", "") + "\n" + coredump_list.get("stderr", "")).strip(),
         )
+
+        topic_sample_file = ""
+        topic_hz_file = ""
+        if include_topic_sample and sample_topic.strip():
+            sample_topic_clean = sample_topic.strip()
+            topic_echo = _run(
+                ["rostopic", "echo", "-n", str(sample_msg_count), sample_topic_clean],
+                timeout=sample_timeout_sec,
+            )
+            topic_sample_file = str(bundle_path / "rostopic_sample.txt")
+            _write_text(
+                Path(topic_sample_file),
+                (topic_echo.get("stdout", "") + "\n" + topic_echo.get("stderr", "")).strip(),
+            )
+
+            topic_hz = _run(["rostopic", "hz", "-w", "5", sample_topic_clean], timeout=sample_timeout_sec)
+            topic_hz_file = str(bundle_path / "rostopic_hz.txt")
+            _write_text(
+                Path(topic_hz_file),
+                (topic_hz.get("stdout", "") + "\n" + topic_hz.get("stderr", "")).strip(),
+            )
 
         bt = _collect_gdb_threads(pid=selected_pid, depth=depth, timeout=35.0)
         suggested_thread_id, suggested_reason = _select_target_thread(
@@ -1006,6 +1122,8 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             raw_text=bt.get("combined", ""),
         )
 
+        rr = _get_rr_status()
+
         summary = {
             "created_at": datetime.now().isoformat(),
             "bundle_dir": str(bundle_path),
@@ -1020,12 +1138,18 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
                 "suspected_top_frame": suspected_top_frame,
                 "crash_hypothesis": hypothesis,
             },
+            "rr": rr,
             "files": {
                 "rosnode_info": str(bundle_path / "rosnode_info.txt") if node_name.strip() else "",
-                "rosnode_list": str(bundle_path / "rosnode_list.txt"),
-                "coredumpctl_list": str(bundle_path / "coredumpctl_list.txt"),
+                "rosnode_list": rosnode_list_path,
+                "rostopic_list_v": rostopic_list_path,
+                "rosservice_list": rosservice_list_path,
+                "rosparam_list": rosparam_list_path,
+                "coredumpctl_list": coredump_list_path,
                 "gdb_thread_bt": str(bundle_path / "gdb_thread_bt.json"),
                 "gdb_frame0_locals": str(bundle_path / "gdb_frame0_locals.json") if frame_payload else "",
+                "topic_sample": topic_sample_file,
+                "topic_hz": topic_hz_file,
             },
         }
         _write_json(bundle_path / "summary.json", summary)
