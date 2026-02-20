@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
+import shutil
 import subprocess
 from typing import Any
 
@@ -174,6 +175,32 @@ def _parse_ps_candidates(ps_stdout: str, node_name: str) -> list[dict[str, Any]]
     return candidates
 
 
+def _parse_frame_text(frame_text: str) -> dict[str, Any]:
+    """Extract common frame fields (function, file, line) from gdb frame text."""
+    parsed: dict[str, Any] = {}
+
+    # Example: #0  0x.... in foo::bar(...) at /path/file.cpp:123
+    func_match = re.search(r"\sin\s+(.+?)(?:\sat\s|\sfrom\s|$)", frame_text)
+    if func_match:
+        parsed["function"] = func_match.group(1).strip()
+
+    file_line_match = re.search(r"\sat\s+(.+?):(\d+)\s*$", frame_text)
+    if file_line_match:
+        parsed["file"] = file_line_match.group(1).strip()
+        parsed["line"] = int(file_line_match.group(2))
+
+    addr_match = re.search(r"^#\d+\s+(0x[0-9a-fA-F]+)", frame_text)
+    if addr_match:
+        parsed["address"] = addr_match.group(1)
+
+    if "??" in frame_text:
+        parsed["symbolized"] = False
+    else:
+        parsed["symbolized"] = True
+
+    return parsed
+
+
 def _parse_gdb_thread_bt(output: str) -> list[dict[str, Any]]:
     """Parse `thread apply all bt` output into structured thread/frame blocks."""
     threads: list[dict[str, Any]] = []
@@ -210,17 +237,21 @@ def _parse_gdb_thread_bt(output: str) -> list[dict[str, Any]]:
 
         frame_match = frame_re.match(stripped)
         if frame_match:
-            current["frames"].append(
-                {
-                    "index": int(frame_match.group(1)),
-                    "text": stripped,
-                }
-            )
+            frame_text = stripped
+            frame_payload: dict[str, Any] = {
+                "index": int(frame_match.group(1)),
+                "text": frame_text,
+            }
+            frame_payload.update(_parse_frame_text(frame_text))
+            current["frames"].append(frame_payload)
             continue
 
         # Continuation line for previous frame
         if current["frames"] and stripped:
             current["frames"][-1]["text"] += f" {stripped}"
+            # Re-parse after continuation update
+            reparsed = _parse_frame_text(current["frames"][-1]["text"])
+            current["frames"][-1].update(reparsed)
 
     if current:
         threads.append(current)
@@ -264,6 +295,87 @@ def _extract_current_thread_id(combined: str) -> int | None:
     if match:
         return int(match.group(1))
     return None
+
+
+def _classify_cpp_crash(signal_name: str, top_frame: str, raw_text: str = "") -> dict[str, Any]:
+    """Heuristic crash classifier for C/C++ failures."""
+    signal_name = (signal_name or "").upper().strip()
+    top = (top_frame or "").lower()
+    raw = (raw_text or "").lower()
+
+    labels: list[str] = []
+    recommendations: list[str] = []
+
+    if signal_name == "SIGSEGV":
+        labels.append("invalid_memory_access")
+        recommendations.append("Inspect pointer lifetimes and ownership near the top frame.")
+        recommendations.append("Rebuild with AddressSanitizer for stronger diagnostics.")
+
+    if signal_name == "SIGABRT":
+        labels.append("abort_or_assert")
+        recommendations.append("Search for failed assertions and uncaught exceptions in logs.")
+
+    if signal_name == "SIGFPE":
+        labels.append("arithmetic_error")
+        recommendations.append("Check divide-by-zero and invalid numeric operations.")
+
+    if "??" in top_frame or "??" in raw_text:
+        labels.append("missing_symbols")
+        recommendations.append("Install debug symbols or rebuild target with debug info.")
+
+    if "optimized out" in raw:
+        labels.append("optimized_build")
+        recommendations.append("Use Debug or RelWithDebInfo to improve stack/local visibility.")
+
+    if "std::bad_alloc" in raw or "operator new" in top:
+        labels.append("possible_memory_exhaustion")
+        recommendations.append("Check memory growth and limits; capture RSS over time.")
+
+    if "__assert_fail" in raw or "assert" in top:
+        labels.append("assertion_failure")
+
+    if "pthread_mutex" in top or "futex" in top:
+        labels.append("possible_thread_contention_or_deadlock")
+
+    if not labels:
+        labels.append("unclassified")
+        recommendations.append("Capture locals for top frames and rerun under sanitizer/rr.")
+
+    return {
+        "labels": labels,
+        "primary_label": labels[0],
+        "recommendations": recommendations,
+    }
+
+
+def _parse_pyspy_dump(output: str) -> list[dict[str, Any]]:
+    """Parse py-spy dump output into thread + stack entries."""
+    threads: list[dict[str, Any]] = []
+    current: dict[str, Any] | None = None
+
+    for raw_line in output.splitlines():
+        line = raw_line.rstrip("\n")
+        stripped = line.strip()
+        if not stripped:
+            continue
+
+        # Common pattern: Thread 12345 (active): "MainThread"
+        if stripped.startswith("Thread "):
+            if current:
+                threads.append(current)
+            current = {
+                "header": stripped,
+                "frames": [],
+            }
+            continue
+
+        if current is not None:
+            current["frames"].append(stripped)
+
+    if current:
+        threads.append(current)
+
+    return threads
 
 
 def register_debug_process_tools(mcp: FastMCP) -> None:
@@ -505,6 +617,64 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
 
     @mcp.tool(
         description=(
+            "Capture Python thread stacks from a running process using py-spy.\n"
+            "Example:\npy_stack_snapshot(pid=12345)"
+        ),
+        annotations=ToolAnnotations(
+            title="Python Stack Snapshot",
+            readOnlyHint=True,
+        ),
+    )
+    def py_stack_snapshot(pid: int) -> dict:
+        """Capture Python thread stacks for a running process."""
+        try:
+            pid = int(pid)
+        except Exception:
+            return {"error": "pid must be an integer"}
+
+        if pid <= 0:
+            return {"error": "pid must be > 0"}
+        if not _pid_exists(pid):
+            return {"error": f"PID {pid} not found"}
+
+        pyspy_bin = shutil.which("py-spy")
+        if not pyspy_bin:
+            return {
+                "pid": pid,
+                "success": False,
+                "error": "py-spy is not installed",
+                "hint": "Install py-spy (e.g., pipx install py-spy) and retry.",
+            }
+
+        command = [pyspy_bin, "dump", "--pid", str(pid), "--threads"]
+        result = _run(command, timeout=20.0)
+        combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
+
+        if not result["ok"]:
+            return {
+                "pid": pid,
+                "success": False,
+                "error": "py-spy failed",
+                "raw": combined,
+            }
+
+        threads = _parse_pyspy_dump(result.get("stdout", ""))
+        blocked_hints = [
+            th["header"]
+            for th in threads
+            if any("wait" in fr.lower() or "sleep" in fr.lower() for fr in th.get("frames", []))
+        ]
+
+        return {
+            "pid": pid,
+            "success": True,
+            "thread_count": len(threads),
+            "threads": threads,
+            "blocked_hints": blocked_hints,
+        }
+
+    @mcp.tool(
+        description=(
             "List recent core dumps from systemd-coredump.\n"
             "Example:\ncore_list_recent(limit=10)"
         ),
@@ -596,6 +766,12 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             if not suspected_top_frame and threads[0].get("frames"):
                 suspected_top_frame = threads[0]["frames"][0]["text"]
 
+        hypothesis = _classify_cpp_crash(
+            signal_name=signal.get("name", ""),
+            top_frame=suspected_top_frame,
+            raw_text=combined,
+        )
+
         return {
             "success": result["ok"] or len(threads) > 0,
             "core_path": core_path,
@@ -604,6 +780,21 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             "thread_count": len(threads),
             "current_thread_id": current_thread_id,
             "suspected_top_frame": suspected_top_frame,
+            "crash_hypothesis": hypothesis,
             "threads": threads,
             "raw": combined if len(threads) == 0 else "",
         }
+
+    @mcp.tool(
+        description=(
+            "Classify likely C/C++ crash cause from signal and top frame text.\n"
+            "Example:\nclassify_cpp_crash(signal_name='SIGSEGV', top_frame='#0  ...')"
+        ),
+        annotations=ToolAnnotations(
+            title="Classify C++ Crash",
+            readOnlyHint=True,
+        ),
+    )
+    def classify_cpp_crash(signal_name: str = "", top_frame: str = "", raw_text: str = "") -> dict:
+        """Classify likely crash cause heuristically from stack context."""
+        return _classify_cpp_crash(signal_name=signal_name, top_frame=top_frame, raw_text=raw_text)
