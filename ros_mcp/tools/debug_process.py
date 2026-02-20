@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
 import shutil
 import subprocess
+from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from fastmcp import FastMCP
@@ -378,6 +381,165 @@ def _parse_pyspy_dump(output: str) -> list[dict[str, Any]]:
     return threads
 
 
+def _collect_gdb_threads(pid: int, depth: int = 40, timeout: float = 35.0) -> dict[str, Any]:
+    """Collect thread backtraces via gdb and parse them."""
+    command = [
+        "gdb",
+        "-q",
+        "-n",
+        "-batch",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        "set print thread-events off",
+        "-ex",
+        "info threads",
+        "-ex",
+        f"thread apply all bt {depth}",
+        "-p",
+        str(pid),
+    ]
+
+    result = _run(command, timeout=timeout)
+    combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
+
+    if not result["ok"] and "ptrace" in combined.lower():
+        return {
+            "ok": False,
+            "error": "gdb attach failed (ptrace restrictions).",
+            "combined": combined,
+            "threads": [],
+            "current_thread_id": None,
+        }
+
+    threads = _parse_gdb_thread_bt(combined)
+    current_thread_id = _extract_current_thread_id(combined)
+
+    return {
+        "ok": result["ok"] or len(threads) > 0,
+        "combined": combined,
+        "threads": threads,
+        "current_thread_id": current_thread_id,
+    }
+
+
+def _is_probably_idle_frame(frame: dict[str, Any]) -> bool:
+    """Heuristic: whether a frame likely represents idle/wait state."""
+    text = str(frame.get("text", "")).lower()
+    fn = str(frame.get("function", "")).lower()
+    source = f"{fn} {text}"
+
+    idle_markers = [
+        "futex",
+        "pthread_cond_wait",
+        "pthread_mutex_lock",
+        "poll",
+        "epoll_wait",
+        "nanosleep",
+        "clock_nanosleep",
+        "__lll_lock_wait",
+    ]
+    return any(marker in source for marker in idle_markers)
+
+
+def _select_target_thread(
+    threads: list[dict[str, Any]], current_thread_id: int | None
+) -> tuple[int | None, str]:
+    """Choose a thread for deeper inspection."""
+    if not threads:
+        return None, "no_threads"
+
+    if current_thread_id is not None:
+        for thread in threads:
+            if thread.get("thread_id") == current_thread_id:
+                return current_thread_id, "gdb_current_thread"
+
+    for thread in threads:
+        frames = thread.get("frames", [])
+        if not frames:
+            continue
+        top = frames[0]
+        if not _is_probably_idle_frame(top):
+            return int(thread.get("thread_id")), "first_non_idle_top_frame"
+
+    return int(threads[0].get("thread_id")), "fallback_first_thread"
+
+
+def _capture_frame_locals(pid: int, thread_id: int, frame_id: int) -> dict[str, Any]:
+    """Capture args/locals from one stack frame via gdb."""
+    command = [
+        "gdb",
+        "-q",
+        "-n",
+        "-batch",
+        "-ex",
+        "set pagination off",
+        "-ex",
+        f"thread {thread_id}",
+        "-ex",
+        f"frame {frame_id}",
+        "-ex",
+        "printf \"__ARGS_BEGIN__\\n\"",
+        "-ex",
+        "info args",
+        "-ex",
+        "printf \"__LOCALS_BEGIN__\\n\"",
+        "-ex",
+        "info locals",
+        "-p",
+        str(pid),
+    ]
+
+    result = _run(command, timeout=30.0)
+    combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
+
+    if "ptrace" in combined.lower() and not result["ok"]:
+        return {
+            "pid": pid,
+            "thread_id": thread_id,
+            "frame_id": frame_id,
+            "success": False,
+            "error": "gdb attach failed (ptrace restrictions).",
+            "raw": combined,
+        }
+
+    lines = combined.splitlines()
+    args_lines: list[str] = []
+    locals_lines: list[str] = []
+    section = None
+
+    for line in lines:
+        stripped = line.strip()
+        if stripped == "__ARGS_BEGIN__":
+            section = "args"
+            continue
+        if stripped == "__LOCALS_BEGIN__":
+            section = "locals"
+            continue
+        if section == "args":
+            args_lines.append(line)
+        elif section == "locals":
+            locals_lines.append(line)
+
+    parsed_args = _parse_assignment_lines(args_lines)
+    parsed_locals = _parse_assignment_lines(locals_lines)
+
+    return {
+        "pid": pid,
+        "thread_id": thread_id,
+        "frame_id": frame_id,
+        "success": bool(parsed_args or parsed_locals),
+        "args": parsed_args,
+        "locals": parsed_locals,
+        "raw": combined if not (parsed_args or parsed_locals) else "",
+    }
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    """Write JSON helper."""
+    path.write_text(json.dumps(payload, indent=2, ensure_ascii=False))
+
+
 def register_debug_process_tools(mcp: FastMCP) -> None:
     """Register C++/core debugging tools."""
 
@@ -471,52 +633,35 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
 
         depth = max(1, min(int(depth), 200))
 
-        command = [
-            "gdb",
-            "-q",
-            "-n",
-            "-batch",
-            "-ex",
-            "set pagination off",
-            "-ex",
-            "set print thread-events off",
-            "-ex",
-            "info threads",
-            "-ex",
-            f"thread apply all bt {depth}",
-            "-p",
-            str(pid),
-        ]
-
-        result = _run(command, timeout=35.0)
-        combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
-
-        if not result["ok"] and "ptrace" in combined.lower():
+        collected = _collect_gdb_threads(pid=pid, depth=depth, timeout=35.0)
+        if not collected.get("ok") and collected.get("error"):
             return {
                 "pid": pid,
                 "success": False,
-                "error": "gdb attach failed (ptrace restrictions).",
-                "raw": combined,
+                "error": collected.get("error"),
+                "raw": collected.get("combined", ""),
             }
 
-        threads = _parse_gdb_thread_bt(combined)
-        current_thread_id = _extract_current_thread_id(combined)
+        combined = collected.get("combined", "")
+        threads = collected.get("threads", [])
+        current_thread_id = collected.get("current_thread_id")
+
+        suggested_thread_id, suggested_reason = _select_target_thread(threads, current_thread_id)
 
         suspected_top_frame = ""
-        if threads:
-            if current_thread_id is not None:
-                for thread in threads:
-                    if thread.get("thread_id") == current_thread_id and thread.get("frames"):
-                        suspected_top_frame = thread["frames"][0]["text"]
-                        break
-            if not suspected_top_frame and threads[0].get("frames"):
-                suspected_top_frame = threads[0]["frames"][0]["text"]
+        if suggested_thread_id is not None:
+            for thread in threads:
+                if thread.get("thread_id") == suggested_thread_id and thread.get("frames"):
+                    suspected_top_frame = thread["frames"][0]["text"]
+                    break
 
         return {
             "pid": pid,
             "success": len(threads) > 0,
             "thread_count": len(threads),
             "current_thread_id": current_thread_id,
+            "suggested_thread_id": suggested_thread_id,
+            "suggested_thread_reason": suggested_reason,
             "suspected_top_frame": suspected_top_frame,
             "threads": threads,
             "raw": combined if len(threads) == 0 else "",
@@ -525,14 +670,15 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
     @mcp.tool(
         description=(
             "Attach gdb to a PID and inspect arguments/locals for a specific thread/frame.\n"
-            "Example:\ngdb_frame_locals(pid=12345, thread_id=1, frame_id=0)"
+            "Set thread_id=0 to auto-select a likely interesting thread.\n"
+            "Example:\ngdb_frame_locals(pid=12345, thread_id=0, frame_id=0)"
         ),
         annotations=ToolAnnotations(
             title="GDB Frame Locals",
             readOnlyHint=True,
         ),
     )
-    def gdb_frame_locals(pid: int, thread_id: int = 1, frame_id: int = 0) -> dict:
+    def gdb_frame_locals(pid: int, thread_id: int = 0, frame_id: int = 0) -> dict:
         """Capture args/locals from one stack frame of a running process via gdb."""
         try:
             pid = int(pid)
@@ -543,77 +689,44 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
 
         if pid <= 0:
             return {"error": "pid must be > 0"}
-        if thread_id <= 0:
-            return {"error": "thread_id must be > 0"}
         if frame_id < 0:
             return {"error": "frame_id must be >= 0"}
         if not _pid_exists(pid):
             return {"error": f"PID {pid} not found"}
 
-        command = [
-            "gdb",
-            "-q",
-            "-n",
-            "-batch",
-            "-ex",
-            "set pagination off",
-            "-ex",
-            f"thread {thread_id}",
-            "-ex",
-            f"frame {frame_id}",
-            "-ex",
-            "printf \"__ARGS_BEGIN__\\n\"",
-            "-ex",
-            "info args",
-            "-ex",
-            "printf \"__LOCALS_BEGIN__\\n\"",
-            "-ex",
-            "info locals",
-            "-p",
-            str(pid),
-        ]
+        selected_thread_id = thread_id
+        selected_reason = "requested"
 
-        result = _run(command, timeout=30.0)
-        combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
+        if thread_id <= 0:
+            collected = _collect_gdb_threads(pid=pid, depth=30, timeout=25.0)
+            if not collected.get("ok") and collected.get("error"):
+                return {
+                    "pid": pid,
+                    "success": False,
+                    "error": collected.get("error"),
+                    "raw": collected.get("combined", ""),
+                }
 
-        if "ptrace" in combined.lower() and not result["ok"]:
-            return {
-                "pid": pid,
-                "success": False,
-                "error": "gdb attach failed (ptrace restrictions).",
-                "raw": combined,
-            }
+            selected_thread_id, selected_reason = _select_target_thread(
+                collected.get("threads", []),
+                collected.get("current_thread_id"),
+            )
+            if selected_thread_id is None:
+                return {
+                    "pid": pid,
+                    "success": False,
+                    "error": "Could not auto-select a thread",
+                    "raw": collected.get("combined", ""),
+                }
 
-        lines = combined.splitlines()
-        args_lines: list[str] = []
-        locals_lines: list[str] = []
-        section = None
+        locals_result = _capture_frame_locals(
+            pid=pid,
+            thread_id=int(selected_thread_id),
+            frame_id=frame_id,
+        )
 
-        for line in lines:
-            stripped = line.strip()
-            if stripped == "__ARGS_BEGIN__":
-                section = "args"
-                continue
-            if stripped == "__LOCALS_BEGIN__":
-                section = "locals"
-                continue
-            if section == "args":
-                args_lines.append(line)
-            elif section == "locals":
-                locals_lines.append(line)
-
-        parsed_args = _parse_assignment_lines(args_lines)
-        parsed_locals = _parse_assignment_lines(locals_lines)
-
-        return {
-            "pid": pid,
-            "thread_id": thread_id,
-            "frame_id": frame_id,
-            "success": bool(parsed_args or parsed_locals),
-            "args": parsed_args,
-            "locals": parsed_locals,
-            "raw": combined if not (parsed_args or parsed_locals) else "",
-        }
+        locals_result["selected_thread_reason"] = selected_reason
+        return locals_result
 
     @mcp.tool(
         description=(
@@ -783,6 +896,144 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             "crash_hypothesis": hypothesis,
             "threads": threads,
             "raw": combined if len(threads) == 0 else "",
+        }
+
+    @mcp.tool(
+        description=(
+            "Collect a minimal reproducibility/debug bundle for a ROS node or PID.\n"
+            "Example:\nrepro_bundle_collect(node_name='/move_base')"
+        ),
+        annotations=ToolAnnotations(
+            title="Repro Bundle Collect",
+            readOnlyHint=True,
+        ),
+    )
+    def repro_bundle_collect(
+        node_name: str = "",
+        pid: int = 0,
+        out_dir: str = "./debug_bundles",
+        depth: int = 40,
+    ) -> dict:
+        """Collect a minimal debug bundle (process, gdb backtrace, ROS node info)."""
+        depth = max(1, min(int(depth), 200))
+
+        resolved = None
+        selected_pid = int(pid) if int(pid) > 0 else 0
+
+        if selected_pid <= 0 and node_name.strip():
+            resolved = _resolve_pid_from_rosnode(node_name.strip())
+            if resolved:
+                selected_pid = int(resolved["pid"])
+            else:
+                ps = _run(["ps", "-eo", "pid,args", "--no-headers"])
+                if ps.get("ok"):
+                    matches = _parse_ps_candidates(ps.get("stdout", ""), node_name.strip())
+                    if matches:
+                        resolved = matches[0]
+                        selected_pid = int(matches[0]["pid"])
+
+        if selected_pid <= 0:
+            return {
+                "success": False,
+                "error": "Could not resolve target PID. Provide node_name or pid.",
+            }
+
+        if not _pid_exists(selected_pid):
+            return {
+                "success": False,
+                "error": f"PID {selected_pid} not found",
+            }
+
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        bundle_path = Path(out_dir).expanduser().resolve() / f"repro_{stamp}_pid{selected_pid}"
+        bundle_path.mkdir(parents=True, exist_ok=True)
+
+        process_info = _get_process_identity(selected_pid)
+
+        rosnode_info_text = ""
+        if node_name.strip():
+            info = _run(["rosnode", "info", node_name.strip()], timeout=8.0)
+            rosnode_info_text = (info.get("stdout", "") + "\n" + info.get("stderr", "")).strip()
+            (bundle_path / "rosnode_info.txt").write_text(rosnode_info_text)
+
+        rosnode_list = _run(["rosnode", "list"], timeout=8.0)
+        (bundle_path / "rosnode_list.txt").write_text(
+            (rosnode_list.get("stdout", "") + "\n" + rosnode_list.get("stderr", "")).strip()
+        )
+
+        coredump_list = _run(["coredumpctl", "--no-pager", "list", "--reverse", "--lines", "10"])
+        (bundle_path / "coredumpctl_list.txt").write_text(
+            (coredump_list.get("stdout", "") + "\n" + coredump_list.get("stderr", "")).strip()
+        )
+
+        bt = _collect_gdb_threads(pid=selected_pid, depth=depth, timeout=35.0)
+        suggested_thread_id, suggested_reason = _select_target_thread(
+            bt.get("threads", []), bt.get("current_thread_id")
+        )
+
+        suspected_top_frame = ""
+        if suggested_thread_id is not None:
+            for thread in bt.get("threads", []):
+                if thread.get("thread_id") == suggested_thread_id and thread.get("frames"):
+                    suspected_top_frame = thread["frames"][0].get("text", "")
+                    break
+
+        bt_payload = {
+            "pid": selected_pid,
+            "ok": bt.get("ok", False),
+            "current_thread_id": bt.get("current_thread_id"),
+            "suggested_thread_id": suggested_thread_id,
+            "suggested_thread_reason": suggested_reason,
+            "suspected_top_frame": suspected_top_frame,
+            "threads": bt.get("threads", []),
+            "raw": bt.get("combined", "") if not bt.get("threads") else "",
+        }
+        _write_json(bundle_path / "gdb_thread_bt.json", bt_payload)
+
+        frame_payload = {}
+        if suggested_thread_id is not None:
+            frame_payload = _capture_frame_locals(
+                pid=selected_pid,
+                thread_id=int(suggested_thread_id),
+                frame_id=0,
+            )
+            frame_payload["selected_thread_reason"] = suggested_reason
+            _write_json(bundle_path / "gdb_frame0_locals.json", frame_payload)
+
+        hypothesis = _classify_cpp_crash(
+            signal_name="",
+            top_frame=suspected_top_frame,
+            raw_text=bt.get("combined", ""),
+        )
+
+        summary = {
+            "created_at": datetime.now().isoformat(),
+            "bundle_dir": str(bundle_path),
+            "node_name": node_name,
+            "pid": selected_pid,
+            "process": process_info,
+            "pid_resolution": resolved,
+            "gdb": {
+                "thread_count": len(bt.get("threads", [])),
+                "suggested_thread_id": suggested_thread_id,
+                "suggested_thread_reason": suggested_reason,
+                "suspected_top_frame": suspected_top_frame,
+                "crash_hypothesis": hypothesis,
+            },
+            "files": {
+                "rosnode_info": str(bundle_path / "rosnode_info.txt") if node_name.strip() else "",
+                "rosnode_list": str(bundle_path / "rosnode_list.txt"),
+                "coredumpctl_list": str(bundle_path / "coredumpctl_list.txt"),
+                "gdb_thread_bt": str(bundle_path / "gdb_thread_bt.json"),
+                "gdb_frame0_locals": str(bundle_path / "gdb_frame0_locals.json") if frame_payload else "",
+            },
+        }
+        _write_json(bundle_path / "summary.json", summary)
+
+        return {
+            "success": True,
+            "bundle_dir": str(bundle_path),
+            "summary": summary,
         }
 
     @mcp.tool(

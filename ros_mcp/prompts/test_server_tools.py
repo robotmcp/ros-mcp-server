@@ -60,9 +60,10 @@ set_parameter('/turtlesim/background_r', '255')
 ```python
 resolve_node_pid('/turtlesim')
 gdb_thread_bt(pid=12345)
-gdb_frame_locals(pid=12345, thread_id=1, frame_id=0)
+gdb_frame_locals(pid=12345, thread_id=0, frame_id=0)  # auto thread pick
 py_stack_snapshot(pid=12345)
 core_list_recent(limit=5)
+repro_bundle_collect(node_name='/turtlesim')
 classify_cpp_crash(signal_name='SIGSEGV', top_frame='#0 ...')
 ```
 
