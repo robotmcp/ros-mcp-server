@@ -60,6 +60,7 @@ set_parameter('/turtlesim/background_r', '255')
 ```python
 resolve_node_pid('/turtlesim')
 gdb_thread_bt(pid=12345)
+gdb_frame_locals(pid=12345, thread_id=1, frame_id=0)
 core_list_recent(limit=5)
 ```
 

@@ -56,6 +56,57 @@ def _pid_exists(pid: int) -> bool:
         return False
 
 
+def _get_process_identity(pid: int) -> dict[str, Any]:
+    """Get process executable and command line."""
+    info = _run(["ps", "-p", str(pid), "-o", "args=", "-o", "comm="])
+    lines = [ln for ln in info.get("stdout", "").splitlines() if ln.strip()]
+    cmdline = lines[0].strip() if lines else ""
+    exe = lines[1].strip() if len(lines) > 1 else (os.path.basename(cmdline.split()[0]) if cmdline else "")
+    return {
+        "pid": pid,
+        "exe": exe,
+        "cmdline": cmdline,
+    }
+
+
+def _resolve_pid_from_rosnode(node_name: str) -> dict[str, Any] | None:
+    """Try resolving PID directly via `rosnode info` for highest accuracy."""
+    candidates = [node_name]
+    if not node_name.startswith("/"):
+        candidates.append(f"/{node_name}")
+
+    seen = set()
+    for candidate in candidates:
+        candidate = candidate.strip()
+        if not candidate or candidate in seen:
+            continue
+        seen.add(candidate)
+
+        info = _run(["rosnode", "info", candidate], timeout=8.0)
+        if not info["ok"]:
+            continue
+
+        match = re.search(r"^\s*Pid:\s*(\d+)\s*$", info.get("stdout", ""), re.MULTILINE)
+        if not match:
+            continue
+
+        pid = int(match.group(1))
+        if not _pid_exists(pid):
+            continue
+
+        proc = _get_process_identity(pid)
+        proc.update(
+            {
+                "match_score": 1000,
+                "match_reasons": ["matched via rosnode info"],
+                "node_name": candidate,
+            }
+        )
+        return proc
+
+    return None
+
+
 def _parse_ps_candidates(ps_stdout: str, node_name: str) -> list[dict[str, Any]]:
     """Find candidate processes for a ROS node name from ps output."""
     short = node_name.split("/")[-1] if "/" in node_name else node_name
@@ -83,28 +134,36 @@ def _parse_ps_candidates(ps_stdout: str, node_name: str) -> list[dict[str, Any]]
         reasons: list[str] = []
 
         if f"__name:={full}" in args or f"__name:={short}" in args:
-            score += 100
+            score += 120
             reasons.append("matched __name remap")
 
         if full and full in args:
-            score += 40
+            score += 45
             reasons.append("matched full node name in cmdline")
 
         if short and re.search(rf"\b{re.escape(short)}\b", args):
-            score += 20
+            score += 30
             reasons.append("matched short node token")
 
-        if score > 0:
-            try:
-                argv = shlex.split(args)
-                exe = argv[0] if argv else ""
-            except Exception:
-                exe = args.split()[0]
+        try:
+            argv = shlex.split(args)
+            exe_path = argv[0] if argv else ""
+        except Exception:
+            exe_path = args.split()[0]
 
+        exe_base = os.path.basename(exe_path)
+        if short and exe_base == short:
+            score += 45
+            reasons.append("executable basename exact match")
+        elif short and short and short in exe_base:
+            score += 15
+            reasons.append("executable basename partial match")
+
+        if score > 0:
             candidates.append(
                 {
                     "pid": pid,
-                    "exe": exe,
+                    "exe": exe_base,
                     "cmdline": args,
                     "match_score": score,
                     "match_reasons": reasons,
@@ -116,32 +175,95 @@ def _parse_ps_candidates(ps_stdout: str, node_name: str) -> list[dict[str, Any]]
 
 
 def _parse_gdb_thread_bt(output: str) -> list[dict[str, Any]]:
-    """Parse `thread apply all bt` output into thread/frame blocks."""
+    """Parse `thread apply all bt` output into structured thread/frame blocks."""
     threads: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
 
-    header_re = re.compile(r"^Thread\s+\d+\s+\(.*\):$")
-    frame_re = re.compile(r"^#\d+\s")
+    header_re = re.compile(r"^Thread\s+(\d+)\s+\((.*)\):$")
+    lwp_re = re.compile(r"\(LWP\s+(\d+)\)")
+    frame_re = re.compile(r"^#(\d+)\s+(.*)$")
 
     for raw_line in output.splitlines():
         line = raw_line.rstrip("\n")
-        if header_re.match(line.strip()):
+        stripped = line.strip()
+
+        header_match = header_re.match(stripped)
+        if header_match:
             if current:
                 threads.append(current)
-            current = {"header": line.strip(), "frames": []}
+
+            thread_id = int(header_match.group(1))
+            header_payload = header_match.group(2)
+            lwp_match = lwp_re.search(header_payload)
+            lwp = int(lwp_match.group(1)) if lwp_match else None
+
+            current = {
+                "thread_id": thread_id,
+                "lwp": lwp,
+                "header": stripped,
+                "frames": [],
+            }
             continue
 
         if current is None:
             continue
 
-        stripped = line.strip()
-        if frame_re.match(stripped):
-            current["frames"].append(stripped)
+        frame_match = frame_re.match(stripped)
+        if frame_match:
+            current["frames"].append(
+                {
+                    "index": int(frame_match.group(1)),
+                    "text": stripped,
+                }
+            )
+            continue
+
+        # Continuation line for previous frame
+        if current["frames"] and stripped:
+            current["frames"][-1]["text"] += f" {stripped}"
 
     if current:
         threads.append(current)
 
     return threads
+
+
+def _parse_assignment_lines(lines: list[str]) -> dict[str, str]:
+    """Parse `name = value` lines from gdb output into a dict."""
+    values: dict[str, str] = {}
+    assign_re = re.compile(r"^\s*([A-Za-z_][\w:<>\[\].-]*)\s*=\s*(.*)$")
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        if stripped.startswith("No locals") or stripped.startswith("No arguments"):
+            continue
+
+        m = assign_re.match(stripped)
+        if m:
+            values[m.group(1)] = m.group(2)
+
+    return values
+
+
+def _extract_signal(combined: str) -> dict[str, str]:
+    """Extract signal info from gdb text."""
+    match = re.search(r"Program terminated with signal\s+([A-Z0-9]+)(?:,\s*([^\n]+))?", combined)
+    if not match:
+        return {"name": "unknown", "description": ""}
+    return {
+        "name": match.group(1).strip(),
+        "description": (match.group(2) or "").strip(),
+    }
+
+
+def _extract_current_thread_id(combined: str) -> int | None:
+    """Extract current thread id from gdb output if present."""
+    match = re.search(r"Current thread is\s+(\d+)", combined)
+    if match:
+        return int(match.group(1))
+    return None
 
 
 def register_debug_process_tools(mcp: FastMCP) -> None:
@@ -164,23 +286,31 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
 
         node_name = node_name.strip()
 
-        # If the user passed a PID directly, return quickly
+        # If user provided PID directly
         if node_name.isdigit():
             pid = int(node_name)
             if _pid_exists(pid):
-                cmd = _run(["ps", "-p", str(pid), "-o", "args=", "-o", "comm="])
-                lines = [ln for ln in cmd.get("stdout", "").splitlines() if ln.strip()]
-                cmdline = lines[0].strip() if lines else ""
-                exe = lines[1].strip() if len(lines) > 1 else ""
+                proc = _get_process_identity(pid)
+                proc.update({"match_score": 999, "match_reasons": ["query is PID"]})
                 return {
                     "query": node_name,
-                    "best": {"pid": pid, "exe": exe, "cmdline": cmdline, "match_score": 999},
-                    "candidates": [
-                        {"pid": pid, "exe": exe, "cmdline": cmdline, "match_score": 999}
-                    ],
+                    "resolution_method": "direct_pid",
+                    "best": proc,
+                    "candidates": [proc],
                 }
             return {"error": f"PID {pid} does not exist"}
 
+        # Best path: resolve from rosnode info
+        resolved = _resolve_pid_from_rosnode(node_name)
+        if resolved:
+            return {
+                "query": node_name,
+                "resolution_method": "rosnode_info",
+                "best": resolved,
+                "candidates": [resolved],
+            }
+
+        # Fallback: command line matching
         ps = _run(["ps", "-eo", "pid,args", "--no-headers"])
         if not ps["ok"]:
             return {
@@ -192,13 +322,15 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
         if not candidates:
             return {
                 "query": node_name,
+                "resolution_method": "ps_scan",
                 "best": None,
                 "candidates": [],
-                "note": "No likely process matches found. If launched via roslaunch, try a more specific node name or pass PID directly.",
+                "note": "No likely process matches found. If launched via roslaunch, try exact node name (/name) or pass PID directly.",
             }
 
         return {
             "query": node_name,
+            "resolution_method": "ps_scan",
             "best": candidates[0],
             "candidates": candidates,
         }
@@ -237,12 +369,14 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             "-ex",
             "set print thread-events off",
             "-ex",
+            "info threads",
+            "-ex",
             f"thread apply all bt {depth}",
             "-p",
             str(pid),
         ]
 
-        result = _run(command, timeout=30.0)
+        result = _run(command, timeout=35.0)
         combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
 
         if not result["ok"] and "ptrace" in combined.lower():
@@ -254,12 +388,119 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             }
 
         threads = _parse_gdb_thread_bt(combined)
+        current_thread_id = _extract_current_thread_id(combined)
+
+        suspected_top_frame = ""
+        if threads:
+            if current_thread_id is not None:
+                for thread in threads:
+                    if thread.get("thread_id") == current_thread_id and thread.get("frames"):
+                        suspected_top_frame = thread["frames"][0]["text"]
+                        break
+            if not suspected_top_frame and threads[0].get("frames"):
+                suspected_top_frame = threads[0]["frames"][0]["text"]
+
         return {
             "pid": pid,
             "success": len(threads) > 0,
             "thread_count": len(threads),
+            "current_thread_id": current_thread_id,
+            "suspected_top_frame": suspected_top_frame,
             "threads": threads,
             "raw": combined if len(threads) == 0 else "",
+        }
+
+    @mcp.tool(
+        description=(
+            "Attach gdb to a PID and inspect arguments/locals for a specific thread/frame.\n"
+            "Example:\ngdb_frame_locals(pid=12345, thread_id=1, frame_id=0)"
+        ),
+        annotations=ToolAnnotations(
+            title="GDB Frame Locals",
+            readOnlyHint=True,
+        ),
+    )
+    def gdb_frame_locals(pid: int, thread_id: int = 1, frame_id: int = 0) -> dict:
+        """Capture args/locals from one stack frame of a running process via gdb."""
+        try:
+            pid = int(pid)
+            thread_id = int(thread_id)
+            frame_id = int(frame_id)
+        except Exception:
+            return {"error": "pid, thread_id, and frame_id must be integers"}
+
+        if pid <= 0:
+            return {"error": "pid must be > 0"}
+        if thread_id <= 0:
+            return {"error": "thread_id must be > 0"}
+        if frame_id < 0:
+            return {"error": "frame_id must be >= 0"}
+        if not _pid_exists(pid):
+            return {"error": f"PID {pid} not found"}
+
+        command = [
+            "gdb",
+            "-q",
+            "-n",
+            "-batch",
+            "-ex",
+            "set pagination off",
+            "-ex",
+            f"thread {thread_id}",
+            "-ex",
+            f"frame {frame_id}",
+            "-ex",
+            "printf \"__ARGS_BEGIN__\\n\"",
+            "-ex",
+            "info args",
+            "-ex",
+            "printf \"__LOCALS_BEGIN__\\n\"",
+            "-ex",
+            "info locals",
+            "-p",
+            str(pid),
+        ]
+
+        result = _run(command, timeout=30.0)
+        combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
+
+        if "ptrace" in combined.lower() and not result["ok"]:
+            return {
+                "pid": pid,
+                "success": False,
+                "error": "gdb attach failed (ptrace restrictions).",
+                "raw": combined,
+            }
+
+        lines = combined.splitlines()
+        args_lines: list[str] = []
+        locals_lines: list[str] = []
+        section = None
+
+        for line in lines:
+            stripped = line.strip()
+            if stripped == "__ARGS_BEGIN__":
+                section = "args"
+                continue
+            if stripped == "__LOCALS_BEGIN__":
+                section = "locals"
+                continue
+            if section == "args":
+                args_lines.append(line)
+            elif section == "locals":
+                locals_lines.append(line)
+
+        parsed_args = _parse_assignment_lines(args_lines)
+        parsed_locals = _parse_assignment_lines(locals_lines)
+
+        return {
+            "pid": pid,
+            "thread_id": thread_id,
+            "frame_id": frame_id,
+            "success": bool(parsed_args or parsed_locals),
+            "args": parsed_args,
+            "locals": parsed_locals,
+            "raw": combined if not (parsed_args or parsed_locals) else "",
         }
 
     @mcp.tool(
@@ -328,6 +569,8 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             "-ex",
             "info program",
             "-ex",
+            "info threads",
+            "-ex",
             f"thread apply all bt {depth}",
         ]
 
@@ -339,11 +582,19 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
         result = _run(command, timeout=45.0)
         combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
 
-        signal_match = re.search(r"Program terminated with signal\s+([^,\n]+)", combined)
-        signal = signal_match.group(1).strip() if signal_match else "unknown"
-
+        signal = _extract_signal(combined)
         threads = _parse_gdb_thread_bt(combined)
-        suspected = threads[0]["frames"][0] if threads and threads[0]["frames"] else ""
+        current_thread_id = _extract_current_thread_id(combined)
+
+        suspected_top_frame = ""
+        if threads:
+            if current_thread_id is not None:
+                for thread in threads:
+                    if thread.get("thread_id") == current_thread_id and thread.get("frames"):
+                        suspected_top_frame = thread["frames"][0]["text"]
+                        break
+            if not suspected_top_frame and threads[0].get("frames"):
+                suspected_top_frame = threads[0]["frames"][0]["text"]
 
         return {
             "success": result["ok"] or len(threads) > 0,
@@ -351,7 +602,8 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
             "exe_path": exe_path.strip() if exe_path else "",
             "signal": signal,
             "thread_count": len(threads),
-            "suspected_top_frame": suspected,
+            "current_thread_id": current_thread_id,
+            "suspected_top_frame": suspected_top_frame,
             "threads": threads,
             "raw": combined if len(threads) == 0 else "",
         }
