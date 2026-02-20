@@ -1,0 +1,17 @@
+FROM ros:noetic-ros-base
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gdb \
+    python3-pip \
+    python3-psutil \
+    ros-noetic-rosbridge-server \
+    ros-noetic-rosapi \
+    ros-noetic-rospy-tutorials \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN python3 -m pip install --no-cache-dir py-spy
+
+WORKDIR /work

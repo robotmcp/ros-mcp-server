@@ -16,6 +16,15 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 
+def _to_text(value: Any) -> str:
+    """Normalize subprocess output chunks into text."""
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    return str(value)
+
+
 def _run(command: list[str], timeout: float = 15.0) -> dict[str, Any]:
     """Run a shell command and return structured output."""
     try:
@@ -29,8 +38,8 @@ def _run(command: list[str], timeout: float = 15.0) -> dict[str, Any]:
         return {
             "ok": completed.returncode == 0,
             "returncode": completed.returncode,
-            "stdout": completed.stdout,
-            "stderr": completed.stderr,
+            "stdout": _to_text(completed.stdout),
+            "stderr": _to_text(completed.stderr),
             "command": command,
         }
     except FileNotFoundError:
@@ -45,7 +54,7 @@ def _run(command: list[str], timeout: float = 15.0) -> dict[str, Any]:
         return {
             "ok": False,
             "returncode": 124,
-            "stdout": e.stdout or "",
+            "stdout": _to_text(e.stdout),
             "stderr": f"Command timed out after {timeout}s",
             "command": command,
         }
@@ -62,10 +71,23 @@ def _pid_exists(pid: int) -> bool:
 
 def _get_process_identity(pid: int) -> dict[str, Any]:
     """Get process executable and command line."""
-    info = _run(["ps", "-p", str(pid), "-o", "args=", "-o", "comm="])
-    lines = [ln for ln in info.get("stdout", "").splitlines() if ln.strip()]
-    cmdline = lines[0].strip() if lines else ""
-    exe = lines[1].strip() if len(lines) > 1 else (os.path.basename(cmdline.split()[0]) if cmdline else "")
+    args_info = _run(["ps", "ww", "-p", str(pid), "-o", "args="])
+    cmdline = ""
+    for line in args_info.get("stdout", "").splitlines():
+        if line.strip():
+            cmdline = line.strip()
+            break
+
+    comm_info = _run(["ps", "-p", str(pid), "-o", "comm="])
+    exe = ""
+    for line in comm_info.get("stdout", "").splitlines():
+        if line.strip():
+            exe = line.strip()
+            break
+
+    if not exe and cmdline:
+        exe = os.path.basename(cmdline.split()[0])
+
     return {
         "pid": pid,
         "exe": exe,
@@ -802,7 +824,7 @@ def register_debug_process_tools(mcp: FastMCP) -> None:
                 "hint": "Install py-spy (e.g., pipx install py-spy) and retry.",
             }
 
-        command = [pyspy_bin, "dump", "--pid", str(pid), "--threads"]
+        command = [pyspy_bin, "dump", "--pid", str(pid)]
         result = _run(command, timeout=20.0)
         combined = "\n".join([result.get("stdout", ""), result.get("stderr", "")]).strip()
 
