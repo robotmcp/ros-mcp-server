@@ -650,16 +650,18 @@ def register_topic_tools(
                         # Streaming mode: publish repeatedly at rate_hz for duration
                         interval = 1.0 / rate_hz
                         end_time = time.time() + duration
+                        next_time = time.time() + interval
                         while time.time() < end_time:
                             send_error = ws_manager.send(publish_msg)
                             if send_error:
                                 errors.append(f"Message {i + 1}: {send_error}")
                                 break
                             published_count += 1
-                            # Sleep for the interval, but don't overshoot
-                            remaining = end_time - time.time()
-                            if remaining > 0:
-                                time.sleep(min(interval, remaining))
+                            # Sleep until next target time to compensate for send overhead
+                            sleep_time = next_time - time.time()
+                            if sleep_time > 0:
+                                time.sleep(sleep_time)
+                            next_time += interval
                     else:
                         # Original mode: publish once, then wait
                         send_error = ws_manager.send(publish_msg)
