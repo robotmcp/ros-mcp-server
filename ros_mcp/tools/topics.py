@@ -531,9 +531,7 @@ def register_topic_tools(
                         image_path = "./camera/received_image.jpeg"
                         if os.path.exists(image_path):
                             img = PILImage.open(image_path)
-                            collected_messages.append(
-                                _encode_image_to_imagecontent(img)
-                            )
+                            collected_messages.append(_encode_image_to_imagecontent(img))
                         else:
                             collected_messages.append(
                                 {"error": "Image received but file not found on disk"}
