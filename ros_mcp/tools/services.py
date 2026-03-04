@@ -6,6 +6,29 @@ from mcp.types import ToolAnnotations
 from ros_mcp.utils.websocket import WebSocketManager
 
 
+def _extract_error(response, default: str = "Service call failed") -> str:
+    """Safely extract an error message from a rosbridge response."""
+    if not response or not isinstance(response, dict):
+        return str(response) if response else default
+    values = response.get("values", {})
+    if isinstance(values, dict):
+        return values.get("message", default)
+    return str(values) if values else default
+
+
+def _check_response(response) -> dict | None:
+    """Check for common response errors. Returns error dict or None if OK."""
+    if not response:
+        return {"error": "No response received from rosbridge"}
+    if not isinstance(response, dict):
+        return {"error": f"Unexpected response: {response}"}
+    if "error" in response and "op" not in response:
+        return {"error": f"Service call failed: {response['error']}"}
+    if "result" in response and not response["result"]:
+        return {"error": f"Service call failed: {_extract_error(response)}"}
+    return None
+
+
 def register_service_tools(
     mcp: FastMCP,
     ws_manager: WebSocketManager,
@@ -27,7 +50,6 @@ def register_service_tools(
             dict: Contains list of all active services,
                 or a message string if no services are found.
         """
-        # rosbridge service call to get service list
         message = {
             "op": "call_service",
             "service": "/rosapi/services",
@@ -36,22 +58,17 @@ def register_service_tools(
             "id": "get_services_request_1",
         }
 
-        # Request service list from rosbridge
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
-        # Return service info if present
-        if response and "values" in response:
+        if "values" in response:
             services = response["values"].get("services", [])
             return {"services": services, "service_count": len(services)}
-        else:
-            return {"warning": "No services found"}
+        return {"warning": "No services found"}
 
     @mcp.tool(
         description=(
@@ -73,11 +90,9 @@ def register_service_tools(
             dict: Contains the service type,
                 or an error message if service doesn't exist.
         """
-        # Validate input
         if not service or not service.strip():
             return {"error": "Service name cannot be empty"}
 
-        # rosbridge service call to get service type
         message = {
             "op": "call_service",
             "service": "/rosapi/service_type",
@@ -86,25 +101,19 @@ def register_service_tools(
             "id": f"get_service_type_request_{service.replace('/', '_')}",
         }
 
-        # Request service type from rosbridge
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
-        # Return service type if present
-        if response and "values" in response:
+        if "values" in response:
             service_type = response["values"].get("type", "")
             if service_type:
                 return {"service": service, "type": service_type}
-            else:
-                return {"error": f"Service {service} does not exist or has no type"}
-        else:
-            return {"error": f"Failed to get type for service {service}"}
+            return {"error": f"Service {service} does not exist or has no type"}
+        return {"error": f"Failed to get type for service {service}"}
 
     @mcp.tool(
         description=(
@@ -152,7 +161,10 @@ def register_service_tools(
             }
 
             type_response = ws_manager.request(type_message)
-            if type_response and "values" in type_response:
+            error = _check_response(type_response)
+            if error:
+                return error
+            if "values" in type_response:
                 service_type = type_response["values"].get("type", "")
                 if service_type:
                     result["type"] = service_type
@@ -292,48 +304,36 @@ def register_service_tools(
         with ws_manager:
             response = ws_manager.request(message, timeout=timeout)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
+        # Common error checks (no response, non-dict, ws_manager errors, result=false)
+        error = _check_response(response)
+        if error:
             return {
                 "service": service_name,
                 "service_type": service_type,
                 "success": False,
-                "error": f"Service call failed: {error_msg}",
+                **error,
             }
 
-        # Return service response if present
-        if response:
-            if response.get("op") == "service_response":
-                # Alternative response format
-                return {
-                    "service": service_name,
-                    "service_type": service_type,
-                    "success": response.get("result", True),
-                    "result": response.get("values", {}),
-                }
-            elif response.get("op") == "status" and response.get("level") == "error":
-                # Error response
-                return {
-                    "service": service_name,
-                    "service_type": service_type,
-                    "success": False,
-                    "error": response.get("msg", "Unknown error"),
-                }
-            else:
-                # Unexpected response format
-                return {
-                    "service": service_name,
-                    "service_type": service_type,
-                    "success": False,
-                    "error": "Unexpected response format",
-                    "raw_response": response,
-                }
+        # Return service response
+        if response.get("op") == "service_response":
+            return {
+                "service": service_name,
+                "service_type": service_type,
+                "success": response.get("result", True),
+                "result": response.get("values", {}),
+            }
+        elif response.get("op") == "status" and response.get("level") == "error":
+            return {
+                "service": service_name,
+                "service_type": service_type,
+                "success": False,
+                "error": response.get("msg", "Unknown error"),
+            }
         else:
             return {
                 "service": service_name,
                 "service_type": service_type,
                 "success": False,
-                "error": "No response received from service call",
+                "error": "Unexpected response format",
+                "raw_response": response,
             }
