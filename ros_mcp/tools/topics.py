@@ -553,10 +553,16 @@ def register_topic_tools(
 
     @mcp.tool(
         description=(
-            "Publish a sequence of messages with delays.\n"
-            "Example:\n"
-            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', "
-            "messages=[{'linear': {'x': 1.0}}, {'linear': {'x': 0.0}}], durations=[1, 2])"
+            "Publish a sequence of messages to a ROS topic, each held for a given duration.\n"
+            "With rate_hz=0 (default): publishes each message once, then waits for the duration.\n"
+            "With rate_hz>0: publishes each message repeatedly at the given rate for the duration "
+            "(useful for controllers like diff_drive that need continuous commands).\n"
+            "Example (single publish with delay):\n"
+            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', "
+            "messages=[{'linear': {'x': 1.0}}, {'linear': {'x': 0.0}}], durations=[1, 2])\n"
+            "Example (continuous streaming at 10 Hz for 2 seconds):\n"
+            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', "
+            "messages=[{'angular': {'z': 0.5}}], durations=[2.0], rate_hz=10)"
         ),
         annotations=ToolAnnotations(
             title="Publish for Durations",
@@ -568,23 +574,27 @@ def register_topic_tools(
         msg_type: str = "",
         messages: list[dict] = [],
         durations: list[float] = [],
+        rate_hz: float = 0,
     ) -> dict:
         """
-        Publish a sequence of messages to a given ROS topic with delays in between.
+        Publish a sequence of messages to a given ROS topic for specified durations.
 
         Args:
             topic (str): ROS topic name (e.g., "/cmd_vel")
-            msg_type (str): ROS message type (e.g., "geometry_msgs/Twist")
+            msg_type (str): ROS message type (e.g., "geometry_msgs/msg/Twist")
             messages (list[dict]): A list of message dictionaries (ROS-compatible payloads)
-            durations (list[float]): A list of durations (seconds) to wait between messages
+            durations (list[float]): A list of durations (seconds) to hold each message
+            rate_hz (float): Publishing rate in Hz. 0 = publish once then wait (default).
+                             >0 = publish repeatedly at this rate for the duration.
 
         Returns:
             dict:
                 {
                     "success": True,
-                    "published_count": <number of messages>,
+                    "published_count": <number of publishes>,
                     "topic": topic,
-                    "msg_type": msg_type
+                    "msg_type": msg_type,
+                    "rate_hz": rate_hz
                 }
                 OR {"error": "<error message>"} if something failed
         """
@@ -596,6 +606,12 @@ def register_topic_tools(
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
+        # Validate rate_hz
+        if rate_hz < 0:
+            return {"error": "rate_hz must be >= 0"}
+        if rate_hz > 100:
+            return {"error": "rate_hz must be <= 100"}
+
         # Empty is allowed: nothing to publish
         if not messages and not durations:
             return {
@@ -604,6 +620,7 @@ def register_topic_tools(
                 "total_messages": 0,
                 "topic": topic,
                 "msg_type": msg_type,
+                "rate_hz": rate_hz,
                 "errors": [],
             }
 
@@ -626,29 +643,45 @@ def register_topic_tools(
 
             try:
                 # publish loop
-                for i, (msg, delay) in enumerate(zip(messages, durations)):
+                for i, (msg, duration) in enumerate(zip(messages, durations)):
                     publish_msg = {"op": "publish", "topic": topic, "msg": msg}
 
-                    send_error = ws_manager.send(publish_msg)
-                    if send_error:
-                        errors.append(f"Message {i + 1}: {send_error}")
-                        continue
+                    if rate_hz > 0 and duration > 0:
+                        # Streaming mode: publish repeatedly at rate_hz for duration
+                        interval = 1.0 / rate_hz
+                        end_time = time.time() + duration
+                        while time.time() < end_time:
+                            send_error = ws_manager.send(publish_msg)
+                            if send_error:
+                                errors.append(f"Message {i + 1}: {send_error}")
+                                break
+                            published_count += 1
+                            # Sleep for the interval, but don't overshoot
+                            remaining = end_time - time.time()
+                            if remaining > 0:
+                                time.sleep(min(interval, remaining))
+                    else:
+                        # Original mode: publish once, then wait
+                        send_error = ws_manager.send(publish_msg)
+                        if send_error:
+                            errors.append(f"Message {i + 1}: {send_error}")
+                            continue
 
-                    response = ws_manager.receive(timeout=1.0)
-                    if response:
-                        try:
-                            msg_data = json.loads(response)
-                            if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                                errors.append(
-                                    f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
-                                )
-                                continue
-                        except json.JSONDecodeError:
-                            pass
+                        response = ws_manager.receive(timeout=1.0)
+                        if response:
+                            try:
+                                msg_data = json.loads(response)
+                                if msg_data.get("op") == "status" and msg_data.get("level") == "error":
+                                    errors.append(
+                                        f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
+                                    )
+                                    continue
+                            except json.JSONDecodeError:
+                                pass
 
-                    published_count += 1
-                    if delay:
-                        time.sleep(delay)
+                        published_count += 1
+                        if duration:
+                            time.sleep(duration)
 
             finally:
                 # always unadvertise
@@ -660,6 +693,7 @@ def register_topic_tools(
             "total_messages": len(messages),
             "topic": topic,
             "msg_type": msg_type,
+            "rate_hz": rate_hz,
             "errors": errors,
         }
 

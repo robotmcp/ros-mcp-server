@@ -51,7 +51,7 @@ Examples:
 
     parser.add_argument(
         "--transport",
-        choices=["stdio", "http", "streamable-http", "sse"],
+        choices=["stdio", "http", "streamable-http"],
         default="stdio",
         help="MCP transport protocol to use (default: stdio)",
     )
@@ -89,11 +89,6 @@ def main():
     elif mcp_transport in {"http", "streamable-http"}:
         # http and streamable-http both require host/port
         print(f"Transport: {mcp_transport} -> http://{mcp_host}:{mcp_port}", file=sys.stderr)
-        mcp.run(transport=mcp_transport, host=mcp_host, port=mcp_port)
-
-    elif mcp_transport == "sse":
-        print(f"Transport: {mcp_transport} -> http://{mcp_host}:{mcp_port}", file=sys.stderr)
-        print("Currently unsupported. Use 'stdio', 'http', or 'streamable-http'.", file=sys.stderr)
         mcp.run(transport=mcp_transport, host=mcp_host, port=mcp_port)
 
     else:
