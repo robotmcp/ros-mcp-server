@@ -671,7 +671,10 @@ def register_topic_tools(
                         if response:
                             try:
                                 msg_data = json.loads(response)
-                                if msg_data.get("op") == "status" and msg_data.get("level") == "error":
+                                if (
+                                    msg_data.get("op") == "status"
+                                    and msg_data.get("level") == "error"
+                                ):
                                     errors.append(
                                         f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
                                     )
