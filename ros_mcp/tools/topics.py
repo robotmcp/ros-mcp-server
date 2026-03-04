@@ -1,12 +1,14 @@
 """Topic tools for ROS MCP."""
 
 import json
+import os
 import time
 
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
+from PIL import Image as PILImage
 
-from ros_mcp.tools.images import convert_expects_image_hint
+from ros_mcp.tools.images import _encode_image_to_imagecontent, convert_expects_image_hint
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
 
@@ -385,13 +387,11 @@ def register_topic_tools(
                     ws_manager.send(unsubscribe_msg)
                     # Return appropriate message based on whether image was actually parsed
                     if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        return {
-                            "msg": filtered_msg,
-                            "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
-                        }
+                        image_path = "./camera/received_image.jpeg"
+                        if os.path.exists(image_path):
+                            img = PILImage.open(image_path)
+                            return _encode_image_to_imagecontent(img)
+                        return {"error": "Image received but file not found on disk"}
                     else:
                         return {"msg": msg_data.get("msg", {})}
 
@@ -528,15 +528,16 @@ def register_topic_tools(
                 if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
                     # Add message based on whether it was actually parsed as image
                     if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        collected_messages.append(
-                            {
-                                "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
-                                "msg": filtered_msg,
-                            }
-                        )
+                        image_path = "./camera/received_image.jpeg"
+                        if os.path.exists(image_path):
+                            img = PILImage.open(image_path)
+                            collected_messages.append(
+                                _encode_image_to_imagecontent(img)
+                            )
+                        else:
+                            collected_messages.append(
+                                {"error": "Image received but file not found on disk"}
+                            )
                     else:
                         collected_messages.append(msg_data.get("msg", {}))
 
