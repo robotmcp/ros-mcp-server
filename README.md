@@ -15,38 +15,19 @@
   <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/framework.png"/>
 </p>
 
-### What is this? (30-second version)
-
-You have a robot running ROS. You want to talk to it in plain English using an AI like Claude or ChatGPT. This server sits between the two:
-
-```
-You  -->  AI (Claude/GPT/Gemini)  -->  ROS-MCP-Server  -->  rosbridge  -->  Your Robot (ROS/ROS2)
-```
-
-You type "move forward 1 meter" into your AI chat. The AI translates that into ROS commands and sends them to your robot through this server. The robot can also send data back -- sensor readings, camera feeds, error states -- so the AI can see what's happening and react.
-
-**What you need:**
-1. A robot running ROS or ROS2 with `rosbridge_server` installed
-2. An AI client that supports MCP (Claude Desktop, ChatGPT, Gemini, Cursor, etc.)
-3. This server (`uvx ros-mcp`) running on the machine with your AI client
-
-No changes to your existing robot code are required.
-
----
-
-ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) with existing robots giving them bidirectional AI integration.
+ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) with existing robots giving them bidirectional AI integration.  
 
 With no changes to existing robot source code, this enables:
-- **Commanding the robot in natural language** -- instructions are translated into ROS/ROS2 commands.
-- **Giving AI full visibility** -- subscribe to topics, call services, read sensor data, and monitor robot state in real time.
+- 🗣 **Commanding the robot in natural language** → instructions are translated into ROS/ROS2 commands.  
+- 👀 **Giving AI full visibility** → subscribe to topics, call services, read sensor data, and monitor robot state in real time.  
 
 
-### Key Benefits
+### ✅ Key Benefits  
 
-- **No robot code changes** -- only requires adding the `rosbridge` node.
-- **True two-way communication** -- LLMs can both *control* robots and *observe* everything happening in ROS (sensors, topics, parameters).
-- **ROS1 & ROS2 support** -- works with both versions out of the box.
-- **MCP-compatible** -- integrates with any MCP-enabled LLM (Claude Desktop, Gemini, ChatGPT, and beyond).
+- **No robot code changes** → only requires adding the `rosbridge` node.  
+- **True two-way communication** → LLMs can both *control* robots and *observe* everything happening in ROS (sensors, topics, parameters).  
+- **ROS1 & ROS2 support** → works with both versions out of the box.  
+- **MCP-compatible** → integrates with any MCP-enabled LLM (Claude Desktop, Gemini, ChatGPT, and beyond).   
 
 ## 🎥 Examples in Action  
 
