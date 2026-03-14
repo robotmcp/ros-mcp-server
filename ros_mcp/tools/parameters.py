@@ -3,6 +3,7 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from ros_mcp.utils.response import _extract_error
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -158,9 +159,7 @@ def register_parameter_tools(
 
         # Fallback for unexpected response format
         error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
+            _extract_error(response) if response and isinstance(response, dict) else "No response"
         )
         return {"error": f"Failed to get parameter {name}: {error_msg}"}
 
@@ -253,9 +252,7 @@ def register_parameter_tools(
 
         # Fallback for unexpected response format
         error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
+            _extract_error(response) if response and isinstance(response, dict) else "No response"
         )
         return {"error": f"Failed to set parameter {name}: {error_msg}"}
 
@@ -386,9 +383,7 @@ def register_parameter_tools(
 
         # Fallback for unexpected response format
         error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
+            _extract_error(response) if response and isinstance(response, dict) else "No response"
         )
         return {"error": f"Failed to delete parameter {name}: {error_msg}"}
 
@@ -461,7 +456,7 @@ def register_parameter_tools(
         # Check for service response errors first
         if response and "result" in response and not response["result"]:
             # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
+            error_msg = _extract_error(response)
             return {"error": f"Failed to get parameters for node {normalized_node}: {error_msg}"}
 
         # Extract parameter names from response
