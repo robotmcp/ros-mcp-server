@@ -3,6 +3,7 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -40,18 +41,16 @@ def register_node_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return node info if present
-        if response and "values" in response:
-            nodes = response["values"].get("nodes", [])
+        values = _safe_get_values(response)
+        if values is not None:
+            nodes = values.get("nodes", [])
             return {"nodes": nodes, "node_count": len(nodes)}
-        else:
-            return {"warning": "No nodes found"}
+        return {"warning": "No nodes found"}
 
     @mcp.tool(
         description=(
@@ -102,15 +101,13 @@ def register_node_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Extract data from the response
-        if response and "values" in response:
-            values = response["values"]
+        values = _safe_get_values(response)
+        if values is not None:
             # Extract publishers, subscribers, and services from the response
             # Note: rosapi uses "publishing" and "subscribing" field names
             publishers = values.get("publishing", [])
