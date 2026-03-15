@@ -3,30 +3,8 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager
-
-
-def _extract_error(response, default: str = "Service call failed") -> str:
-    """Safely extract an error message from a rosbridge response."""
-    if not response or not isinstance(response, dict):
-        return str(response) if response else default
-    values = response.get("values", {})
-    if isinstance(values, dict):
-        return values.get("message", default)
-    return str(values) if values else default
-
-
-def _check_response(response) -> dict | None:
-    """Check for common response errors. Returns error dict or None if OK."""
-    if not response:
-        return {"error": "No response received from rosbridge"}
-    if not isinstance(response, dict):
-        return {"error": f"Unexpected response: {response}"}
-    if "error" in response and "op" not in response:
-        return {"error": f"Service call failed: {response['error']}"}
-    if "result" in response and not response["result"]:
-        return {"error": f"Service call failed: {_extract_error(response)}"}
-    return None
 
 
 def register_service_tools(
@@ -65,8 +43,9 @@ def register_service_tools(
         if error:
             return error
 
-        if "values" in response:
-            services = response["values"].get("services", [])
+        values = _safe_get_values(response)
+        if values is not None:
+            services = values.get("services", [])
             return {"services": services, "service_count": len(services)}
         return {"warning": "No services found"}
 
@@ -108,8 +87,9 @@ def register_service_tools(
         if error:
             return error
 
-        if "values" in response:
-            service_type = response["values"].get("type", "")
+        values = _safe_get_values(response)
+        if values is not None:
+            service_type = values.get("type", "")
             if service_type:
                 return {"service": service, "type": service_type}
             return {"error": f"Service {service} does not exist or has no type"}
@@ -164,8 +144,9 @@ def register_service_tools(
             error = _check_response(type_response)
             if error:
                 return error
-            if "values" in type_response:
-                service_type = type_response["values"].get("type", "")
+            type_values = _safe_get_values(type_response)
+            if type_values is not None:
+                service_type = type_values.get("type", "")
                 if service_type:
                     result["type"] = service_type
                 else:
@@ -183,8 +164,9 @@ def register_service_tools(
             }
 
             request_response = ws_manager.request(request_message)
-            if request_response and "values" in request_response:
-                typedefs = request_response["values"].get("typedefs", [])
+            request_values = _safe_get_values(request_response)
+            if request_values is not None:
+                typedefs = request_values.get("typedefs", [])
                 if typedefs:
                     for typedef in typedefs:
                         field_names = typedef.get("fieldnames", [])
@@ -204,8 +186,9 @@ def register_service_tools(
             }
 
             response_response = ws_manager.request(response_message)
-            if response_response and "values" in response_response:
-                typedefs = response_response["values"].get("typedefs", [])
+            response_values = _safe_get_values(response_response)
+            if response_values is not None:
+                typedefs = response_values.get("typedefs", [])
                 if typedefs:
                     for typedef in typedefs:
                         field_names = typedef.get("fieldnames", [])
@@ -228,15 +211,19 @@ def register_service_tools(
             providers = []
 
             # Handle different response formats safely
-            if provider_response and isinstance(provider_response, dict):
-                if "values" in provider_response:
-                    node = provider_response["values"].get("node", "")
-                    if node:
-                        providers = [node]
-                elif "result" in provider_response:
-                    node = provider_response["result"].get("node", "")
-                    if node:
-                        providers = [node]
+            provider_values = _safe_get_values(provider_response)
+            if provider_values is not None:
+                node = provider_values.get("node", "")
+                if node:
+                    providers = [node]
+            elif (
+                provider_response
+                and isinstance(provider_response, dict)
+                and isinstance(provider_response.get("result"), dict)
+            ):
+                node = provider_response["result"].get("node", "")
+                if node:
+                    providers = [node]
 
             result["providers"] = providers
             result["provider_count"] = len(providers)
