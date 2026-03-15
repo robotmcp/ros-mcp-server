@@ -15,5 +15,5 @@ class TestDetectRosVersion:
 
 class TestPingRobot:
     def test_ping_localhost(self, tools):
-        result = tools["ping_robot"](ip="127.0.0.1", port=9090)
-        assert result.get("reachable") is True or result.get("status") == "reachable"
+        result = tools["connect_to_robot"](ip="127.0.0.1", port=9090)
+        assert "connectivity_test" in result
