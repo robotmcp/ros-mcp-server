@@ -1,0 +1,39 @@
+name: Integration Tests
+
+on:
+  pull_request:
+    branches: [develop, main]
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Start ROS2 rosbridge + turtlesim
+        run: |
+          cd tests/integration
+          docker compose up --build -d --wait
+
+      - name: Run integration tests
+        run: uv run pytest tests/integration -v -m integration --timeout=60
+
+      - name: Tear down
+        if: always()
+        run: |
+          cd tests/integration
+          docker compose down --volumes --remove-orphans

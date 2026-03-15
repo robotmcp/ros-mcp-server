@@ -72,6 +72,7 @@ python_functions = "test_*"
 addopts = "-v --tb=short"
 markers = [
     "installation: installation tests using Docker containers",
+    "integration: integration tests requiring Docker + ROS",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 

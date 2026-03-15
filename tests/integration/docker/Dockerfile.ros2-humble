@@ -1,0 +1,23 @@
+FROM ros:humble-ros-base
+
+ENV ROS_DISTRO=humble
+ENV DEBIAN_FRONTEND=noninteractive
+SHELL ["/bin/bash", "-c"]
+
+# Install rosbridge, turtlesim, and xvfb for headless GUI
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-rosbridge-suite \
+    ros-humble-turtlesim \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Auto-source ROS environment
+RUN echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+
+WORKDIR /ros2_ws
+
+COPY ros2_launch.py /ros2_ws/ros2_launch.py
+
+EXPOSE 9090
+
+CMD ["xvfb-run", "ros2", "launch", "/ros2_ws/ros2_launch.py"]
