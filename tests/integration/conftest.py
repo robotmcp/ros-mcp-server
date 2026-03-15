@@ -34,7 +34,7 @@ def _wait_for_rosbridge(ws: WebSocketManager, timeout: float = 30) -> None:
     while time.time() < deadline:
         try:
             ws.connect()
-            ws.disconnect()
+            ws.close()
             return
         except Exception as e:
             last_error = e
