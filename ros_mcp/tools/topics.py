@@ -8,6 +8,7 @@ from mcp.types import ToolAnnotations
 
 from ros_mcp.tools.images import convert_expects_image_hint
 from ros_mcp.utils.response import _check_response, _safe_get_values
+from ros_mcp.utils.rosapi_types import rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
 
@@ -36,7 +37,7 @@ def register_topic_tools(
         message = {
             "op": "call_service",
             "service": "/rosapi/topics",
-            "type": "rosapi/Topics",
+            "type": rosapi_type("Topics"),
             "args": {},
             "id": "get_topics_request_1",
         }
@@ -85,7 +86,7 @@ def register_topic_tools(
         message = {
             "op": "call_service",
             "service": "/rosapi/topic_type",
-            "type": "rosapi/TopicType",
+            "type": rosapi_type("TopicType"),
             "args": {"topic": topic},
             "id": f"get_topic_type_request_{topic.replace('/', '_')}",
         }
@@ -147,7 +148,7 @@ def register_topic_tools(
             type_message = {
                 "op": "call_service",
                 "service": "/rosapi/topic_type",
-                "type": "rosapi/TopicType",
+                "type": rosapi_type("TopicType"),
                 "args": {"topic": topic},
                 "id": f"get_topic_type_{topic.replace('/', '_')}",
             }
@@ -161,7 +162,7 @@ def register_topic_tools(
             publishers_message = {
                 "op": "call_service",
                 "service": "/rosapi/publishers",
-                "type": "rosapi/Publishers",
+                "type": rosapi_type("Publishers"),
                 "args": {"topic": topic},
                 "id": f"get_publishers_{topic.replace('/', '_')}",
             }
@@ -175,7 +176,7 @@ def register_topic_tools(
             subscribers_message = {
                 "op": "call_service",
                 "service": "/rosapi/subscribers",
-                "type": "rosapi/Subscribers",
+                "type": rosapi_type("Subscribers"),
                 "args": {"topic": topic},
                 "id": f"get_subscribers_{topic.replace('/', '_')}",
             }
@@ -224,7 +225,7 @@ def register_topic_tools(
         message = {
             "op": "call_service",
             "service": "/rosapi/message_details",
-            "type": "rosapi/MessageDetails",
+            "type": rosapi_type("MessageDetails"),
             "args": {"type": message_type},
             "id": f"get_message_details_request_{message_type.replace('/', '_')}",
         }

@@ -8,6 +8,7 @@ import pytest
 from fastmcp import FastMCP
 
 from ros_mcp.tools import register_all_tools
+from ros_mcp.utils.rosapi_types import detect_rosapi_types
 from ros_mcp.utils.websocket import WebSocketManager
 
 COMPOSE_DIR = Path(__file__).parent
@@ -80,6 +81,7 @@ def ws(compose_up):
     """WebSocketManager connected to the ROS2 rosbridge container."""
     ws_manager = WebSocketManager("127.0.0.1", ROSBRIDGE_PORT, default_timeout=5.0)
     _wait_for_rosbridge(ws_manager, timeout=30)
+    detect_rosapi_types(ws_manager)
     return ws_manager
 
 

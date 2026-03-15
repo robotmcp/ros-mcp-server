@@ -3,6 +3,7 @@
 import json
 
 from ros_mcp.utils.response import _extract_error, _safe_get_values
+from ros_mcp.utils.rosapi_types import rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -67,7 +68,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 topics_message = {
                     "op": "call_service",
                     "service": "/rosapi/topics",
-                    "type": "rosapi/Topics",
+                    "type": rosapi_type("Topics"),
                     "args": {},
                     "id": "get_topics_request",
                 }
@@ -89,7 +90,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 services_message = {
                     "op": "call_service",
                     "service": "/rosapi/services",
-                    "type": "rosapi_msgs/srv/Services",
+                    "type": rosapi_type("Services"),
                     "args": {},
                     "id": "get_services_request",
                 }
@@ -119,7 +120,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 nodes_message = {
                     "op": "call_service",
                     "service": "/rosapi/nodes",
-                    "type": "rosapi/Nodes",
+                    "type": rosapi_type("Nodes"),
                     "args": {},
                     "id": "get_nodes_request",
                 }
@@ -136,7 +137,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 params_message = {
                     "op": "call_service",
                     "service": "/rosapi/get_param_names",
-                    "type": "rosapi/GetParamNames",
+                    "type": rosapi_type("GetParamNames"),
                     "args": {},
                     "id": "get_parameters_request",
                 }
@@ -189,7 +190,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             nodes_message = {
                 "op": "call_service",
                 "service": "/rosapi/nodes",
-                "type": "rosapi/Nodes",
+                "type": rosapi_type("Nodes"),
                 "args": {},
                 "id": "get_nodes_request",
             }
@@ -218,7 +219,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     node_details_message = {
                         "op": "call_service",
                         "service": "/rosapi/node_details",
-                        "type": "rosapi/NodeDetails",
+                        "type": rosapi_type("NodeDetails"),
                         "args": {"node": node},
                         "id": f"get_node_details_{node.replace('/', '_')}",
                     }
@@ -284,7 +285,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             services_message = {
                 "op": "call_service",
                 "service": "/rosapi/services",
-                "type": "rosapi_msgs/srv/Services",
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "inspect_all_services_request_1",
             }
@@ -313,7 +314,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     type_message = {
                         "op": "call_service",
                         "service": "/rosapi/service_type",
-                        "type": "rosapi_msgs/srv/ServiceType",
+                        "type": rosapi_type("ServiceType"),
                         "args": {"service": service},
                         "id": f"get_type_{service.replace('/', '_')}",
                     }
@@ -330,7 +331,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     provider_message = {
                         "op": "call_service",
                         "service": "/rosapi/service_node",
-                        "type": "rosapi_msgs/srv/ServiceNode",
+                        "type": rosapi_type("ServiceNode"),
                         "args": {"service": service},
                         "id": f"get_provider_{service.replace('/', '_')}",
                     }
@@ -400,7 +401,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             topics_message = {
                 "op": "call_service",
                 "service": "/rosapi/topics",
-                "type": "rosapi/Topics",
+                "type": rosapi_type("Topics"),
                 "args": {},
                 "id": "inspect_all_topics_request_1",
             }
@@ -433,7 +434,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     publishers_message = {
                         "op": "call_service",
                         "service": "/rosapi/publishers",
-                        "type": "rosapi/Publishers",
+                        "type": rosapi_type("Publishers"),
                         "args": {"topic": topic},
                         "id": f"get_publishers_{topic.replace('/', '_')}",
                     }
@@ -455,7 +456,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     subscribers_message = {
                         "op": "call_service",
                         "service": "/rosapi/subscribers",
-                        "type": "rosapi/Subscribers",
+                        "type": rosapi_type("Subscribers"),
                         "args": {"topic": topic},
                         "id": f"get_subscribers_{topic.replace('/', '_')}",
                     }
@@ -518,7 +519,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 services_message = {
                     "op": "call_service",
                     "service": "/rosapi/services",
-                    "type": "rosapi/Services",
+                    "type": rosapi_type("Services"),
                     "args": {},
                     "id": "check_services_for_inspect_actions",
                 }
@@ -573,7 +574,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 actions_message = {
                     "op": "call_service",
                     "service": "/rosapi/action_servers",
-                    "type": "rosapi/ActionServers",
+                    "type": rosapi_type("ActionServers"),
                     "args": {},
                     "id": "inspect_all_actions_request_1",
                 }
@@ -613,7 +614,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         interfaces_message = {
                             "op": "call_service",
                             "service": "/rosapi/interfaces",
-                            "type": "rosapi/Interfaces",
+                            "type": rosapi_type("Interfaces"),
                             "args": {},
                             "id": f"get_interfaces_{action.replace('/', '_')}",
                         }

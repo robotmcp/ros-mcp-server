@@ -9,6 +9,7 @@ from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _safe_get_values
+from ros_mcp.utils.rosapi_types import rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -43,7 +44,7 @@ def register_action_tools(
             services_message = {
                 "op": "call_service",
                 "service": "/rosapi/services",
-                "type": "rosapi/Services",
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "check_services_for_get_actions",
             }
@@ -79,7 +80,7 @@ def register_action_tools(
         message = {
             "op": "call_service",
             "service": "/rosapi/action_servers",
-            "type": "rosapi/ActionServers",
+            "type": rosapi_type("ActionServers"),
             "args": {},
             "id": "get_actions_request_1",
         }
@@ -144,7 +145,7 @@ def register_action_tools(
             services_message = {
                 "op": "call_service",
                 "service": "/rosapi/services",
-                "type": "rosapi/Services",
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "check_services_for_get_action_type",
             }
@@ -192,7 +193,7 @@ def register_action_tools(
             interfaces_message = {
                 "op": "call_service",
                 "service": "/rosapi/interfaces",
-                "type": "rosapi/Interfaces",
+                "type": rosapi_type("Interfaces"),
                 "args": {},
                 "id": f"get_interfaces_for_action_{action.replace('/', '_')}",
             }
@@ -241,7 +242,7 @@ def register_action_tools(
             services_message = {
                 "op": "call_service",
                 "service": "/rosapi/services",
-                "type": "rosapi/Services",
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "check_services_for_action_details",
             }
@@ -287,7 +288,7 @@ def register_action_tools(
         goal_message = {
             "op": "call_service",
             "service": "/rosapi/action_goal_details",
-            "type": "rosapi_msgs/srv/ActionGoalDetails",
+            "type": rosapi_type("ActionGoalDetails"),
             "args": {"type": action_type},
             "id": f"get_action_goal_details_{action_type.replace('/', '_')}",
         }
@@ -328,7 +329,7 @@ def register_action_tools(
         result_message = {
             "op": "call_service",
             "service": "/rosapi/action_result_details",
-            "type": "rosapi_msgs/srv/ActionResultDetails",
+            "type": rosapi_type("ActionResultDetails"),
             "args": {"type": action_type},
             "id": f"get_action_result_details_{action_type.replace('/', '_')}",
         }
@@ -369,7 +370,7 @@ def register_action_tools(
         feedback_message = {
             "op": "call_service",
             "service": "/rosapi/action_feedback_details",
-            "type": "rosapi_msgs/srv/ActionFeedbackDetails",
+            "type": rosapi_type("ActionFeedbackDetails"),
             "args": {"type": action_type},
             "id": f"get_action_feedback_details_{action_type.replace('/', '_')}",
         }
