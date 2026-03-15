@@ -8,7 +8,7 @@ services:
       - "9090:9090"
     healthcheck:
       test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9090"]
-      interval: 2s
+      interval: 3s
       timeout: 5s
-      retries: 15
-      start_period: 10s
+      retries: 20
+      start_period: 15s
