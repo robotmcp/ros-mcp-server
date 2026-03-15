@@ -22,7 +22,9 @@ class TestGetNodes:
 
 
 class TestGetNodeDetails:
-    @pytest.mark.skip(reason="rosapi_node on Humble crashes on node_details (TypeError: cannot unpack non-iterable NoneType)")
+    @pytest.mark.skip(
+        reason="rosapi_node on Humble crashes on node_details (TypeError: cannot unpack non-iterable NoneType)"
+    )
     def test_turtlesim_details(self, tools):
         # Find the turtlesim node name
         nodes_result = tools["get_nodes"]()
@@ -34,7 +36,9 @@ class TestGetNodeDetails:
         assert result["subscriber_count"] > 0
         assert result["service_count"] > 0
 
-    @pytest.mark.skip(reason="rosapi_node on Humble crashes on node_details (TypeError: cannot unpack non-iterable NoneType)")
+    @pytest.mark.skip(
+        reason="rosapi_node on Humble crashes on node_details (TypeError: cannot unpack non-iterable NoneType)"
+    )
     def test_nonexistent_node(self, tools):
         result = tools["get_node_details"](node="/nonexistent_node_xyz")
         assert "error" in result

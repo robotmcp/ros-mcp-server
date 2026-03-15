@@ -30,8 +30,14 @@ _TYPE_MAP: dict[str, tuple[str, str]] = {
     # --- services ---
     "Services": ("rosapi/Services", "rosapi_msgs/srv/Services"),
     "ServiceType": ("rosapi/ServiceType", "rosapi_msgs/srv/ServiceType"),
-    "ServiceRequestDetails": ("rosapi/ServiceRequestDetails", "rosapi_msgs/srv/ServiceRequestDetails"),
-    "ServiceResponseDetails": ("rosapi/ServiceResponseDetails", "rosapi_msgs/srv/ServiceResponseDetails"),
+    "ServiceRequestDetails": (
+        "rosapi/ServiceRequestDetails",
+        "rosapi_msgs/srv/ServiceRequestDetails",
+    ),
+    "ServiceResponseDetails": (
+        "rosapi/ServiceResponseDetails",
+        "rosapi_msgs/srv/ServiceResponseDetails",
+    ),
     "ServiceNode": ("rosapi/ServiceNode", "rosapi_msgs/srv/ServiceNode"),
     # --- parameters ---
     "GetParam": ("rosapi/GetParam", "rosapi_msgs/srv/GetParam"),
@@ -43,7 +49,10 @@ _TYPE_MAP: dict[str, tuple[str, str]] = {
     "Interfaces": ("rosapi/Interfaces", "rosapi/Interfaces"),
     "ActionGoalDetails": ("rosapi/ActionGoalDetails", "rosapi_msgs/srv/ActionGoalDetails"),
     "ActionResultDetails": ("rosapi/ActionResultDetails", "rosapi_msgs/srv/ActionResultDetails"),
-    "ActionFeedbackDetails": ("rosapi/ActionFeedbackDetails", "rosapi_msgs/srv/ActionFeedbackDetails"),
+    "ActionFeedbackDetails": (
+        "rosapi/ActionFeedbackDetails",
+        "rosapi_msgs/srv/ActionFeedbackDetails",
+    ),
 }
 
 # Distros that use the new rosapi_msgs/srv/ format
@@ -129,6 +138,6 @@ def rosapi_type(short_name: str) -> str:
     Example::
 
         rosapi_type("Services")  # → "rosapi/Services" on Humble
-                                 # → "rosapi_msgs/srv/Services" on Jazzy
+        # → "rosapi_msgs/srv/Services" on Jazzy
     """
     return _resolver.get(short_name)
