@@ -105,7 +105,9 @@ class RosapiTypeResolver:
                     self._service_prefix = prefix
                     logger.info(
                         "Detected ROS distro '%s' → prefix=%s, jazzy_types=%s",
-                        distro, prefix, is_jazzy,
+                        distro,
+                        prefix,
+                        is_jazzy,
                     )
                     return
             except Exception as e:
@@ -160,7 +162,7 @@ def rosapi_type(short_name: str) -> str:
     Example::
 
         rosapi_type("Services")  # → "rosapi/Services" on Humble
-                                 # → "rosapi_msgs/srv/Services" on Jazzy
+        # → "rosapi_msgs/srv/Services" on Jazzy
     """
     return _resolver.get_type(short_name)
 
@@ -171,6 +173,6 @@ def rosapi_service(service_name: str) -> str:
     Example::
 
         rosapi_service("nodes")  # → "/rosapi/nodes" on Humble
-                                 # → "/rosapi_node/nodes" on Jazzy
+        # → "/rosapi_node/nodes" on Jazzy
     """
     return _resolver.get_service(service_name)
