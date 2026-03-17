@@ -1,10 +1,12 @@
-"""Version-aware rosapi service type resolver.
+"""Version-aware rosapi service type and path resolver.
 
-Humble (and earlier) rosbridge registers services with short types like ``rosapi/Topics``.
-Jazzy (and later) uses fully-qualified types like ``rosapi_msgs/srv/Topics``.
+Humble (and earlier) rosbridge registers services under ``/rosapi/`` with
+short types like ``rosapi/Topics``.
+Jazzy (and later) registers under ``/rosapi_node/`` with fully-qualified
+types like ``rosapi_msgs/srv/Topics``.
 
-This module probes the running rosbridge *once* and caches the correct format so
-every subsequent call gets the right type string automatically.
+This module probes the running rosbridge *once* and caches the correct
+format so every subsequent call gets the right type and path automatically.
 """
 
 from __future__ import annotations
@@ -55,67 +57,87 @@ _TYPE_MAP: dict[str, tuple[str, str]] = {
     ),
 }
 
-# Distros that use the new rosapi_msgs/srv/ format
+# Distros that use the new rosapi_msgs/srv/ format and /rosapi_node/ prefix
 _JAZZY_AND_LATER = {"jazzy", "kilted", "rolling"}
+
+# Service path prefixes per distro
+_HUMBLE_PREFIX = "/rosapi"
+_JAZZY_PREFIX = "/rosapi_node"
 
 
 class RosapiTypeResolver:
-    """Resolves rosapi service type strings based on the connected ROS distro."""
+    """Resolves rosapi service type strings and paths based on the connected ROS distro."""
 
     def __init__(self) -> None:
         self._use_jazzy_format: Optional[bool] = None
         self._distro: str = ""
+        self._service_prefix: str = _HUMBLE_PREFIX
 
     def detect(self, ws_manager: WebSocketManager) -> None:
-        """Probe rosbridge to determine the ROS distro and set the type format."""
-        try:
-            request = {
-                "op": "call_service",
-                "id": "rosapi_type_detect",
-                "service": "/rosapi/get_ros_version",
-                "args": {},
-            }
-            with ws_manager:
-                response = ws_manager.request(request)
+        """Probe rosbridge to determine the correct service prefix and type format.
 
-            values = response.get("values") if response else None
-            if isinstance(values, dict):
-                distro = str(values.get("distro", "")).strip().lower()
-                self._distro = distro
-                self._use_jazzy_format = distro in _JAZZY_AND_LATER
-                logger.info(
-                    "Detected ROS distro '%s' → %s type format",
-                    distro,
-                    "jazzy" if self._use_jazzy_format else "humble",
-                )
-                return
-        except Exception as e:
-            logger.warning("Failed to detect ROS distro: %s", e)
-
-        # Default to humble (short) format if detection fails
-        self._use_jazzy_format = False
-        logger.info("Defaulting to humble type format")
-
-    def get(self, short_name: str) -> str:
-        """Return the correct type string for the given short name.
-
-        Args:
-            short_name: The short type name, e.g. ``"Services"``, ``"TopicType"``.
-
-        Returns:
-            The full type string appropriate for the detected ROS distro.
+        Tries ``get_ros_version`` under each known prefix (/rosapi/ then /rosapi_node/).
+        Checks that the response contains actual version data (not just an error dict).
         """
+        for prefix, is_jazzy in ((_HUMBLE_PREFIX, False), (_JAZZY_PREFIX, True)):
+            try:
+                request = {
+                    "op": "call_service",
+                    "id": "rosapi_prefix_detect",
+                    "service": f"{prefix}/get_ros_version",
+                    "args": {},
+                }
+                with ws_manager:
+                    response = ws_manager.request(request)
+
+                if not response or not isinstance(response, dict):
+                    continue
+
+                # On failure rosbridge returns result=false
+                if response.get("result") is False:
+                    continue
+
+                values = response.get("values")
+                if isinstance(values, dict) and "distro" in values:
+                    distro = str(values["distro"]).strip().lower()
+                    self._distro = distro
+                    self._use_jazzy_format = is_jazzy
+                    self._service_prefix = prefix
+                    logger.info(
+                        "Detected ROS distro '%s' → prefix=%s, jazzy_types=%s",
+                        distro, prefix, is_jazzy,
+                    )
+                    return
+            except Exception as e:
+                logger.debug("Detection with prefix %s failed: %s", prefix, e)
+
+        # Default to humble format if detection fails
+        self._use_jazzy_format = False
+        self._service_prefix = _HUMBLE_PREFIX
+        logger.info("Defaulting to humble format (prefix=%s)", self._service_prefix)
+
+    def get_type(self, short_name: str) -> str:
+        """Return the correct type string for the given short name."""
         if self._use_jazzy_format is None:
-            # Not yet detected — default to humble format
             self._use_jazzy_format = False
 
         entry = _TYPE_MAP.get(short_name)
         if entry is None:
-            # Unknown type — return as-is with rosapi/ prefix
             return f"rosapi/{short_name}"
 
         humble_type, jazzy_type = entry
         return jazzy_type if self._use_jazzy_format else humble_type
+
+    def get_service(self, service_name: str) -> str:
+        """Return the full service path for a rosapi service.
+
+        Args:
+            service_name: Short service name, e.g. ``"nodes"``, ``"topic_type"``.
+
+        Returns:
+            Full path like ``"/rosapi/nodes"`` or ``"/rosapi_node/nodes"``.
+        """
+        return f"{self._service_prefix}/{service_name}"
 
 
 # Module-level singleton
@@ -138,6 +160,17 @@ def rosapi_type(short_name: str) -> str:
     Example::
 
         rosapi_type("Services")  # → "rosapi/Services" on Humble
-        # → "rosapi_msgs/srv/Services" on Jazzy
+                                 # → "rosapi_msgs/srv/Services" on Jazzy
     """
-    return _resolver.get(short_name)
+    return _resolver.get_type(short_name)
+
+
+def rosapi_service(service_name: str) -> str:
+    """Get the version-appropriate rosapi service path.
+
+    Example::
+
+        rosapi_service("nodes")  # → "/rosapi/nodes" on Humble
+                                 # → "/rosapi_node/nodes" on Jazzy
+    """
+    return _resolver.get_service(service_name)

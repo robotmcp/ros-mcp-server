@@ -4,7 +4,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _check_response, _safe_get_values
-from ros_mcp.utils.rosapi_types import rosapi_type
+from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -31,7 +31,7 @@ def register_service_tools(
         """
         message = {
             "op": "call_service",
-            "service": "/rosapi/services",
+            "service": rosapi_service("services"),
             "type": rosapi_type("Services"),
             "args": {},
             "id": "get_services_request_1",
@@ -75,7 +75,7 @@ def register_service_tools(
 
         message = {
             "op": "call_service",
-            "service": "/rosapi/service_type",
+            "service": rosapi_service("service_type"),
             "type": rosapi_type("ServiceType"),
             "args": {"service": service},
             "id": f"get_service_type_request_{service.replace('/', '_')}",
@@ -135,7 +135,7 @@ def register_service_tools(
             # First get the service type
             type_message = {
                 "op": "call_service",
-                "service": "/rosapi/service_type",
+                "service": rosapi_service("service_type"),
                 "type": rosapi_type("ServiceType"),
                 "args": {"service": service},
                 "id": f"get_service_type_{service.replace('/', '_')}",
@@ -158,7 +158,7 @@ def register_service_tools(
             # Get request details
             request_message = {
                 "op": "call_service",
-                "service": "/rosapi/service_request_details",
+                "service": rosapi_service("service_request_details"),
                 "type": rosapi_type("ServiceRequestDetails"),
                 "args": {"type": result["type"]},
                 "id": f"get_service_details_request_{result['type'].replace('/', '_')}",
@@ -180,7 +180,7 @@ def register_service_tools(
             # Get response details
             response_message = {
                 "op": "call_service",
-                "service": "/rosapi/service_response_details",
+                "service": rosapi_service("service_response_details"),
                 "type": rosapi_type("ServiceResponseDetails"),
                 "args": {"type": result["type"]},
                 "id": f"get_service_details_response_{result['type'].replace('/', '_')}",
@@ -202,7 +202,7 @@ def register_service_tools(
             # Get service providers
             provider_message = {
                 "op": "call_service",
-                "service": "/rosapi/service_node",
+                "service": rosapi_service("service_node"),
                 "type": rosapi_type("ServiceNode"),
                 "args": {"service": service},
                 "id": f"get_service_providers_request_{service.replace('/', '_')}",

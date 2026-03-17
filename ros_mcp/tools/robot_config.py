@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
+from ros_mcp.utils.rosapi_types import rosapi_service
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -89,7 +90,7 @@ def register_robot_config_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> N
         ros2_request = {
             "op": "call_service",
             "id": "ros2_version_check",
-            "service": "/rosapi/get_ros_version",
+            "service": rosapi_service("get_ros_version"),
             "args": {},
         }
 
@@ -103,7 +104,7 @@ def register_robot_config_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> N
             ros1_request = {
                 "op": "call_service",
                 "id": "ros1_distro_check",
-                "service": "/rosapi/get_param",
+                "service": rosapi_service("get_param"),
                 "args": {"name": "/rosdistro"},
             }
             response = ws_manager.request(ros1_request)

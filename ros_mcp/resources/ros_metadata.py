@@ -3,7 +3,7 @@
 import json
 
 from ros_mcp.utils.response import _extract_error, _safe_get_values
-from ros_mcp.utils.rosapi_types import rosapi_type
+from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -33,7 +33,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 ros2_request = {
                     "op": "call_service",
                     "id": "ros2_version_check",
-                    "service": "/rosapi/get_ros_version",
+                    "service": rosapi_service("get_ros_version"),
                     "args": {},
                 }
                 with ws_manager:
@@ -49,7 +49,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         ros1_request = {
                             "op": "call_service",
                             "id": "ros1_distro_check",
-                            "service": "/rosapi/get_param",
+                            "service": rosapi_service("get_param"),
                             "args": {"name": "/rosdistro"},
                         }
                         response = ws_manager.request(ros1_request)
@@ -67,7 +67,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             try:
                 topics_message = {
                     "op": "call_service",
-                    "service": "/rosapi/topics",
+                    "service": rosapi_service("topics"),
                     "type": rosapi_type("Topics"),
                     "args": {},
                     "id": "get_topics_request",
@@ -89,7 +89,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             try:
                 services_message = {
                     "op": "call_service",
-                    "service": "/rosapi/services",
+                    "service": rosapi_service("services"),
                     "type": rosapi_type("Services"),
                     "args": {},
                     "id": "get_services_request",
@@ -119,7 +119,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             try:
                 nodes_message = {
                     "op": "call_service",
-                    "service": "/rosapi/nodes",
+                    "service": rosapi_service("nodes"),
                     "type": rosapi_type("Nodes"),
                     "args": {},
                     "id": "get_nodes_request",
@@ -136,7 +136,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             try:
                 params_message = {
                     "op": "call_service",
-                    "service": "/rosapi/get_param_names",
+                    "service": rosapi_service("get_param_names"),
                     "type": rosapi_type("GetParamNames"),
                     "args": {},
                     "id": "get_parameters_request",
@@ -189,7 +189,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             # First get all nodes
             nodes_message = {
                 "op": "call_service",
-                "service": "/rosapi/nodes",
+                "service": rosapi_service("nodes"),
                 "type": rosapi_type("Nodes"),
                 "args": {},
                 "id": "get_nodes_request",
@@ -218,7 +218,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     # Get node details (publishers, subscribers, services)
                     node_details_message = {
                         "op": "call_service",
-                        "service": "/rosapi/node_details",
+                        "service": rosapi_service("node_details"),
                         "type": rosapi_type("NodeDetails"),
                         "args": {"node": node},
                         "id": f"get_node_details_{node.replace('/', '_')}",
@@ -284,7 +284,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             # First get all services
             services_message = {
                 "op": "call_service",
-                "service": "/rosapi/services",
+                "service": rosapi_service("services"),
                 "type": rosapi_type("Services"),
                 "args": {},
                 "id": "inspect_all_services_request_1",
@@ -313,7 +313,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     # Get service type
                     type_message = {
                         "op": "call_service",
-                        "service": "/rosapi/service_type",
+                        "service": rosapi_service("service_type"),
                         "type": rosapi_type("ServiceType"),
                         "args": {"service": service},
                         "id": f"get_type_{service.replace('/', '_')}",
@@ -330,7 +330,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     # Get service provider (using service_node instead of service_providers)
                     provider_message = {
                         "op": "call_service",
-                        "service": "/rosapi/service_node",
+                        "service": rosapi_service("service_node"),
                         "type": rosapi_type("ServiceNode"),
                         "args": {"service": service},
                         "id": f"get_provider_{service.replace('/', '_')}",
@@ -400,7 +400,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             # First get all topics
             topics_message = {
                 "op": "call_service",
-                "service": "/rosapi/topics",
+                "service": rosapi_service("topics"),
                 "type": rosapi_type("Topics"),
                 "args": {},
                 "id": "inspect_all_topics_request_1",
@@ -433,7 +433,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     # Get publishers for this topic
                     publishers_message = {
                         "op": "call_service",
-                        "service": "/rosapi/publishers",
+                        "service": rosapi_service("publishers"),
                         "type": rosapi_type("Publishers"),
                         "args": {"topic": topic},
                         "id": f"get_publishers_{topic.replace('/', '_')}",
@@ -455,7 +455,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     # Get subscribers for this topic
                     subscribers_message = {
                         "op": "call_service",
-                        "service": "/rosapi/subscribers",
+                        "service": rosapi_service("subscribers"),
                         "type": rosapi_type("Subscribers"),
                         "args": {"topic": topic},
                         "id": f"get_subscribers_{topic.replace('/', '_')}",
@@ -512,13 +512,13 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
         """
         try:
             # Check if required action services are available
-            required_services = ["/rosapi/action_servers"]
+            required_services = [rosapi_service("action_servers")]
 
             with ws_manager:
                 # Get available services to check compatibility
                 services_message = {
                     "op": "call_service",
-                    "service": "/rosapi/services",
+                    "service": rosapi_service("services"),
                     "type": rosapi_type("Services"),
                     "args": {},
                     "id": "check_services_for_inspect_actions",
@@ -573,7 +573,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 # First get all actions
                 actions_message = {
                     "op": "call_service",
-                    "service": "/rosapi/action_servers",
+                    "service": rosapi_service("action_servers"),
                     "type": rosapi_type("ActionServers"),
                     "args": {},
                     "id": "inspect_all_actions_request_1",
@@ -613,7 +613,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         # Try to derive from interfaces
                         interfaces_message = {
                             "op": "call_service",
-                            "service": "/rosapi/interfaces",
+                            "service": rosapi_service("interfaces"),
                             "type": rosapi_type("Interfaces"),
                             "args": {},
                             "id": f"get_interfaces_{action.replace('/', '_')}",
