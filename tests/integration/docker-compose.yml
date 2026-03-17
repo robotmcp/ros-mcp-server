@@ -2,7 +2,7 @@ services:
   ros2:
     build:
       context: ./docker
-      dockerfile: Dockerfile.ros2-humble
+      dockerfile: Dockerfile.ros2-jazzy
     container_name: ros-mcp-test-ros2
     ports:
       - "9090:9090"
