@@ -5,6 +5,9 @@ on:
   push:
     branches: [develop, main]
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   integration:
     runs-on: ubuntu-latest
@@ -48,6 +51,9 @@ jobs:
           ROS_CONTAINER_NAME=${{ matrix.container-name }} \
           docker compose -f tests/integration/docker-compose.yml up --build -d --wait
         timeout-minutes: 10
+
+      - name: Detect ROS version
+        run: uv run python tests/integration/test_quick_detect.py
 
       - name: Run integration tests
         run: |
