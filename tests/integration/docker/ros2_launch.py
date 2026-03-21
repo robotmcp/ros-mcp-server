@@ -39,7 +39,7 @@ def generate_launch_description():
             Node(
                 package="rosapi",
                 executable="rosapi_node",
-                name="rosapi_node",
+                name="rosapi",
                 output="screen",
             ),
         ]

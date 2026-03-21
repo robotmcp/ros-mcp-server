@@ -23,7 +23,7 @@ _DISTRO_TO_PREFIX = {
     "melodic": "/rosapi",
     "noetic": "/rosapi",
     "humble": "/rosapi",
-    "jazzy": "/rosapi_node",
+    "jazzy": "/rosapi",
 }
 
 

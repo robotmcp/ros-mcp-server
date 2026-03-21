@@ -3,9 +3,9 @@
 ROS 1 uses short type strings like ``rosapi/Topics``.
 ROS 2 uses fully-qualified types like ``rosapi_msgs/srv/Topics``.
 
-The service path prefix varies independently of ROS version:
-- ``/rosapi/`` — ROS 1 Noetic, ROS 2 Humble
-- ``/rosapi_node/`` — ROS 2 Jazzy and later
+The service path prefix depends on the rosapi node name, not the ROS version:
+- ``/rosapi/`` — default (Noetic, Humble, Jazzy with default launch)
+- ``/rosapi_node/`` — when rosapi is launched with ``name:=rosapi_node``
 
 This module probes the running rosbridge *once* to discover both the
 working prefix and the ROS version, then caches the result.
