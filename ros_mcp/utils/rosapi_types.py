@@ -1,14 +1,19 @@
 """Version-aware rosapi service type and path resolver.
 
-ROS 1 uses short type strings like ``rosapi/Topics``.
-ROS 2 uses fully-qualified types like ``rosapi_msgs/srv/Topics``.
+Detection strategy:
+- ``get_ros_version`` service exists → **ROS 2** (this service is ROS 2-only)
+- ``get_ros_version`` absent, ``get_param /rosdistro`` responds → **ROS 1**
+- Neither responds → ``DetectionError``
 
-The service path prefix depends on the rosapi node name, not the ROS version:
-- ``/rosapi/`` — default (Noetic, Humble, Jazzy with default launch)
-- ``/rosapi_node/`` — when rosapi is launched with ``name:=rosapi_node``
+Version determines the type format:
+- ROS 1: ``rosapi/Topics``
+- ROS 2: ``rosapi_msgs/srv/Topics``
 
-This module probes the running rosbridge *once* to discover both the
-working prefix and the ROS version, then caches the result.
+The service path prefix (``/rosapi/`` vs ``/rosapi_node/``) depends on the
+rosapi node name in the launch file, not the ROS version. Both are probed
+automatically.
+
+This module probes the running rosbridge *once* and caches the result.
 """
 
 from __future__ import annotations
