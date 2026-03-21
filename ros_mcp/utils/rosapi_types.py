@@ -1,13 +1,14 @@
 """Version-aware rosapi service type and path resolver.
 
-ROS 1 rosbridge registers services under ``/rosapi/`` with short types
-like ``rosapi/Topics``.
+ROS 1 uses short type strings like ``rosapi/Topics``.
+ROS 2 uses fully-qualified types like ``rosapi_msgs/srv/Topics``.
 
-ROS 2 rosbridge registers services under ``/rosapi_node/`` with
-fully-qualified types like ``rosapi_msgs/srv/Topics``.
+The service path prefix varies independently of ROS version:
+- ``/rosapi/`` — ROS 1 Noetic, ROS 2 Humble
+- ``/rosapi_node/`` — ROS 2 Jazzy and later
 
-This module probes the running rosbridge *once* and caches the correct
-format so every subsequent call gets the right type and path automatically.
+This module probes the running rosbridge *once* to discover both the
+working prefix and the ROS version, then caches the result.
 """
 
 from __future__ import annotations
@@ -22,22 +23,20 @@ logger = logging.getLogger(__name__)
 
 
 class RosVersion(enum.Enum):
-    """Detected ROS version.
+    """Detected ROS version."""
 
-    Enum order defines probe order: ROS2 is tried first because some ROS 2
-    systems also expose a legacy /rosapi/ path for backward compatibility.
-    Probing ROS2 first avoids false positives.
-    """
-
-    ROS2 = "ros2"
     ROS1 = "ros1"
+    ROS2 = "ros2"
 
 
-# Per-version config
-_VERSION_CONFIG: dict[RosVersion, dict[str, str]] = {
-    RosVersion.ROS1: {"prefix": "/rosapi", "type_prefix": "rosapi"},
-    RosVersion.ROS2: {"prefix": "/rosapi_node", "type_prefix": "rosapi_msgs/srv"},
+# Type prefix per ROS version
+_TYPE_PREFIX: dict[RosVersion, str] = {
+    RosVersion.ROS1: "rosapi",
+    RosVersion.ROS2: "rosapi_msgs/srv",
 }
+
+# Known service path prefixes to probe (order matters: most common first)
+_PREFIXES_TO_PROBE = ["/rosapi", "/rosapi_node"]
 
 
 class RosapiTypeResolver:
@@ -46,21 +45,21 @@ class RosapiTypeResolver:
     def __init__(self) -> None:
         self._version: RosVersion | None = None
         self._distro: str = ""
+        self._service_prefix: str = "/rosapi"
 
     def detect(self, ws_manager: WebSocketManager) -> None:
-        """Probe rosbridge to determine the ROS version (1 vs 2).
+        """Probe rosbridge to discover the ROS version and service prefix.
 
-        Tries ``get_ros_version`` under each known prefix.
-        Both probes share a single WebSocket connection.
+        Tries ``get_ros_version`` under each known prefix (``/rosapi/``,
+        ``/rosapi_node/``). The first successful response determines the
+        prefix. The ``version`` field in the response determines ROS 1 vs 2.
         """
         with ws_manager:
-            for version in RosVersion:
-                config = _VERSION_CONFIG[version]
-                prefix = config["prefix"]
+            for prefix in _PREFIXES_TO_PROBE:
                 try:
                     request: dict[str, Any] = {
                         "op": "call_service",
-                        "id": f"rosapi_detect_{version.value}",
+                        "id": f"rosapi_detect_{prefix.strip('/')}",
                         "service": f"{prefix}/get_ros_version",
                         "args": {},
                     }
@@ -72,27 +71,39 @@ class RosapiTypeResolver:
                         continue
 
                     values = response.get("values")
-                    if isinstance(values, dict) and "distro" in values:
-                        self._distro = str(values["distro"]).strip().lower()
-                        self._version = version
-                        logger.info(
-                            "Detected ROS distro '%s' (%s) → prefix=%s",
-                            self._distro,
-                            version.value,
-                            prefix,
-                        )
-                        return
+                    if not isinstance(values, dict):
+                        continue
+
+                    # Determine ROS version from the response
+                    raw_version = values.get("version")
+                    if raw_version is not None and int(raw_version) >= 2:
+                        self._version = RosVersion.ROS2
+                    else:
+                        self._version = RosVersion.ROS1
+
+                    self._distro = str(values.get("distro", "")).strip().lower()
+                    self._service_prefix = prefix
+
+                    logger.info(
+                        "Detected ROS distro '%s' (%s) → prefix=%s",
+                        self._distro,
+                        self._version.value,
+                        prefix,
+                    )
+                    return
                 except Exception as e:
-                    logger.debug("Detection with %s prefix %s failed: %s", version.value, prefix, e)
+                    logger.debug("Detection with prefix %s failed: %s", prefix, e)
 
         # Default to ROS 1 if detection fails
         self._version = RosVersion.ROS1
+        self._service_prefix = "/rosapi"
         logger.info("Defaulting to %s", self._version.value)
 
     def _reset(self) -> None:
         """Reset detection state. For testing only."""
         self._version = None
         self._distro = ""
+        self._service_prefix = "/rosapi"
 
     @property
     def version(self) -> RosVersion:
@@ -107,13 +118,12 @@ class RosapiTypeResolver:
 
     def get_type(self, short_name: str) -> str:
         """Return the version-appropriate type string."""
-        type_prefix = _VERSION_CONFIG[self.version]["type_prefix"]
+        type_prefix = _TYPE_PREFIX[self.version]
         return f"{type_prefix}/{short_name}"
 
     def get_service(self, service_name: str) -> str:
-        """Return the version-appropriate service path."""
-        prefix = _VERSION_CONFIG[self.version]["prefix"]
-        return f"{prefix}/{service_name}"
+        """Return the discovered service path."""
+        return f"{self._service_prefix}/{service_name}"
 
 
 # Module-level singleton
@@ -156,7 +166,7 @@ def rosapi_service(service_name: str) -> str:
 
     Example::
 
-        rosapi_service("nodes")  # → "/rosapi/nodes" on ROS 1
-        # → "/rosapi_node/nodes" on ROS 2
+        rosapi_service("nodes")  # → "/rosapi/nodes" on Humble
+        # → "/rosapi_node/nodes" on Jazzy
     """
     return _resolver.get_service(service_name)
