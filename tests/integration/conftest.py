@@ -16,8 +16,17 @@ COMPOSE_DIR = Path(__file__).parent
 ROSBRIDGE_PORT = 9090
 
 _DOCKERFILE_MAP = {
+    "melodic": "Dockerfile.ros1-melodic",
     "noetic": "Dockerfile.ros1-noetic",
     "humble": "Dockerfile.ros2-humble",
+    "jazzy": "Dockerfile.ros2-jazzy",
+}
+
+_CONTAINER_NAME_MAP = {
+    "melodic": "integration-ros-melodic",
+    "noetic": "integration-ros-noetic",
+    "humble": "integration-ros2-humble",
+    "jazzy": "integration-ros2-jazzy",
 }
 
 
@@ -48,6 +57,12 @@ def pytest_addoption(parser):
         choices=list(_DOCKERFILE_MAP.keys()),
         help="ROS distro to test against (default: humble)",
     )
+    parser.addoption(
+        "--skip-compose",
+        action="store_true",
+        default=False,
+        help="Skip Docker compose up/down — assume container is already running",
+    )
 
 
 def pytest_configure(config):
@@ -67,11 +82,19 @@ def ros_distro(request):
 
 
 @pytest.fixture(scope="session")
-def compose_up(require_docker, ros_distro):
-    """Start docker-compose with the selected ROS distro, yield, then tear down."""
+def compose_up(require_docker, ros_distro, request):
+    """Start docker-compose with the selected ROS distro, yield, then tear down.
+
+    If --skip-compose is set, assume the container is already running externally.
+    """
+    if request.config.getoption("--skip-compose"):
+        yield
+        return
+
     dockerfile = _DOCKERFILE_MAP[ros_distro]
+    container_name = _CONTAINER_NAME_MAP[ros_distro]
     compose_file = str(COMPOSE_DIR / "docker-compose.yml")
-    env = {**os.environ, "ROS_DOCKERFILE": dockerfile}
+    env = {**os.environ, "ROS_DOCKERFILE": dockerfile, "ROS_CONTAINER_NAME": container_name}
     try:
         result = subprocess.run(
             ["docker", "compose", "-f", compose_file, "up", "--build", "-d", "--wait"],

@@ -12,30 +12,43 @@ from ros_mcp.utils.rosapi_types import (
 
 pytestmark = [pytest.mark.integration]
 
-# Expected ROS version per distro
 _DISTRO_TO_VERSION = {
+    "melodic": RosVersion.ROS1,
     "noetic": RosVersion.ROS1,
     "humble": RosVersion.ROS2,
+    "jazzy": RosVersion.ROS2,
 }
 
-# Expected service prefix per distro (independent of ROS version)
 _DISTRO_TO_PREFIX = {
+    "melodic": "/rosapi",
     "noetic": "/rosapi",
     "humble": "/rosapi",
+    "jazzy": "/rosapi_node",
 }
 
 
 class TestDetectRosVersion:
     """Tests run after detect_rosapi_types() was called once in the ws fixture."""
 
-    def test_detection_succeeds(self, ws):
-        """detect_rosapi_types should have identified the connected rosbridge."""
-        assert get_distro() != "", "Distro should be detected (not empty)"
+    def test_version_is_detected(self, ws):
+        """Version should always be determined (never falls through)."""
+        version = get_ros_version()
+        assert version in (RosVersion.ROS1, RosVersion.ROS2)
 
     def test_version_matches_distro(self, ws, ros_distro):
         """get_ros_version() should return the correct enum for the launched distro."""
         expected = _DISTRO_TO_VERSION[ros_distro]
         assert get_ros_version() == expected
+
+    def test_distro_matches(self, ws, ros_distro):
+        """Detected distro should match the distro we launched."""
+        detected = get_distro()
+        assert detected == ros_distro, f"Expected distro '{ros_distro}', got '{detected}'"
+
+    def test_ros2_has_distro(self, ws):
+        """On ROS 2, distro should always be detected."""
+        if get_ros_version() == RosVersion.ROS2:
+            assert get_distro() != "", "ROS 2 should always report a distro"
 
     def test_service_prefix(self, ws, ros_distro):
         """Service prefix should match the known prefix for this distro."""

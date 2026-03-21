@@ -3,7 +3,7 @@ services:
     build:
       context: ./docker
       dockerfile: ${ROS_DOCKERFILE:-Dockerfile.ros2-humble}
-    container_name: ros-mcp-test
+    container_name: ${ROS_CONTAINER_NAME:-ros-mcp-test}
     ports:
       - "9090:9090"
     healthcheck:
