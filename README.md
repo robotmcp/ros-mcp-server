@@ -64,11 +64,11 @@ The MCP server enables the Claude to interpret images from the robot's cameras, 
 
 - **List topics, services, and message types** → explore everything available in your robot’s ROS environment.  
 - **View type definitions (incl. custom)** → understand the structure of any message.  
-- **Publish/subscribe to topics** → send commands or stream robot data in real time.  
-- **Call services (incl. custom)** → trigger robot functions directly.  
-- **Get/set parameters** → read or adjust robot settings on the fly.  
-- 🔜 **Action support** → upcoming support for ROS Actions.  
-- 🔜 **Permission controls** → manage access for safer deployments.  
+- **Publish/subscribe to topics** → send commands or stream robot data in real time.
+- **Call services (incl. custom)** → trigger robot functions directly.
+- **Get/set parameters** → read or adjust robot settings on the fly.
+- **Capture GUI windows** → let AI see RViz, Gazebo, TurtleSim, or any X11 window via `capture_window`.
+- 🔜 **Permission controls** → manage access for safer deployments.
 
 ---
 

@@ -25,8 +25,8 @@ Refactor **ros-mcp-server** to be importable as a library, enabling integration 
 ## Overview
 
 ### Current State
-- **Total tools**: 31
-- **Status**: ✅ **All tools migrated** (31/31)
+- **Total tools**: 33
+- **Status**: ✅ **All tools migrated** (33/33)
 - **Structure**: Modular structure with tools organized by category in `ros_mcp/tools/`
 
 ### Tool Categories Overview
@@ -41,6 +41,7 @@ Refactor **ros-mcp-server** to be importable as a library, enabling integration 
 | Parameters | `tools/parameters.py` | 7 | get_parameter, set_parameter, has_parameter, delete_parameter, get_parameters, inspect_all_parameters, get_parameter_details | ✅ Done |
 | Actions | `tools/actions.py` | 7 | get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal | ✅ Done |
 | Images | `tools/images.py` | 1 | analyze_previously_received_image | ✅ Done |
+| Window Capture | `tools/window_capture.py` | 2 | capture_window, list_windows | ✅ Done |
 | Utils | `tools/images.py` | - | convert_expects_image_hint, _encode_image_to_imagecontent (helper functions in images.py) | ✅ Done |
 
 ### Current Structure (Implemented)
@@ -59,7 +60,8 @@ ros-mcp-server/
 │   │   ├── nodes.py            # 3 tools ✅
 │   │   ├── parameters.py      # 7 tools ✅
 │   │   ├── actions.py          # 7 tools ✅
-│   │   └── images.py           # 1 tool + helper functions ✅
+│   │   ├── images.py           # 1 tool + helper functions ✅
+│   │   └── window_capture.py   # 2 tools (capture_window, list_windows) ✅
 │   └── utils/                  # Utility modules ✅
 │       ├── config_utils.py
 │       ├── network_utils.py
@@ -90,12 +92,13 @@ For each tool category:
 - **Parameters** (7 tools): `get_parameter`, `set_parameter`, `has_parameter`, `delete_parameter`, `get_parameters`, `inspect_all_parameters`, `get_parameter_details`
 - **Actions** (7 tools): `get_actions`, `get_action_type`, `get_action_details`, `get_action_status`, `inspect_all_actions`, `send_action_goal`, `cancel_action_goal`
 - **Images** (1 tool): `analyze_previously_received_image` + helper functions (`convert_expects_image_hint`, `_encode_image_to_imagecontent`)
+- **Window Capture** (2 tools): `capture_window`, `list_windows`
 
 ### Main Registration Function ✅
 
 **File**: `ros_mcp/tools/__init__.py`
 
-The public API function `register_all_tools()` registers all 31 tools:
+The public API function `register_all_tools()` registers all 33 tools:
 
 ```python
 def register_all_tools(
@@ -158,7 +161,7 @@ def register_all_tools(
 
 ### Phase 1 (Tool Migration) ✅
 
-- [X] All 31 tools registered in `register_all_tools()`
+- [X] All 33 tools registered in `register_all_tools()`
 - [X] Each category has its own module file
 - [X] Helper functions in `tools/images.py`
 - [X] `ros-mcp-server` works standalone
