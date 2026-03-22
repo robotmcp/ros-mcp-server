@@ -14,6 +14,7 @@ from ros_mcp.tools.parameters import register_parameter_tools
 from ros_mcp.tools.robot_config import register_robot_config_tools
 from ros_mcp.tools.services import register_service_tools
 from ros_mcp.tools.topics import register_topic_tools
+from ros_mcp.tools.window_capture import register_window_capture_tools
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -43,3 +44,4 @@ def register_all_tools(
     register_parameter_tools(mcp, ws_manager)
     register_service_tools(mcp, ws_manager)
     register_topic_tools(mcp, ws_manager)
+    register_window_capture_tools(mcp)
