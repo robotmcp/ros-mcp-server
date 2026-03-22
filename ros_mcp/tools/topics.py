@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.tools.images import convert_expects_image_hint
+from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
 
@@ -44,20 +45,17 @@ def register_topic_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return topic info if present
-        if response and "values" in response:
-            values = response["values"]
+        values = _safe_get_values(response)
+        if values is not None:
             topics = values.get("topics", [])
             types = values.get("types", [])
             return {"topics": topics, "types": types, "topic_count": len(topics)}
-        else:
-            return {"warning": "No topics found"}
+        return {"warning": "No topics found"}
 
     @mcp.tool(
         description=(
@@ -96,21 +94,18 @@ def register_topic_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return topic type if present
-        if response and "values" in response:
-            topic_type = response["values"].get("type", "")
+        values = _safe_get_values(response)
+        if values is not None:
+            topic_type = values.get("type", "")
             if topic_type:
                 return {"topic": topic, "type": topic_type}
-            else:
-                return {"error": f"Topic {topic} does not exist or has no type"}
-        else:
-            return {"error": f"Failed to get type for topic {topic}"}
+            return {"error": f"Topic {topic} does not exist or has no type"}
+        return {"error": f"Failed to get type for topic {topic}"}
 
     @mcp.tool(
         description=(
@@ -158,8 +153,9 @@ def register_topic_tools(
             }
 
             type_response = ws_manager.request(type_message)
-            if type_response and "values" in type_response:
-                result["type"] = type_response["values"].get("type", "unknown")
+            type_values = _safe_get_values(type_response)
+            if type_values is not None:
+                result["type"] = type_values.get("type", "unknown")
 
             # Get publishers for this topic
             publishers_message = {
@@ -171,8 +167,9 @@ def register_topic_tools(
             }
 
             publishers_response = ws_manager.request(publishers_message)
-            if publishers_response and "values" in publishers_response:
-                result["publishers"] = publishers_response["values"].get("publishers", [])
+            pub_values = _safe_get_values(publishers_response)
+            if pub_values is not None:
+                result["publishers"] = pub_values.get("publishers", [])
 
             # Get subscribers for this topic
             subscribers_message = {
@@ -184,8 +181,9 @@ def register_topic_tools(
             }
 
             subscribers_response = ws_manager.request(subscribers_message)
-            if subscribers_response and "values" in subscribers_response:
-                result["subscribers"] = subscribers_response["values"].get("subscribers", [])
+            sub_values = _safe_get_values(subscribers_response)
+            if sub_values is not None:
+                result["subscribers"] = sub_values.get("subscribers", [])
 
         result["publisher_count"] = len(result["publishers"])
         result["subscriber_count"] = len(result["subscribers"])
@@ -235,15 +233,14 @@ def register_topic_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return message structure if present
-        if response and "values" in response:
-            typedefs = response["values"].get("typedefs", [])
+        values = _safe_get_values(response)
+        if values is not None:
+            typedefs = values.get("typedefs", [])
             if typedefs:
                 # Parse the structure into a more readable format
                 structure = {}
