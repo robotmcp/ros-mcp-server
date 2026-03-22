@@ -5,7 +5,6 @@ them as ImageContent, allowing the AI to see what's displayed.
 """
 
 import io
-import sys
 
 from fastmcp import FastMCP
 from mcp.types import ImageContent, ToolAnnotations
@@ -74,9 +73,7 @@ def _capture_window(win, resize_width=0, resize_height=0):
     raw = win.get_image(0, 0, geom.width, geom.height, X.ZPixmap, 0xFFFFFFFF)
 
     # BGRX -> RGB
-    img_np = np.frombuffer(raw.data, dtype=np.uint8).reshape(
-        geom.height, geom.width, 4
-    )
+    img_np = np.frombuffer(raw.data, dtype=np.uint8).reshape(geom.height, geom.width, 4)
     rgb = img_np[:, :, :3][:, :, ::-1].copy()
 
     pil_img = PILImage.fromarray(rgb)
@@ -183,14 +180,11 @@ def register_window_capture_tools(mcp: FastMCP) -> None:
                 available = _list_windows(root)
                 names = [w["name"] for w in available]
                 return {  # type: ignore[return-value]
-                    "error": f"Window '{window_name}' not found. "
-                    f"Available windows: {names}"
+                    "error": f"Window '{window_name}' not found. Available windows: {names}"
                 }
 
             win, wm_name, w, h = result
-            return _capture_window(
-                win, resize_width=resize_width, resize_height=resize_height
-            )
+            return _capture_window(win, resize_width=resize_width, resize_height=resize_height)
 
         except Exception as e:
             return {"error": f"Failed to capture window: {e}"}  # type: ignore[return-value]
