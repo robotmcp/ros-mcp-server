@@ -7,6 +7,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.network_utils import ping_ip_and_port
+from ros_mcp.utils.rosapi_types import detect_rosapi_types
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -54,6 +55,13 @@ def register_connection_tools(
 
         # Test connectivity
         ping_result = ping_ip_and_port(actual_ip, actual_port, ping_timeout, port_timeout)
+
+        # Detect ROS version and cache rosapi type resolver
+        if ping_result.get("port_open"):
+            try:
+                detect_rosapi_types(ws_manager)
+            except Exception:
+                pass  # Detection failure is non-fatal; tools will use defaults
 
         # Combine the results
         return {
