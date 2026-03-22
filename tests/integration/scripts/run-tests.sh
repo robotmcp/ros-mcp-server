@@ -1,7 +1,7 @@
 #!/bin/bash
-# Run the version detection test against a specific ROS distro.
-# Usage: ./tests/integration/scripts/run-detect-test.sh <distro>
-# Example: ./tests/integration/scripts/run-detect-test.sh noetic
+# Run integration tests against a specific ROS distro.
+# Usage: ./tests/integration/scripts/run-tests.sh <distro>
+# Example: ./tests/integration/scripts/run-tests.sh noetic
 
 set -e
 cd "$(git rev-parse --show-toplevel)"
@@ -54,7 +54,7 @@ uv run python tests/integration/test_quick_detect.py
 # Run pytest
 echo ""
 echo "--- Pytest ---"
-uv run pytest tests/integration/test_detect_version.py tests/integration/test_connection.py -v --ros-distro "$DISTRO"
+uv run pytest tests/integration/ -v --ros-distro "$DISTRO" --skip-compose
 
 # Tear down
 echo ""

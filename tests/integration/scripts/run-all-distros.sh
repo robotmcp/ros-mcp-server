@@ -1,5 +1,5 @@
 #!/bin/bash
-# Run version detection tests against ALL supported distros.
+# Run integration tests against ALL supported distros.
 # Usage: ./tests/integration/scripts/run-all-distros.sh
 
 set -e
@@ -15,7 +15,7 @@ for distro in "${DISTROS[@]}"; do
     echo "  Testing: $distro"
     echo "========================================"
     echo ""
-    if ./tests/integration/scripts/run-detect-test.sh "$distro"; then
+    if ./tests/integration/scripts/run-tests.sh "$distro"; then
         PASSED+=("$distro")
     else
         FAILED+=("$distro")

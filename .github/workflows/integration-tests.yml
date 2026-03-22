@@ -57,7 +57,7 @@ jobs:
 
       - name: Run integration tests
         run: |
-          uv run pytest tests/integration/test_detect_version.py -v \
+          uv run pytest tests/integration/ -v \
             --ros-distro ${{ matrix.ros-distro }} --skip-compose
 
       - name: Tear down
