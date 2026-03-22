@@ -392,13 +392,15 @@ def register_topic_tools(
                         if os.path.exists(image_path):
                             img = PILImage.open(image_path)
                             image_content = _encode_image_to_imagecontent(img)
-                            return ToolResult(content=[
-                                image_content,
-                                TextContent(
-                                    type="text",
-                                    text=f"Image saved to {image_path}. Use view_saved_image() to re-view it.",
-                                ),
-                            ])
+                            return ToolResult(
+                                content=[
+                                    image_content,
+                                    TextContent(
+                                        type="text",
+                                        text=f"Image saved to {image_path}. Use view_saved_image() to re-view it.",
+                                    ),
+                                ]
+                            )
                         return {"error": "Image received but file not found on disk"}
                     else:
                         return {"msg": msg_data.get("msg", {})}
@@ -563,11 +565,13 @@ def register_topic_tools(
         # Build summary as TextContent, then append all collected content blocks
         summary = TextContent(
             type="text",
-            text=json.dumps({
-                "topic": topic,
-                "collected_count": len(collected_messages),
-                "status_errors": status_errors,
-            }),
+            text=json.dumps(
+                {
+                    "topic": topic,
+                    "collected_count": len(collected_messages),
+                    "status_errors": status_errors,
+                }
+            ),
         )
         return ToolResult(content=[summary] + collected_messages)
 
