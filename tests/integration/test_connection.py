@@ -29,6 +29,8 @@ class TestConnectToRobot:
         """connect_to_robot to a closed port should report port closed."""
         result = tools["connect_to_robot"](ip="127.0.0.1", port=19999, port_timeout=1.0)
         assert result["connectivity_test"]["port_check"]["open"] is False
+        # Restore ws_manager to the correct port for subsequent tests
+        tools["connect_to_robot"](ip="127.0.0.1", port=9090)
 
 
 class TestPingRobots:
