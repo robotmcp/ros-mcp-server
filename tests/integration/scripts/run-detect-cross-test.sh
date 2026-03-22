@@ -2,8 +2,8 @@
 # Cross-test: start one distro's container, tell pytest it's a DIFFERENT distro.
 # The test should FAIL because the detector sees the real distro.
 #
-# Usage: ./tests/integration/scripts/run-cross-test.sh <real_distro> <fake_distro>
-# Example: ./tests/integration/scripts/run-cross-test.sh noetic humble
+# Usage: ./tests/integration/scripts/run-detect-cross-test.sh <real_distro> <fake_distro>
+# Example: ./tests/integration/scripts/run-detect-cross-test.sh noetic humble
 #   → Starts Noetic, runs pytest with --ros-distro humble → should FAIL
 
 set -e

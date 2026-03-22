@@ -1,6 +1,6 @@
 #!/bin/bash
 # Run integration tests against ALL supported distros.
-# Usage: ./tests/integration/scripts/run-all-distros.sh
+# Usage: ./tests/integration/scripts/run-tests-all-distros.sh
 
 set -e
 cd "$(git rev-parse --show-toplevel)"
