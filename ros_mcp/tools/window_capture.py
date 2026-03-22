@@ -4,6 +4,7 @@ Captures X11 GUI windows (e.g., TurtleSim, RViz, Gazebo) and returns
 them as ImageContent, allowing the AI to see what's displayed.
 """
 
+import base64
 import io
 
 from fastmcp import FastMCP
@@ -86,9 +87,6 @@ def _capture_window(win, resize_width=0, resize_height=0):
     buf = io.BytesIO()
     pil_img.save(buf, format="JPEG", quality=85)
     img_bytes = buf.getvalue()
-
-    import base64
-
     b64_data = base64.b64encode(img_bytes).decode("utf-8")
 
     return ImageContent(type="image", data=b64_data, mimeType="image/jpeg")
