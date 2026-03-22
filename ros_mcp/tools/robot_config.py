@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.config_utils import get_verified_robot_spec_util, get_verified_robots_list_util
+from ros_mcp.utils.rosapi_types import DetectionError, RosVersion, get_distro, get_ros_version
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -83,34 +84,14 @@ def register_robot_config_tools(mcp: FastMCP, ws_manager: WebSocketManager) -> N
         Detects the ROS version and distro via rosbridge WebSocket.
 
         Returns:
-            dict: {'version': <version or '1'>, 'distro': <distro>} or error info.
+            dict: {'version': '1' or '2', 'distro': '<distro name>'} or error info.
         """
-        # Try ROS2 detection
-        ros2_request = {
-            "op": "call_service",
-            "id": "ros2_version_check",
-            "service": "/rosapi/get_ros_version",
-            "args": {},
-        }
-
-        with ws_manager:
-            response = ws_manager.request(ros2_request)
-            values = response.get("values") if response else None
-            if isinstance(values, dict) and "version" in values:
-                return {"version": values.get("version"), "distro": values.get("distro")}
-
-            # Fallback to ROS1 detection
-            ros1_request = {
-                "op": "call_service",
-                "id": "ros1_distro_check",
-                "service": "/rosapi/get_param",
-                "args": {"name": "/rosdistro"},
+        try:
+            version = get_ros_version()
+            distro = get_distro()
+            return {
+                "version": "1" if version == RosVersion.ROS1 else "2",
+                "distro": distro,
             }
-            response = ws_manager.request(ros1_request)
-
-            value = response.get("values") if response else None
-            if value:
-                distro = value.get("value") if isinstance(value, dict) else value
-                distro_clean = str(distro).strip('"').replace("\\n", "").replace("\n", "")
-                return {"version": "1", "distro": distro_clean}
-            return {"error": "Could not detect ROS version"}
+        except DetectionError as e:
+            return {"error": f"Could not detect ROS version: {e}"}

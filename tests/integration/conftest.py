@@ -8,7 +8,9 @@ import warnings
 from pathlib import Path
 
 import pytest
+from fastmcp import FastMCP
 
+from ros_mcp.tools import register_all_tools
 from ros_mcp.utils.rosapi_types import detect_rosapi_types
 from ros_mcp.utils.websocket import WebSocketManager
 
@@ -124,3 +126,16 @@ def ws(compose_up):
     _wait_for_rosbridge(ROSBRIDGE_PORT, timeout=30)
     detect_rosapi_types(ws_manager)
     return ws_manager
+
+
+@pytest.fixture(scope="session")
+def tools(ws):
+    """MCP tool functions registered against the live ws_manager.
+
+    Returns a dict mapping tool name to its callable, e.g.:
+        tools["connect_to_robot"]() → dict
+        tools["get_nodes"]() → dict
+    """
+    mcp = FastMCP("test-ros-mcp")
+    register_all_tools(mcp, ws, rosbridge_ip="127.0.0.1", rosbridge_port=ROSBRIDGE_PORT)
+    return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}

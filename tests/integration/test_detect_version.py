@@ -82,3 +82,33 @@ class TestDetectRosVersion:
         assert "values" in response
         nodes = response["values"].get("nodes", [])
         assert len(nodes) > 0, "Should find at least one node (turtlesim)"
+
+
+class TestDetectRosVersionTool:
+    """Test the detect_ros_version MCP tool function directly."""
+
+    def test_tool_returns_version_and_distro(self, tools, ros_distro):
+        """detect_ros_version tool should return version and distro matching the container."""
+        result = tools["detect_ros_version"]()
+        assert "error" not in result, f"Tool returned error: {result}"
+        assert "version" in result
+        assert "distro" in result
+        assert result["distro"] == ros_distro
+
+    def test_tool_version_is_consistent_string(self, tools):
+        """version should always be a string ('1' or '2')."""
+        result = tools["detect_ros_version"]()
+        assert isinstance(result["version"], str)
+        assert result["version"] in ("1", "2")
+
+    def test_tool_ros2_version(self, tools):
+        """On ROS 2, version should be '2'."""
+        result = tools["detect_ros_version"]()
+        if get_ros_version() == RosVersion.ROS2:
+            assert result["version"] == "2"
+
+    def test_tool_ros1_version(self, tools):
+        """On ROS 1, version should be '1'."""
+        result = tools["detect_ros_version"]()
+        if get_ros_version() == RosVersion.ROS1:
+            assert result["version"] == "1"
