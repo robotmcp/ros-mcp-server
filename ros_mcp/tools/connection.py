@@ -57,7 +57,7 @@ def register_connection_tools(
         ping_result = ping_ip_and_port(actual_ip, actual_port, ping_timeout, port_timeout)
 
         # Detect ROS version and cache rosapi type resolver
-        if ping_result.get("port_open"):
+        if ping_result.get("port_check", {}).get("open"):
             try:
                 detect_rosapi_types(ws_manager)
             except Exception:

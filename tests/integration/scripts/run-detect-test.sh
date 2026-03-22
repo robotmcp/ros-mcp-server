@@ -54,7 +54,7 @@ uv run python tests/integration/test_quick_detect.py
 # Run pytest
 echo ""
 echo "--- Pytest ---"
-uv run pytest tests/integration/test_detect_version.py -v --ros-distro "$DISTRO"
+uv run pytest tests/integration/test_detect_version.py tests/integration/test_connection.py -v --ros-distro "$DISTRO"
 
 # Tear down
 echo ""
