@@ -3,8 +3,8 @@
 These tests verify get_nodes and get_node_details return correct
 results using rosapi_service()/rosapi_type() resolved paths.
 
-Note: get_node_details crashes rosapi_node on Humble and Jazzy (#273).
-Those tests are skipped on ROS 2.
+Note: get_node_details for nonexistent nodes crashes rosapi_node on
+ROS 2 (#273), causing a timeout. That test is skipped on ROS 2.
 """
 
 import pytest
@@ -62,18 +62,7 @@ class TestGetNodes:
 
 
 class TestGetNodeDetails:
-    """Verify get_node_details tool returns publishers/subscribers/services.
-
-    Note: get_node_details crashes rosapi_node on Humble and Jazzy (#273).
-    These tests only run on ROS 1.
-    """
-
-    @pytest.fixture(autouse=True)
-    def _skip_ros2(self, ws):
-        """Skip all tests in this class on ROS 2 due to #273."""
-        # ws ensures detect_rosapi_types() has been called
-        if get_ros_version() == RosVersion.ROS2:
-            pytest.skip("get_node_details crashes rosapi_node on ROS 2 (#273)")
+    """Verify get_node_details tool returns publishers/subscribers/services."""
 
     def test_turtlesim_details(self, ws):
         """get_node_details for /turtlesim should return publishers and subscribers."""
@@ -90,12 +79,13 @@ class TestGetNodeDetails:
         assert response.get("result") is not False, f"Service call failed: {response}"
         assert "values" in response
         values = response["values"]
-        # turtlesim publishes to /turtle1/pose and subscribes to /turtle1/cmd_vel
         assert len(values.get("publishing", [])) > 0, "turtlesim should have publishers"
         assert len(values.get("subscribing", [])) > 0, "turtlesim should have subscribers"
 
-    def test_nonexistent_node(self, ws):
-        """get_node_details for a nonexistent node should return empty or error."""
+    def test_nonexistent_node_ros1(self, ws):
+        """On ROS 1, get_node_details for a nonexistent node returns empty lists."""
+        if get_ros_version() == RosVersion.ROS2:
+            pytest.skip("nonexistent node crashes rosapi_node on ROS 2 (#273)")
         message = {
             "op": "call_service",
             "id": "test_node_details_missing",
@@ -105,10 +95,8 @@ class TestGetNodeDetails:
         }
         response = ws.request(message)
         assert response is not None
-        # Either result is false or values are empty
         if response.get("result") is not False:
             values = response.get("values", {})
-            publishing = values.get("publishing", [])
-            subscribing = values.get("subscribing", [])
-            services = values.get("services", [])
-            assert not publishing and not subscribing and not services
+            assert not values.get("publishing", [])
+            assert not values.get("subscribing", [])
+            assert not values.get("services", [])
