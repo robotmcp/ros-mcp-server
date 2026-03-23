@@ -7,7 +7,18 @@
 set -e
 cd "$(git rev-parse --show-toplevel)"
 
-DISTRO="${1:?Usage: $0 <melodic|noetic|humble|jazzy> [module]}"
+if [ -z "${1:-}" ]; then
+    MODULES=$(ls tests/integration/test_*.py 2>/dev/null \
+        | sed 's|tests/integration/test_||;s|\.py||' \
+        | grep -v quick_detect \
+        | tr '\n' ', ' | sed 's/,$//')
+    echo "Usage: $0 <distro> [module]"
+    echo "Distros: melodic, noetic, humble, jazzy"
+    echo "Modules: $MODULES"
+    exit 1
+fi
+
+DISTRO="$1"
 MODULE="${2:-}"
 COMPOSE="tests/integration/docker-compose.yml"
 
