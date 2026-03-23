@@ -1,4 +1,8 @@
-"""Integration test: verify ROS version detection against a live rosbridge."""
+"""Integration tests for detection tools.
+
+These tests verify the rosapi_types module (service prefix, type format,
+version detection) and the detect_ros_version MCP tool.
+"""
 
 import pytest
 
@@ -28,7 +32,7 @@ _DISTRO_TO_PREFIX = {
 
 
 class TestDetectRosVersion:
-    """Tests run after detect_rosapi_types() was called once in the ws fixture."""
+    """Verify rosapi_types module: version detection, service prefixes, type format."""
 
     def test_version_is_detected(self, ws):
         """Version should always be determined (never falls through)."""
