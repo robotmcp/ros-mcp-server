@@ -38,7 +38,9 @@ class TestGetNodes:
     def test_node_count_at_least_three(self, tools):
         """Should have at least 3 nodes: turtlesim, rosbridge, rosapi."""
         result = tools["get_nodes"]()
-        assert result["node_count"] >= 3, f"Expected >= 3, got {result['node_count']}: {result['nodes']}"
+        assert result["node_count"] >= 3, (
+            f"Expected >= 3, got {result['node_count']}: {result['nodes']}"
+        )
 
     def test_all_nodes_are_ros_names(self, tools):
         """Every node name should be a string starting with /."""
@@ -62,7 +64,9 @@ class TestGetNodeDetails:
         assert result["publisher_count"] > 0, "turtlesim should have publishers"
         assert result["subscriber_count"] > 0, "turtlesim should have subscribers"
         assert any("pose" in p for p in result["publishers"]), f"No pose in {result['publishers']}"
-        assert any("cmd_vel" in s for s in result["subscribers"]), f"No cmd_vel in {result['subscribers']}"
+        assert any("cmd_vel" in s for s in result["subscribers"]), (
+            f"No cmd_vel in {result['subscribers']}"
+        )
 
     def test_rosbridge_has_services(self, tools):
         """get_node_details for rosbridge should return services."""
