@@ -66,22 +66,11 @@ class TestDetectRosVersion:
             assert rosapi_type("Services") == "rosapi/Services"
             assert rosapi_type("Topics") == "rosapi/Topics"
 
-    def test_resolved_service_works(self, ws):
-        """Call the resolved service path to verify it reaches rosbridge."""
-        message = {
-            "op": "call_service",
-            "id": "test_resolved_svc",
-            "service": rosapi_service("nodes"),
-            "type": rosapi_type("Nodes"),
-            "args": {},
-        }
-        response = ws.request(message)
-        assert response is not None
-        assert isinstance(response, dict)
-        assert response.get("result") is not False, f"Service call failed: {response}"
-        assert "values" in response
-        nodes = response["values"].get("nodes", [])
-        assert len(nodes) > 0, "Should find at least one node (turtlesim)"
+    def test_resolved_service_works(self, tools):
+        """Resolved service paths should work end-to-end via get_nodes tool."""
+        result = tools["get_nodes"]()
+        assert "nodes" in result, f"get_nodes failed: {result}"
+        assert len(result["nodes"]) > 0, "Should find at least one node (turtlesim)"
 
 
 class TestDetectRosVersionTool:
