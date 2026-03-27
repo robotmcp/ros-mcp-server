@@ -73,14 +73,19 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 }
                 with ws_manager:
                     response = ws_manager.request(topics_message)
-                    values = _safe_get_values(response)
-                    if values is not None:
-                        topics = values.get("topics", [])
-                        types = values.get("types", [])
-                        metadata["topics"] = [
-                            {"name": topic, "type": topic_type}
-                            for topic, topic_type in zip(topics, types)
-                        ]
+                    if response and "values" in response:
+                        topics = response["values"].get("topics", [])
+                        types = response["values"].get("types", [])
+                        # Handle case where types might be empty or missing
+                        if types and len(types) == len(topics):
+                            metadata["topics"] = [
+                                {"name": topic, "type": topic_type}
+                                for topic, topic_type in zip(topics, types)
+                            ]
+                        else:
+                            metadata["topics"] = [
+                                {"name": topic, "type": "unknown"} for topic in topics
+                            ]
             except Exception as e:
                 metadata["errors"].append(f"Failed to get topics: {str(e)}")
 
