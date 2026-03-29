@@ -4,7 +4,7 @@
 
 ### Prepare host machine (MCP Server)
 
-* Installation of ChatGPT Desktop. Download [here](chatgpt.com/download) or Microsoft Store.
+* Installation of ChatGPT Desktop. Download [here](https://chatgpt.com/download) or Microsoft Store.
 * Installation of WSL (Linux).
 
 ### Prepare target robot (ROS)
@@ -218,7 +218,7 @@ cd ros-mcp-server
 	```
 	Or you can also launch:
 	```bash
-	launch_mcp_tunnel_.sh
+	launch_mcp_tunnel.sh
 	```
  	</details>
 
