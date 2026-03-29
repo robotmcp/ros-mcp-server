@@ -111,3 +111,8 @@ Check out the [contributing guidelines](docs/contributing.md) and see issues tag
 ## 📜 License  
 
 This project is licensed under the [Apache License 2.0](LICENSE).  
+
+## Hosted deployment
+
+A hosted deployment is available on [Fronteir AI](https://fronteir.ai/mcp/lpigeon-ros-mcp-server).
+
