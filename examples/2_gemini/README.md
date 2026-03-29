@@ -2,7 +2,7 @@
 
 ## Prerequisite
 - Installation of Gemini-CLI. [https://github.com/google-gemini/gemini-cli]
-- Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow, this toturial [https://wiki.ros.org/ROS/Tutorials]
+- Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow this tutorial [https://wiki.ros.org/ROS/Tutorials]
 - Installation of ROS-MCP-Server except Section II (installation/settings of Claude desktop)  [https://github.com/robotmcp/ros-mcp-server/blob/main/docs/installation.md]
 
 ## Update Gemini CLI MCP settings
