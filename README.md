@@ -59,7 +59,9 @@ The MCP server enables Claude to interpret images from the robot's cameras, and 
 
 ## 🛠 Getting Started
 
-Follow the [installation guide](docs/install/installation.md) to get started with Claude Code, Codex CLI, Gemini CLI, Claude Desktop, ChatGPT, Cursor, or any MCP-compatible client.
+Follow the [installation guide](docs/install/installation.md) to get started.
+
+ROS-MCP works with Claude Code, Codex CLI, Gemini CLI, Claude Desktop, ChatGPT, Cursor, or any MCP-compatible client.
 
 <p align="center">
   <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/MCP_topology.png"/>
