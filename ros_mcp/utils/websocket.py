@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 import websocket
 
+from ros_mcp.utils.paths import get_fixed_image_path
+
 
 def parse_json(raw: Union[str, bytes] | None) -> dict | None:
     """
@@ -115,18 +117,16 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         print("[Image] Missing 'data' field in message.", file=sys.stderr)
         return None
 
-    # 4. Ensure output directory exists
-    os.makedirs("./camera", exist_ok=True)
 
-    # 5. Determine image type and process accordingly
+    # 4. Determine image type and process accordingly
     format = msg.get("format")
     print(f"[Image] Format: {format}", file=sys.stderr)
 
-    # 5a. Handle CompressedImage (already JPEG/PNG encoded)
+    # 4a. Handle CompressedImage (already JPEG/PNG encoded)
     if format and any(fmt in format.lower() for fmt in ["jpeg", "jpg", "png", "bmp", "compressed"]):
         return _handle_compressed_image(data_b64, result)
 
-    # 5b. Handle Raw Image (rgb8, bgr8, mono8, mono16, 16uc1)
+    # 4b. Handle Raw Image (rgb8, bgr8, mono8, mono16, 16uc1)
     height, width, encoding = msg.get("height"), msg.get("width"), msg.get("encoding")
     if not all([height, width, encoding]):
         print("[Image] Missing required fields for raw image.", file=sys.stderr)
@@ -137,7 +137,7 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
 
 def _handle_compressed_image(data_b64: str, result: dict) -> dict | None:
     """Handle compressed image data (JPEG/PNG already encoded)."""
-    path = "./camera/received_image.jpeg"
+    path = get_fixed_image_path("received_image.jpeg")
     image_bytes = base64.b64decode(data_b64)
 
     with open(path, "wb") as f:
@@ -170,12 +170,15 @@ def _handle_raw_image(
         return None
 
     # Save as JPEG with quality 95
-    success = cv2.imwrite("./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    path = get_fixed_image_path("received_image.jpeg")
+    success = cv2.imwrite(str(path), img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
     if success:
-        print("[Image] Saved raw Image to ./camera/received_image.jpeg", file=sys.stderr)
+        print(f"[Image] Saved raw Image to {path}", file=sys.stderr)
         return result if isinstance(result, dict) else None
     else:
+        print(f"[Image] cv2.imwrite failed for {path}", file=sys.stderr)
         return None
+
 
 
 def _decode_image_data(
