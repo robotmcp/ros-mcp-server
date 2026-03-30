@@ -26,8 +26,13 @@
 ```
 
 ## Demo Environment
+
 - Ubuntu 20.04
 - ROS Noetic
+
+> **Compatibility note**
+> The demo environment below was validated on Ubuntu 20.04 + ROS Noetic.
+> Although the prerequisites mention ROS or ROS2, users running ROS2 Jazzy / WSL may need a different setup path and should verify `turtlesim`, `rosbridge_websocket` (port 9090), and MCP server connectivity separately.
 
 ## Demo Video 
 
