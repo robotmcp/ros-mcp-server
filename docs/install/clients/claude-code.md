@@ -30,17 +30,21 @@ Verify the server was added:
 claude mcp list
 ```
 
-You should see `ros-mcp` in the output. Now start Claude Code and ask it to connect to a robot:
+You should see `ros-mcp` in the output.
+
+Now start Claude Code and ask it to connect to a robot:
 
 ```bash
 claude
 ```
 
 ```
-Connect to a robot on localhost
+Connect to the robot on localhost using the ros-mcp server
 ```
 
 The MCP server will attempt to reach a robot on the same machine. It should report that the IP is reachable but the rosbridge port is closed — this confirms the MCP server is set up correctly. 
+
+> **Tip:** If your AI assistant can't find the ros-mcp server, exit and restart Claude Code so it picks up the new configuration.
 
 To complete the connection, [set up rosbridge](../rosbridge.md) on your robot.
 

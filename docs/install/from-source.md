@@ -25,16 +25,48 @@ cd ros-mcp-server
 uv sync
 ```
 
-## 4. Run the Server
+## 4. Test the Server
 
-You can run the server directly from source with specific transport options:
+```bash
+uv run server.py --help
+```
+
+If this prints the help output, the server is installed correctly and ready to run.
+
+## 5. Configure Your AI Client
+
+When running from source, use `uv run server.py` with the path to the cloned repository instead of `uvx ros-mcp`.
+
+The recommended approach is to use [HTTP transport](http-transport.md), which runs the server as a standalone process:
 
 ```bash
 uv run server.py --transport streamable-http --host 127.0.0.1 --port 9000
 ```
-See the [HTTP transport](http-transport.md) page for details.
+
+Then point your AI client to `http://127.0.0.1:9000/mcp`. See the [HTTP transport](http-transport.md) page for client configuration details.
+
+Alternatively, you can configure your client to launch the server directly via stdio. For example, with Claude Code:
+
+```bash
+claude mcp add ros-mcp -- uv --directory /<path-to>/ros-mcp-server run server.py --transport=stdio
+```
+
+For clients that use a JSON config file:
+```json
+{
+  "command": "uv",
+  "args": [
+    "--directory", "/<path-to>/ros-mcp-server",
+    "run", "server.py", "--transport=stdio"
+  ]
+}
+```
 
 ## Next Steps
 
+- [Set up your AI client](installation.md#step-1-set-up-your-ai-client)
 - [Set up rosbridge on the robot](rosbridge.md)
-- [Troubleshooting](troubleshooting.md)
+
+---
+
+[Back to Installation Guide](installation.md) | [Troubleshooting](troubleshooting.md)

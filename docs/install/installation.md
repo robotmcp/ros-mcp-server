@@ -1,12 +1,8 @@
 # Installation Guide
 
-The ROS-MCP server connects any AI assistant that supports the [MCP protocol](https://modelcontextprotocol.io/) to a robot running ROS.
+The ROS-MCP server connects any AI assistant that supports the [MCP protocol](https://modelcontextprotocol.io/) to a robot running ROS. It is built to work across machines, supporting having the AI assistant on the user's laptop connect with robots on the local network.
 
-It is built to work across machines, supporting having the AI assistant on the user's laptop interact with robots on the local network. 
-
-## What You'll Need
-
-Installation involves two machines (Both parts can be installed on the same machine  if your AI client runs directly on the robot):
+Installation involves two machines (both parts can be installed on the same machine if your AI client runs directly on the robot):
 
 | Machine | What to install | Prerequisites | Purpose |
 |---------|----------------|---------------|---------|
@@ -15,25 +11,14 @@ Installation involves two machines (Both parts can be installed on the same mach
 
 Both machines must be on the **same local network**. Using a VPN is a great option if you want to connect to robots over the internet.
 
-## Quickstart
-
-The fastest way to get started using [Claude Code](https://docs.anthropic.com/en/docs/claude-code/overview) (recommended):
-
-
-
-```bash
-# 4. Start Claude Code. Once it launches, give it your robot IP and tell it to connect.
-claude
-```
-
-For detailed steps, follow the links below.
+Follow the three steps below to get up and running. Each step includes quick inline commands and a link to a more detailed guide.
 
 ---
 
 ## Step 1: Set Up Your AI Client
 
 
-Quick instructions for setup with Claude Code (recommended) are below:
+Quick instructions for setup with Claude Code are below:
 
 ```bash
 # On the user's machine:
@@ -44,19 +29,19 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 claude mcp add ros-mcp -- uvx ros-mcp --transport=stdio
 ```
 
-For more detailed instructions and verification, choose your AI client and follow its detailed setup guide. 
+For detailed instructions or to set up a different AI client, follow the guide for your client below.
 
 
 | Client | Description | Guide |
 |--------|-------------|-------|
 | **Claude Code** (Recommended) | Anthropic's CLI for Claude | [Setup guide](clients/claude-code.md) |
-| Claude Desktop | Anthropic's desktop app | *Coming soon* |
-| Codex CLI | OpenAI's CLI agent | *Coming soon* |
-| Gemini CLI | Google's CLI for Gemini | *Coming soon* |
-| Cursor | AI-powered IDE | *Coming soon* |
-| ChatGPT | OpenAI's desktop app | *Coming soon* |
-| Robot MCP Client | Lightweight terminal client | *Coming soon* |
-| Custom / Programmatic | Python MCP SDK | *Coming soon* |
+| Codex CLI | OpenAI's CLI agent | [Setup guide](clients/codex-cli.md) |
+| Gemini CLI | Google's CLI for Gemini | [Setup guide](clients/gemini-cli.md) |
+| Claude Desktop | Anthropic's desktop app | [Setup guide](clients/claude-desktop.md) |
+| ChatGPT | OpenAI's desktop app | [Setup guide](clients/chatgpt.md) |
+| Cursor | AI-powered IDE | [Setup guide](clients/cursor.md) |
+| Robot MCP Client | Lightweight terminal client | [Setup guide](clients/robot-mcp-client.md) |
+| Custom / Programmatic | Python MCP SDK | [Setup guide](clients/custom-client.md) |
 
 ## Step 2: Set Up Rosbridge on the Robot
 
@@ -93,3 +78,5 @@ Connect to the robot on <ip address> and tell me what topics and services you se
 ## Additional Resources
 
 - [Troubleshooting](troubleshooting.md) — common issues and debug commands
+- [Examples](../../examples/) — tutorials for turtlesim, Unitree Go2, LIMO, TurtleBot3, and more
+- [ROS-MCP Demos](https://github.com/robotmcp/demos-ros-mcp-server) — advanced demos with simulated robots in Gazebo
