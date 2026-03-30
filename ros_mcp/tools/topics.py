@@ -1,12 +1,15 @@
 """Topic tools for ROS MCP."""
 
 import json
+import os
 import time
 
 from fastmcp import FastMCP
-from mcp.types import ToolAnnotations
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent, ToolAnnotations
+from PIL import Image as PILImage
 
-from ros_mcp.tools.images import convert_expects_image_hint
+from ros_mcp.tools.images import _encode_image_to_imagecontent, convert_expects_image_hint
 from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
@@ -283,7 +286,7 @@ def register_topic_tools(
         timeout: float = None,  # type: ignore[assignment]  # See issue #140
         queue_length: int = None,  # type: ignore[assignment]  # See issue #140
         throttle_rate_ms: int = None,  # type: ignore[assignment]  # See issue #140
-    ) -> dict:
+    ):
         """
         Subscribe to a given ROS topic via rosbridge and return the first message received.
 
@@ -382,13 +385,20 @@ def register_topic_tools(
                     ws_manager.send(unsubscribe_msg)
                     # Return appropriate message based on whether image was actually parsed
                     if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        return {
-                            "msg": filtered_msg,
-                            "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
-                        }
+                        image_path = "./camera/received_image.jpeg"
+                        if os.path.exists(image_path):
+                            img = PILImage.open(image_path)
+                            image_content = _encode_image_to_imagecontent(img)
+                            return ToolResult(
+                                content=[
+                                    image_content,
+                                    TextContent(
+                                        type="text",
+                                        text=f"Image saved to {image_path}. Use view_saved_image() to re-view it.",
+                                    ),
+                                ]
+                            )
+                        return {"error": "Image received but file not found on disk"}
                     else:
                         return {"msg": msg_data.get("msg", {})}
 
@@ -419,7 +429,7 @@ def register_topic_tools(
         queue_length: int = None,  # type: ignore[assignment]  # See issue #140
         throttle_rate_ms: int = None,  # type: ignore[assignment]  # See issue #140
         expects_image: str = "auto",
-    ) -> dict:
+    ):
         """
         Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages.
 
@@ -523,30 +533,44 @@ def register_topic_tools(
 
                 # Check for published messages matching our topic
                 if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
+                    msg_index = len(collected_messages)
                     # Add message based on whether it was actually parsed as image
                     if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        collected_messages.append(
-                            {
-                                "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
-                                "msg": filtered_msg,
-                            }
-                        )
+                        image_path = "./camera/received_image.jpeg"
+                        if os.path.exists(image_path):
+                            img = PILImage.open(image_path)
+                            collected_messages.append(_encode_image_to_imagecontent(img))
+                        else:
+                            collected_messages.append(
+                                TextContent(
+                                    type="text",
+                                    text=f"[Message {msg_index}] Image received but file not found on disk",
+                                )
+                            )
                     else:
-                        collected_messages.append(msg_data.get("msg", {}))
+                        collected_messages.append(
+                            TextContent(
+                                type="text",
+                                text=json.dumps(msg_data.get("msg", {})),
+                            )
+                        )
 
             # Unsubscribe when done
             unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
             ws_manager.send(unsubscribe_msg)
 
-        return {
-            "topic": topic,
-            "collected_count": len(collected_messages),
-            "messages": collected_messages,
-            "status_errors": status_errors,  # Include any errors encountered during collection
-        }
+        # Build summary as TextContent, then append all collected content blocks
+        summary = TextContent(
+            type="text",
+            text=json.dumps(
+                {
+                    "topic": topic,
+                    "collected_count": len(collected_messages),
+                    "status_errors": status_errors,
+                }
+            ),
+        )
+        return ToolResult(content=[summary] + collected_messages)
 
     @mcp.tool(
         description=(
