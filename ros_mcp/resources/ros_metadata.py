@@ -2,6 +2,7 @@
 
 import json
 
+from ros_mcp.utils.response import _extract_error, _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -75,10 +76,16 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     if response and "values" in response:
                         topics = response["values"].get("topics", [])
                         types = response["values"].get("types", [])
-                        metadata["topics"] = [
-                            {"name": topic, "type": topic_type}
-                            for topic, topic_type in zip(topics, types)
-                        ]
+                        # Handle case where types might be empty or missing
+                        if types and len(types) == len(topics):
+                            metadata["topics"] = [
+                                {"name": topic, "type": topic_type}
+                                for topic, topic_type in zip(topics, types)
+                            ]
+                        else:
+                            metadata["topics"] = [
+                                {"name": topic, "type": "unknown"} for topic in topics
+                            ]
             except Exception as e:
                 metadata["errors"].append(f"Failed to get topics: {str(e)}")
 
@@ -87,19 +94,28 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 services_message = {
                     "op": "call_service",
                     "service": "/rosapi/services",
-                    "type": "rosapi/Services",
+                    "type": "rosapi_msgs/srv/Services",
                     "args": {},
                     "id": "get_services_request",
                 }
                 with ws_manager:
                     response = ws_manager.request(services_message)
-                    if response and "values" in response:
-                        services = response["values"].get("services", [])
-                        types = response["values"].get("types", [])
-                        metadata["services"] = [
-                            {"name": service, "type": service_type}
-                            for service, service_type in zip(services, types)
-                        ]
+                    values = _safe_get_values(response)
+                    if values is not None:
+                        services = values.get("services", [])
+                        types = values.get("types", [])
+                        # Handle case where types might be empty or missing
+                        if types and len(types) == len(services):
+                            metadata["services"] = [
+                                {"name": service, "type": service_type}
+                                for service, service_type in zip(services, types)
+                            ]
+                        else:
+                            # If types aren't available, just return service names
+                            # Types can be fetched separately if needed
+                            metadata["services"] = [
+                                {"name": service, "type": "unknown"} for service in services
+                            ]
             except Exception as e:
                 metadata["errors"].append(f"Failed to get services: {str(e)}")
 
@@ -114,8 +130,9 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 }
                 with ws_manager:
                     response = ws_manager.request(nodes_message)
-                    if response and "values" in response:
-                        metadata["nodes"] = response["values"].get("nodes", [])
+                    values = _safe_get_values(response)
+                    if values is not None:
+                        metadata["nodes"] = values.get("nodes", [])
             except Exception as e:
                 metadata["errors"].append(f"Failed to get nodes: {str(e)}")
 
@@ -130,8 +147,9 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 }
                 with ws_manager:
                     response = ws_manager.request(params_message)
-                    if response and "values" in response:
-                        metadata["parameters"] = response["values"].get("names", [])
+                    values = _safe_get_values(response)
+                    if values is not None:
+                        metadata["parameters"] = values.get("names", [])
             except Exception:
                 # Parameters might not be available in ROS1 or if service doesn't exist
                 pass
@@ -184,7 +202,8 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             with ws_manager:
                 nodes_response = ws_manager.request(nodes_message)
 
-                if not nodes_response or "values" not in nodes_response:
+                nodes_values = _safe_get_values(nodes_response)
+                if nodes_values is None:
                     return json.dumps(
                         {
                             "error": "Failed to get nodes list",
@@ -194,7 +213,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         }
                     )
 
-                nodes = nodes_response["values"].get("nodes", [])
+                nodes = nodes_values.get("nodes", [])
                 node_details = {}
 
                 # Get details for each node
@@ -211,13 +230,13 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
                     node_details_response = ws_manager.request(node_details_message)
 
-                    if node_details_response and "values" in node_details_response:
-                        values = node_details_response["values"]
+                    nd_values = _safe_get_values(node_details_response)
+                    if nd_values is not None:
                         # Extract publishers, subscribers, and services from the response
                         # Note: rosapi uses "publishing" and "subscribing" field names
-                        publishers = values.get("publishing", [])
-                        subscribers = values.get("subscribing", [])
-                        services = values.get("services", [])
+                        publishers = nd_values.get("publishing", [])
+                        subscribers = nd_values.get("subscribing", [])
+                        services = nd_values.get("services", [])
 
                         node_details[node] = {
                             "publishers": publishers,
@@ -232,9 +251,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         and "result" in node_details_response
                         and not node_details_response["result"]
                     ):
-                        error_msg = node_details_response.get("values", {}).get(
-                            "message", "Service call failed"
-                        )
+                        error_msg = _extract_error(node_details_response)
                         node_errors.append(f"Node {node}: {error_msg}")
                     else:
                         node_errors.append(f"Node {node}: Failed to get node details")
@@ -280,7 +297,8 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             with ws_manager:
                 services_response = ws_manager.request(services_message)
 
-                if not services_response or "values" not in services_response:
+                svc_values = _safe_get_values(services_response)
+                if svc_values is None:
                     return json.dumps(
                         {
                             "error": "Failed to get services list",
@@ -290,7 +308,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         }
                     )
 
-                services = services_response["values"].get("services", [])
+                services = svc_values.get("services", [])
                 service_details = {}
 
                 # Get details for each service
@@ -307,8 +325,9 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
                     type_response = ws_manager.request(type_message)
                     service_type = ""
-                    if type_response and "values" in type_response:
-                        service_type = type_response["values"].get("type", "unknown")
+                    type_values = _safe_get_values(type_response)
+                    if type_values is not None:
+                        service_type = type_values.get("type", "unknown")
                     elif type_response and "error" in type_response:
                         service_errors.append(f"Service {service}: {type_response['error']}")
 
@@ -325,12 +344,13 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                     providers = []
 
                     # Handle different response formats safely
-                    if provider_response and isinstance(provider_response, dict):
-                        if "values" in provider_response:
-                            node = provider_response["values"].get("node", "")
-                            if node:
-                                providers = [node]
-                        elif "result" in provider_response:
+                    prov_values = _safe_get_values(provider_response)
+                    if prov_values is not None:
+                        node = prov_values.get("node", "")
+                        if node:
+                            providers = [node]
+                    elif provider_response and isinstance(provider_response, dict):
+                        if isinstance(provider_response.get("result"), dict):
                             node = provider_response["result"].get("node", "")
                             if node:
                                 providers = [node]
@@ -393,7 +413,8 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
             with ws_manager:
                 topics_response = ws_manager.request(topics_message)
 
-                if not topics_response or "values" not in topics_response:
+                topic_vals = _safe_get_values(topics_response)
+                if topic_vals is None:
                     return json.dumps(
                         {
                             "error": "Failed to get topics list",
@@ -403,8 +424,8 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         }
                     )
 
-                topics = topics_response["values"].get("topics", [])
-                types = topics_response["values"].get("types", [])
+                topics = topic_vals.get("topics", [])
+                types = topic_vals.get("types", [])
                 topic_details = {}
 
                 # Get details for each topic
@@ -424,16 +445,15 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
                     publishers_response = ws_manager.request(publishers_message)
                     publishers = []
-                    if publishers_response and "values" in publishers_response:
-                        publishers = publishers_response["values"].get("publishers", [])
+                    pub_values = _safe_get_values(publishers_response)
+                    if pub_values is not None:
+                        publishers = pub_values.get("publishers", [])
                     elif (
                         publishers_response
                         and "result" in publishers_response
                         and not publishers_response["result"]
                     ):
-                        error_msg = publishers_response.get("values", {}).get(
-                            "message", "Service call failed"
-                        )
+                        error_msg = _extract_error(publishers_response)
                         topic_errors.append(f"Topic {topic} publishers: {error_msg}")
 
                     # Get subscribers for this topic
@@ -447,16 +467,15 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
                     subscribers_response = ws_manager.request(subscribers_message)
                     subscribers = []
-                    if subscribers_response and "values" in subscribers_response:
-                        subscribers = subscribers_response["values"].get("subscribers", [])
+                    sub_values = _safe_get_values(subscribers_response)
+                    if sub_values is not None:
+                        subscribers = sub_values.get("subscribers", [])
                     elif (
                         subscribers_response
                         and "result" in subscribers_response
                         and not subscribers_response["result"]
                     ):
-                        error_msg = subscribers_response.get("values", {}).get(
-                            "message", "Service call failed"
-                        )
+                        error_msg = _extract_error(subscribers_response)
                         topic_errors.append(f"Topic {topic} subscribers: {error_msg}")
 
                     topic_details[topic] = {
@@ -525,7 +544,8 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         }
                     )
 
-                available_services = services_response.get("values", {}).get("services", [])
+                svc_vals = _safe_get_values(services_response)
+                available_services = svc_vals.get("services", []) if svc_vals else []
                 missing_services = [
                     svc for svc in required_services if svc not in available_services
                 ]
@@ -565,7 +585,8 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
                 actions_response = ws_manager.request(actions_message)
 
-                if not actions_response or "values" not in actions_response:
+                action_vals = _safe_get_values(actions_response)
+                if action_vals is None:
                     return json.dumps(
                         {
                             "error": "Failed to get actions list",
@@ -575,7 +596,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         }
                     )
 
-                actions = actions_response["values"].get("action_servers", [])
+                actions = action_vals.get("action_servers", [])
                 action_details = {}
 
                 # Get details for each action
@@ -603,8 +624,9 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                         }
 
                         interfaces_response = ws_manager.request(interfaces_message)
-                        if interfaces_response and "values" in interfaces_response:
-                            interfaces = interfaces_response["values"].get("interfaces", [])
+                        iface_vals = _safe_get_values(interfaces_response)
+                        if iface_vals is not None:
+                            interfaces = iface_vals.get("interfaces", [])
                             action_interfaces = [
                                 iface for iface in interfaces if "/action/" in iface
                             ]

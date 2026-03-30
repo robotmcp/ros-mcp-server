@@ -40,7 +40,7 @@ Refactor **ros-mcp-server** to be importable as a library, enabling integration 
 | Nodes | `tools/nodes.py` | 3 | get_nodes, get_node_details, inspect_all_nodes | ✅ Done |
 | Parameters | `tools/parameters.py` | 7 | get_parameter, set_parameter, has_parameter, delete_parameter, get_parameters, inspect_all_parameters, get_parameter_details | ✅ Done |
 | Actions | `tools/actions.py` | 7 | get_actions, get_action_type, get_action_details, get_action_status, inspect_all_actions, send_action_goal, cancel_action_goal | ✅ Done |
-| Images | `tools/images.py` | 1 | analyze_previously_received_image | ✅ Done |
+| Images | `tools/images.py` | 1 | view_saved_image | ✅ Done |
 | Utils | `tools/images.py` | - | convert_expects_image_hint, _encode_image_to_imagecontent (helper functions in images.py) | ✅ Done |
 
 ### Current Structure (Implemented)
@@ -89,7 +89,7 @@ For each tool category:
 - **Nodes** (3 tools): `get_nodes`, `get_node_details`, `inspect_all_nodes`
 - **Parameters** (7 tools): `get_parameter`, `set_parameter`, `has_parameter`, `delete_parameter`, `get_parameters`, `inspect_all_parameters`, `get_parameter_details`
 - **Actions** (7 tools): `get_actions`, `get_action_type`, `get_action_details`, `get_action_status`, `inspect_all_actions`, `send_action_goal`, `cancel_action_goal`
-- **Images** (1 tool): `analyze_previously_received_image` + helper functions (`convert_expects_image_hint`, `_encode_image_to_imagecontent`)
+- **Images** (1 tool): `view_saved_image` + helper functions (`convert_expects_image_hint`, `_encode_image_to_imagecontent`)
 
 ### Main Registration Function ✅
 

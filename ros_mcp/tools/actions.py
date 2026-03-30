@@ -8,6 +8,7 @@ import uuid
 from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 
+from ros_mcp.utils.response import _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -58,7 +59,8 @@ def register_action_tools(
                     },
                 }
 
-            available_services = services_response.get("values", {}).get("services", [])
+            svc_values = _safe_get_values(services_response)
+            available_services = svc_values.get("services", []) if svc_values else []
             missing_services = [svc for svc in required_services if svc not in available_services]
 
             if missing_services:
@@ -100,11 +102,11 @@ def register_action_tools(
             return {"error": f"Service call failed: {error_msg}"}
 
         # Return action info if present
-        if response and "values" in response:
-            actions = response["values"].get("action_servers", [])
+        values = _safe_get_values(response)
+        if values is not None:
+            actions = values.get("action_servers", [])
             return {"actions": actions, "action_count": len(actions)}
-        else:
-            return {"warning": "No actions found or /rosapi/action_servers service not available"}
+        return {"warning": "No actions found or /rosapi/action_servers service not available"}
 
     @mcp.tool(
         description=(
@@ -159,7 +161,8 @@ def register_action_tools(
                     },
                 }
 
-            available_services = services_response.get("values", {}).get("services", [])
+            svc_values = _safe_get_values(services_response)
+            available_services = svc_values.get("services", []) if svc_values else []
             missing_services = [svc for svc in required_services if svc not in available_services]
 
             if missing_services:
@@ -197,8 +200,9 @@ def register_action_tools(
             with ws_manager:
                 interfaces_response = ws_manager.request(interfaces_message)
 
-            if interfaces_response and "values" in interfaces_response:
-                interfaces = interfaces_response["values"].get("interfaces", [])
+            iface_values = _safe_get_values(interfaces_response)
+            if iface_values is not None:
+                interfaces = iface_values.get("interfaces", [])
                 # Look for action interfaces that might match
                 action_interfaces = [iface for iface in interfaces if "/action/" in iface]
                 # Try to match based on action name patterns
@@ -255,7 +259,8 @@ def register_action_tools(
                     },
                 }
 
-            available_services = services_response.get("values", {}).get("services", [])
+            svc_values = _safe_get_values(services_response)
+            available_services = svc_values.get("services", []) if svc_values else []
             missing_services = [
                 svc for svc in required_detail_services if svc not in available_services
             ]
@@ -288,13 +293,9 @@ def register_action_tools(
         }
 
         goal_response = ws_manager.request(goal_message)
-        if (
-            goal_response
-            and isinstance(goal_response, dict)
-            and "values" in goal_response
-            and "error" not in goal_response
-        ):
-            typedefs = goal_response["values"].get("typedefs", [])
+        goal_values = _safe_get_values(goal_response)
+        if goal_values is not None and "error" not in goal_response:
+            typedefs = goal_values.get("typedefs", [])
             if typedefs:
                 for typedef in typedefs:
                     field_names = typedef.get("fieldnames", [])
@@ -333,13 +334,9 @@ def register_action_tools(
         }
 
         result_response = ws_manager.request(result_message)
-        if (
-            result_response
-            and isinstance(result_response, dict)
-            and "values" in result_response
-            and "error" not in result_response
-        ):
-            typedefs = result_response["values"].get("typedefs", [])
+        res_values = _safe_get_values(result_response)
+        if res_values is not None and "error" not in result_response:
+            typedefs = res_values.get("typedefs", [])
             if typedefs:
                 for typedef in typedefs:
                     field_names = typedef.get("fieldnames", [])
@@ -378,13 +375,9 @@ def register_action_tools(
         }
 
         feedback_response = ws_manager.request(feedback_message)
-        if (
-            feedback_response
-            and isinstance(feedback_response, dict)
-            and "values" in feedback_response
-            and "error" not in feedback_response
-        ):
-            typedefs = feedback_response["values"].get("typedefs", [])
+        fb_values = _safe_get_values(feedback_response)
+        if fb_values is not None and "error" not in feedback_response:
+            typedefs = fb_values.get("typedefs", [])
             if typedefs:
                 for typedef in typedefs:
                     field_names = typedef.get("fieldnames", [])

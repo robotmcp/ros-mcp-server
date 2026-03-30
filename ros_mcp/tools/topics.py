@@ -1,12 +1,16 @@
 """Topic tools for ROS MCP."""
 
 import json
+import os
 import time
 
 from fastmcp import FastMCP
-from mcp.types import ToolAnnotations
+from fastmcp.tools.tool import ToolResult
+from mcp.types import TextContent, ToolAnnotations
+from PIL import Image as PILImage
 
-from ros_mcp.tools.images import convert_expects_image_hint
+from ros_mcp.tools.images import _encode_image_to_imagecontent, convert_expects_image_hint
+from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
 
@@ -44,20 +48,17 @@ def register_topic_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return topic info if present
-        if response and "values" in response:
-            values = response["values"]
+        values = _safe_get_values(response)
+        if values is not None:
             topics = values.get("topics", [])
             types = values.get("types", [])
             return {"topics": topics, "types": types, "topic_count": len(topics)}
-        else:
-            return {"warning": "No topics found"}
+        return {"warning": "No topics found"}
 
     @mcp.tool(
         description=(
@@ -96,21 +97,18 @@ def register_topic_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return topic type if present
-        if response and "values" in response:
-            topic_type = response["values"].get("type", "")
+        values = _safe_get_values(response)
+        if values is not None:
+            topic_type = values.get("type", "")
             if topic_type:
                 return {"topic": topic, "type": topic_type}
-            else:
-                return {"error": f"Topic {topic} does not exist or has no type"}
-        else:
-            return {"error": f"Failed to get type for topic {topic}"}
+            return {"error": f"Topic {topic} does not exist or has no type"}
+        return {"error": f"Failed to get type for topic {topic}"}
 
     @mcp.tool(
         description=(
@@ -158,8 +156,9 @@ def register_topic_tools(
             }
 
             type_response = ws_manager.request(type_message)
-            if type_response and "values" in type_response:
-                result["type"] = type_response["values"].get("type", "unknown")
+            type_values = _safe_get_values(type_response)
+            if type_values is not None:
+                result["type"] = type_values.get("type", "unknown")
 
             # Get publishers for this topic
             publishers_message = {
@@ -171,8 +170,9 @@ def register_topic_tools(
             }
 
             publishers_response = ws_manager.request(publishers_message)
-            if publishers_response and "values" in publishers_response:
-                result["publishers"] = publishers_response["values"].get("publishers", [])
+            pub_values = _safe_get_values(publishers_response)
+            if pub_values is not None:
+                result["publishers"] = pub_values.get("publishers", [])
 
             # Get subscribers for this topic
             subscribers_message = {
@@ -184,8 +184,9 @@ def register_topic_tools(
             }
 
             subscribers_response = ws_manager.request(subscribers_message)
-            if subscribers_response and "values" in subscribers_response:
-                result["subscribers"] = subscribers_response["values"].get("subscribers", [])
+            sub_values = _safe_get_values(subscribers_response)
+            if sub_values is not None:
+                result["subscribers"] = sub_values.get("subscribers", [])
 
         result["publisher_count"] = len(result["publishers"])
         result["subscriber_count"] = len(result["subscribers"])
@@ -235,15 +236,14 @@ def register_topic_tools(
         with ws_manager:
             response = ws_manager.request(message)
 
-        # Check for service response errors first
-        if response and "result" in response and not response["result"]:
-            # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
-            return {"error": f"Service call failed: {error_msg}"}
+        error = _check_response(response)
+        if error:
+            return error
 
         # Return message structure if present
-        if response and "values" in response:
-            typedefs = response["values"].get("typedefs", [])
+        values = _safe_get_values(response)
+        if values is not None:
+            typedefs = values.get("typedefs", [])
             if typedefs:
                 # Parse the structure into a more readable format
                 structure = {}
@@ -286,7 +286,7 @@ def register_topic_tools(
         timeout: float = None,  # type: ignore[assignment]  # See issue #140
         queue_length: int = None,  # type: ignore[assignment]  # See issue #140
         throttle_rate_ms: int = None,  # type: ignore[assignment]  # See issue #140
-    ) -> dict:
+    ):
         """
         Subscribe to a given ROS topic via rosbridge and return the first message received.
 
@@ -385,13 +385,20 @@ def register_topic_tools(
                     ws_manager.send(unsubscribe_msg)
                     # Return appropriate message based on whether image was actually parsed
                     if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        return {
-                            "msg": filtered_msg,
-                            "message": "Image received successfully and saved in the MCP server. Run the 'analyze_previously_received_image' tool to analyze it",
-                        }
+                        image_path = "./camera/received_image.jpeg"
+                        if os.path.exists(image_path):
+                            img = PILImage.open(image_path)
+                            image_content = _encode_image_to_imagecontent(img)
+                            return ToolResult(
+                                content=[
+                                    image_content,
+                                    TextContent(
+                                        type="text",
+                                        text=f"Image saved to {image_path}. Use view_saved_image() to re-view it.",
+                                    ),
+                                ]
+                            )
+                        return {"error": "Image received but file not found on disk"}
                     else:
                         return {"msg": msg_data.get("msg", {})}
 
@@ -422,7 +429,7 @@ def register_topic_tools(
         queue_length: int = None,  # type: ignore[assignment]  # See issue #140
         throttle_rate_ms: int = None,  # type: ignore[assignment]  # See issue #140
         expects_image: str = "auto",
-    ) -> dict:
+    ):
         """
         Subscribe to a ROS topic via rosbridge for a fixed duration and collect messages.
 
@@ -526,37 +533,57 @@ def register_topic_tools(
 
                 # Check for published messages matching our topic
                 if msg_data.get("op") == "publish" and msg_data.get("topic") == topic:
+                    msg_index = len(collected_messages)
                     # Add message based on whether it was actually parsed as image
                     if was_parsed_as_image:
-                        # Exclude the 'data' field from image messages as it's too large
-                        msg_content = msg_data.get("msg", {})
-                        filtered_msg = {k: v for k, v in msg_content.items() if k != "data"}
-                        collected_messages.append(
-                            {
-                                "image_message": "Image received and saved. Use 'analyze_previously_received_image' to analyze it.",
-                                "msg": filtered_msg,
-                            }
-                        )
+                        image_path = "./camera/received_image.jpeg"
+                        if os.path.exists(image_path):
+                            img = PILImage.open(image_path)
+                            collected_messages.append(_encode_image_to_imagecontent(img))
+                        else:
+                            collected_messages.append(
+                                TextContent(
+                                    type="text",
+                                    text=f"[Message {msg_index}] Image received but file not found on disk",
+                                )
+                            )
                     else:
-                        collected_messages.append(msg_data.get("msg", {}))
+                        collected_messages.append(
+                            TextContent(
+                                type="text",
+                                text=json.dumps(msg_data.get("msg", {})),
+                            )
+                        )
 
             # Unsubscribe when done
             unsubscribe_msg = {"op": "unsubscribe", "topic": topic}
             ws_manager.send(unsubscribe_msg)
 
-        return {
-            "topic": topic,
-            "collected_count": len(collected_messages),
-            "messages": collected_messages,
-            "status_errors": status_errors,  # Include any errors encountered during collection
-        }
+        # Build summary as TextContent, then append all collected content blocks
+        summary = TextContent(
+            type="text",
+            text=json.dumps(
+                {
+                    "topic": topic,
+                    "collected_count": len(collected_messages),
+                    "status_errors": status_errors,
+                }
+            ),
+        )
+        return ToolResult(content=[summary] + collected_messages)
 
     @mcp.tool(
         description=(
-            "Publish a sequence of messages with delays.\n"
-            "Example:\n"
-            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/TwistStamped', "
-            "messages=[{'linear': {'x': 1.0}}, {'linear': {'x': 0.0}}], durations=[1, 2])"
+            "Publish a sequence of messages to a ROS topic, each held for a given duration.\n"
+            "With rate_hz=0 (default): publishes each message once, then waits for the duration.\n"
+            "With rate_hz>0: publishes each message repeatedly at the given rate for the duration "
+            "(useful for controllers like diff_drive that need continuous commands).\n"
+            "Example (single publish with delay):\n"
+            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', "
+            "messages=[{'linear': {'x': 1.0}}, {'linear': {'x': 0.0}}], durations=[1, 2])\n"
+            "Example (continuous streaming at 10 Hz for 2 seconds):\n"
+            "publish_for_durations(topic='/cmd_vel', msg_type='geometry_msgs/msg/Twist', "
+            "messages=[{'angular': {'z': 0.5}}], durations=[2.0], rate_hz=10)"
         ),
         annotations=ToolAnnotations(
             title="Publish for Durations",
@@ -568,23 +595,27 @@ def register_topic_tools(
         msg_type: str = "",
         messages: list[dict] = [],
         durations: list[float] = [],
+        rate_hz: float = 0,
     ) -> dict:
         """
-        Publish a sequence of messages to a given ROS topic with delays in between.
+        Publish a sequence of messages to a given ROS topic for specified durations.
 
         Args:
             topic (str): ROS topic name (e.g., "/cmd_vel")
-            msg_type (str): ROS message type (e.g., "geometry_msgs/Twist")
+            msg_type (str): ROS message type (e.g., "geometry_msgs/msg/Twist")
             messages (list[dict]): A list of message dictionaries (ROS-compatible payloads)
-            durations (list[float]): A list of durations (seconds) to wait between messages
+            durations (list[float]): A list of durations (seconds) to hold each message
+            rate_hz (float): Publishing rate in Hz. 0 = publish once then wait (default).
+                             >0 = publish repeatedly at this rate for the duration.
 
         Returns:
             dict:
                 {
                     "success": True,
-                    "published_count": <number of messages>,
+                    "published_count": <number of publishes>,
                     "topic": topic,
-                    "msg_type": msg_type
+                    "msg_type": msg_type,
+                    "rate_hz": rate_hz
                 }
                 OR {"error": "<error message>"} if something failed
         """
@@ -596,6 +627,12 @@ def register_topic_tools(
         if not topic or not msg_type:
             return {"error": "Missing required arguments: topic and msg_type must be provided."}
 
+        # Validate rate_hz
+        if rate_hz < 0:
+            return {"error": "rate_hz must be >= 0"}
+        if rate_hz > 100:
+            return {"error": "rate_hz must be <= 100"}
+
         # Empty is allowed: nothing to publish
         if not messages and not durations:
             return {
@@ -604,6 +641,7 @@ def register_topic_tools(
                 "total_messages": 0,
                 "topic": topic,
                 "msg_type": msg_type,
+                "rate_hz": rate_hz,
                 "errors": [],
             }
 
@@ -626,29 +664,50 @@ def register_topic_tools(
 
             try:
                 # publish loop
-                for i, (msg, delay) in enumerate(zip(messages, durations)):
+                for i, (msg, duration) in enumerate(zip(messages, durations)):
                     publish_msg = {"op": "publish", "topic": topic, "msg": msg}
 
-                    send_error = ws_manager.send(publish_msg)
-                    if send_error:
-                        errors.append(f"Message {i + 1}: {send_error}")
-                        continue
+                    if rate_hz > 0 and duration > 0:
+                        # Streaming mode: publish repeatedly at rate_hz for duration
+                        interval = 1.0 / rate_hz
+                        end_time = time.time() + duration
+                        next_time = time.time() + interval
+                        while time.time() < end_time:
+                            send_error = ws_manager.send(publish_msg)
+                            if send_error:
+                                errors.append(f"Message {i + 1}: {send_error}")
+                                break
+                            published_count += 1
+                            # Sleep until next target time to compensate for send overhead
+                            sleep_time = next_time - time.time()
+                            if sleep_time > 0:
+                                time.sleep(sleep_time)
+                            next_time += interval
+                    else:
+                        # Original mode: publish once, then wait
+                        send_error = ws_manager.send(publish_msg)
+                        if send_error:
+                            errors.append(f"Message {i + 1}: {send_error}")
+                            continue
 
-                    response = ws_manager.receive(timeout=1.0)
-                    if response:
-                        try:
-                            msg_data = json.loads(response)
-                            if msg_data.get("op") == "status" and msg_data.get("level") == "error":
-                                errors.append(
-                                    f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
-                                )
-                                continue
-                        except json.JSONDecodeError:
-                            pass
+                        response = ws_manager.receive(timeout=1.0)
+                        if response:
+                            try:
+                                msg_data = json.loads(response)
+                                if (
+                                    msg_data.get("op") == "status"
+                                    and msg_data.get("level") == "error"
+                                ):
+                                    errors.append(
+                                        f"Message {i + 1}: {msg_data.get('msg', 'Unknown error')}"
+                                    )
+                                    continue
+                            except json.JSONDecodeError:
+                                pass
 
-                    published_count += 1
-                    if delay:
-                        time.sleep(delay)
+                        published_count += 1
+                        if duration:
+                            time.sleep(duration)
 
             finally:
                 # always unadvertise
@@ -660,6 +719,7 @@ def register_topic_tools(
             "total_messages": len(messages),
             "topic": topic,
             "msg_type": msg_type,
+            "rate_hz": rate_hz,
             "errors": errors,
         }
 

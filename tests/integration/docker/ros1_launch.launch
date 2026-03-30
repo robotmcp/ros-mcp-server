@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="rosbridge_server" type="rosbridge_websocket" name="rosbridge_websocket" output="screen">
+    <param name="port" value="9090" />
+    <param name="address" value="" />
+    <param name="use_compression" value="false" />
+    <param name="max_message_size" value="10000000" />
+    <param name="unregister_timeout" value="10.0" />
+  </node>
+
+  <node pkg="rosapi" type="rosapi_node" name="rosapi" output="screen" />
+
+  <node pkg="turtlesim" type="turtlesim_node" name="turtlesim" output="screen" />
+</launch>

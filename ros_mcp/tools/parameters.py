@@ -3,6 +3,7 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
+from ros_mcp.utils.response import _extract_error
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -158,9 +159,7 @@ def register_parameter_tools(
 
         # Fallback for unexpected response format
         error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
+            _extract_error(response) if response and isinstance(response, dict) else "No response"
         )
         return {"error": f"Failed to get parameter {name}: {error_msg}"}
 
@@ -253,9 +252,7 @@ def register_parameter_tools(
 
         # Fallback for unexpected response format
         error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
+            _extract_error(response) if response and isinstance(response, dict) else "No response"
         )
         return {"error": f"Failed to set parameter {name}: {error_msg}"}
 
@@ -386,9 +383,7 @@ def register_parameter_tools(
 
         # Fallback for unexpected response format
         error_msg = (
-            response.get("values", {}).get("message", "Service call failed")
-            if response and isinstance(response, dict)
-            else "No response"
+            _extract_error(response) if response and isinstance(response, dict) else "No response"
         )
         return {"error": f"Failed to delete parameter {name}: {error_msg}"}
 
@@ -461,7 +456,7 @@ def register_parameter_tools(
         # Check for service response errors first
         if response and "result" in response and not response["result"]:
             # Service call failed - return error with details from values
-            error_msg = response.get("values", {}).get("message", "Service call failed")
+            error_msg = _extract_error(response)
             return {"error": f"Failed to get parameters for node {normalized_node}: {error_msg}"}
 
         # Extract parameter names from response
@@ -494,131 +489,6 @@ def register_parameter_tools(
             "parameters": formatted_names,
             "parameter_count": len(formatted_names),
         }
-
-    # Commented out: inspect_all_parameters depends on get_parameters which doesn't always work reliably
-    # @mcp.tool(
-    #     description=(
-    #         "Get comprehensive information about all ROS parameters including values and metadata. "
-    #         "Works only with ROS 2.\n"
-    #         "Example:\n"
-    #         "inspect_all_parameters()"
-    #     )
-    # )
-    # def inspect_all_parameters() -> dict:
-    #     """Get comprehensive information about all ROS parameters including values and metadata. Works only with ROS 2."""
-    #     # First get all parameters
-    #     parameters_message = {
-    #         "op": "call_service",
-    #         "service": "/rosapi/get_param_names",
-    #         "type": "rosapi_msgs/srv/GetParamNames",
-    #         "args": {},
-    #         "id": "inspect_all_parameters_request_1",
-    #     }
-    #
-    #     with ws_manager:
-    #         parameters_response = ws_manager.request(parameters_message)
-    #
-    #         if not parameters_response or "values" not in parameters_response:
-    #             return {"error": "Failed to get parameters list"}
-    #
-    #         parameters = parameters_response["values"].get("names", [])
-    #         parameter_details = {}
-    #
-    #         # Get details for each parameter
-    #         parameter_errors = []
-    #         for param_name in parameters:
-    #             # Get parameter value
-    #             value_message = {
-    #                 "op": "call_service",
-    #                 "service": "/rosapi/get_param",
-    #                 "type": "rosapi_msgs/srv/GetParam",
-    #                 "args": {"name": param_name},
-    #                 "id": f"get_param_{param_name.replace('/', '_').replace(':', '_')}",
-    #             }
-    #
-    #             value_response = ws_manager.request(value_message)
-    #             param_value = ""
-    #             param_successful = False
-    #             if value_response and "values" in value_response:
-    #                 value_data = value_response["values"]
-    #                 param_value = value_data.get("value", "")
-    #                 param_successful = value_data.get("successful", False)
-    #             elif value_response and "result" in value_response and value_response["result"]:
-    #                 value_data = value_response["result"]
-    #                 param_value = value_data.get("value", "")
-    #                 param_successful = value_data.get("successful", False)
-    #             elif value_response and "error" in value_response:
-    #                 parameter_errors.append(f"Parameter {param_name}: {value_response['error']}")
-    #
-    #             # Get parameter type (using describe_parameters service)
-    #             type_message = {
-    #                 "op": "call_service",
-    #                 "service": "/rosapi/describe_parameters",
-    #                 "type": "rcl_interfaces/DescribeParameters",
-    #                 "args": {"names": [param_name]},
-    #                 "id": f"describe_param_{param_name.replace('/', '_').replace(':', '_')}",
-    #             }
-    #
-    #             type_response = ws_manager.request(type_message)
-    #             param_type = "unknown"
-    #
-    #             # Handle different response formats for parameter type detection
-    #             if type_response and isinstance(type_response, dict):
-    #                 if "values" in type_response:
-    #                     result_data = type_response["values"]
-    #                     if isinstance(result_data, dict):
-    #                         descriptors = result_data.get("descriptors", [])
-    #                         if descriptors and len(descriptors) > 0:
-    #                             param_type = descriptors[0].get("type", "unknown")
-    #                 elif "result" in type_response and type_response["result"]:
-    #                     result_data = type_response["result"]
-    #                     if isinstance(result_data, dict):
-    #                         descriptors = result_data.get("descriptors", [])
-    #                         if descriptors and len(descriptors) > 0:
-    #                             param_type = descriptors[0].get("type", "unknown")
-    #                 elif "error" in type_response:
-    #                     parameter_errors.append(
-    #                         f"Parameter {param_name} type: {type_response['error']}"
-    #                     )
-    #
-    #             # Fallback: Try to infer type from value
-    #             if param_type == "unknown" and param_value:
-    #                 try:
-    #                     # Remove quotes for type checking
-    #                     clean_value = param_value.strip('"')
-    #
-    #                     # Try to parse as different types
-    #                     if clean_value.lower() in ["true", "false"]:
-    #                         param_type = "bool"
-    #                     elif clean_value.isdigit() or (
-    #                         clean_value.startswith("-") and clean_value[1:].isdigit()
-    #                     ):
-    #                         param_type = "int"
-    #                     elif (
-    #                         "." in clean_value
-    #                         and clean_value.replace(".", "").replace("-", "").isdigit()
-    #                     ):
-    #                         param_type = "float"
-    #                     elif param_value.startswith('"') and param_value.endswith('"'):
-    #                         param_type = "string"
-    #                     elif clean_value == "":
-    #                         param_type = "string"
-    #                     else:
-    #                         param_type = "string"
-    #                 except Exception:
-    #                     param_type = "string"
-    #
-    #             parameter_details[param_name] = {
-    #                 "value": param_value,
-    #                 "type": param_type,
-    #                 "exists": param_successful,
-    #             }
-    #
-    #         return {
-    #             "total_parameters": len(parameters),
-    #             "parameters": parameter_details,
-    #             "parameter_errors": parameter_errors,  # Include any errors encountered during inspection
-    #         }
 
     @mcp.tool(
         description=(
