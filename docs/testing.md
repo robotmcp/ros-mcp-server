@@ -410,6 +410,6 @@ After completing basic testing:
 ## Additional Resources
 
 - **Launch System Guide:** See `docs/launch_system.md` for integrating rosbridge with your robot
-- **Installation Guide:** See `docs/installation.md` for setup instructions
+- **Installation Guide:** See `docs/install/installation.md` for setup instructions
 - **Category-Specific Prompts:** Access detailed testing guides for each tool category
 

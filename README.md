@@ -82,11 +82,11 @@ The MCP server is version-agnostic (ROS1 or ROS2) and works with any MCP-compati
 
 ### Installation  
 
-Follow the [installation guide](docs/installation.md) for step-by-step instructions to install, run, and troubleshoot the ROS-MCP server.  
+Follow the [installation guide](docs/install/installation.md) for step-by-step instructions to install, run, and troubleshoot the ROS-MCP server. We support [Claude Code, Codex CLI, Gemini CLI, Claude Desktop, ChatGPT, Cursor](docs/install/installation.md#step-1-set-up-your-ai-client), and more.
 
-For developers, we also have instructions for [installation from source](docs/installation-from-source.md). 
+For developers, we also have instructions for [installation from source](docs/install/from-source.md).
 
-If you prefer not to use desktop LLM apps (such as Claude, ChatGPT, or Gemini), you can use the [robot-mcp-client](https://github.com/robotmcp/robot-mcp-client) to run and interact with the MCP server directly from the terminal. 
+If you prefer not to use desktop LLM apps, you can use the [robot-mcp-client](https://github.com/robotmcp/robot-mcp-client) to run and interact with the MCP server directly from the terminal.
 
 ---
 

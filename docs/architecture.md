@@ -300,5 +300,5 @@ See `docs/testing.md` for detailed testing instructions.
 - **Testing Guide**: `docs/testing.md` - How to test the server
 - **Restructuring Plan**: `docs/restructuring_plan.md` - Migration history
 - **Launch System**: `docs/launch_system.md` - ROS launch guide
-- **Installation**: `docs/installation.md` - Setup instructions
+- **Installation**: `docs/install/installation.md` - Setup instructions
 
