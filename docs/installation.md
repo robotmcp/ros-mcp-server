@@ -55,6 +55,11 @@ uvx ros-mcp --help
 - Follow the installation instructions from the community-supported [claude-desktop-debian](https://github.com/aaddrick/claude-desktop-debian)
 
 ### 2.2 Configure
+⚠️ **Important**: Always completely quit Claude Desktop **before** editing claude_desktop_config.json`. If you edit the config while Claude Desktop is running in the background, your changes may be silently overwritten when you enter the chat window.
+- Completely terminate Claude Desktop processes
+```bash
+  pkill -f claude-desktop
+``` 
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -99,6 +104,8 @@ killall claude-desktop
 claude-desktop
 ```
 
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, this could be a Claude Desktop caching issue. Try the complete shutdown and restart process above.
+
 </details>
 
 </details>
@@ -129,6 +136,11 @@ uvx ros-mcp --help
 - Download from [claude.ai](https://claude.ai/download)
 
 ### 2.2 Configure
+⚠️ **Important**: Always completely quit Claude Desktop **before** editing claude_desktop_config.json`. If you edit the config while Claude Desktop is running in the background, your changes may be silently overwritten when you enter the chat window.
+- Completely terminate Claude Desktop processes
+```bash
+  pkill -f claude-desktop
+``` 
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -173,6 +185,8 @@ killall claude-desktop
 claude-desktop
 ```
 
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, this could be a Claude Desktop caching issue. Try the complete shutdown and restart process above.
+
 </details>
 
 </details>
@@ -205,6 +219,11 @@ uvx ros-mcp --help
 This will have Claude running on Windows and the MCP server running on WSL. We assume that you have installed uv on your [WSL](https://apps.microsoft.com/detail/9pn20msr04dw?hl=en-US&gl=US)
 
 ### 2.2 Configure
+⚠️ **Important**: Always completely quit Claude Desktop **before** editing claude_desktop_config.json`. If you edit the config while Claude Desktop is running in the background, your changes may be silently overwritten when you enter the chat window.
+- Completely terminate Claude Desktop processes
+```bash
+  pkill -f claude-desktop
+``` 
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -254,6 +273,8 @@ killall claude-desktop
 claude-desktop
 ```
 
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, this could be a Claude Desktop caching issue. Try the complete shutdown and restart process above.
+
 </details>
 
 </details>
@@ -287,6 +308,11 @@ uvx ros-mcp --help
 This will have Claude and the MCP server running within Windows.
 
 ### 2.2 Configure
+⚠️ **Important**: Always completely quit Claude Desktop **before** editing claude_desktop_config.json`. If you edit the config while Claude Desktop is running in the background, your changes may be silently overwritten when you enter the chat window.
+- Completely terminate Claude Desktop processes
+```bash
+  pkill -f claude-desktop
+``` 
 - Locate and edit the `claude_desktop_config.json` file:
 - (If the file does not exist, create it)
 ```bash
@@ -327,6 +353,8 @@ killall claude-desktop
 # Restart Claude Desktop
 claude-desktop
 ```
+
+- If the `ros-mcp-server` doesn't appear even after correctly configuring `claude_desktop_config.json`, this could be a Claude Desktop caching issue. Try the complete shutdown and restart process above.
 
 </details>
 
