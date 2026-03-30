@@ -96,7 +96,38 @@ The devcontainer provides a stable testing platform with ROS2 humble pre-install
      xhost +local:root
      ```
      </details>
-     
+
+     <details>
+     <summary> macOS host </summary>
+
+     Install [XQuartz](https://www.xquartz.org/) and enable **"Allow connections from network clients"** in XQuartz → Settings → Security. Log out and back in (or restart XQuartz) for the setting to take effect.
+
+     ```bash
+     xhost +   # allow connections (run on macOS host, not inside the container)
+     ```
+
+     Inside the devcontainer terminal, override the display variable:
+     ```bash
+     export DISPLAY=host.docker.internal:0   # Docker's built-in DNS to reach host XQuartz
+     ```
+
+     **Note:** The `postStartCommand` (`xhost +local:vscode || true`) runs inside the container and only works on Linux hosts with a shared X11 socket. On macOS, you must run `xhost` on the host side as shown above.
+     </details>
+
+     <details>
+     <summary> NVIDIA GPU passthrough (Linux only) </summary>
+
+     If you have an NVIDIA GPU and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) installed, you can enable GPU passthrough by adding `"--gpus=all"` to `runArgs` in `.devcontainer/devcontainer.json`:
+
+     ```json
+     "runArgs": [
+         "--gpus=all",
+         ...
+     ]
+     ```
+
+     This flag is not included by default because it prevents the container from starting on macOS and Windows, where the NVIDIA Container Toolkit is not available.
+     </details>
 
 4. You can now control the Turtlesim robot following **Step-2** and **Step-4** from the [installation guide](installation.md).
 5. Initialize pre-commit hooks (optional but recommended):
@@ -128,7 +159,7 @@ The devcontainer provides a stable testing platform with ROS2 humble pre-install
   ```
   </details>
   
-   **Note:** This setup has been tested and verified on Ubuntu.
+   **Note:** This setup has been tested and verified on Ubuntu and macOS (Apple Silicon).
 
 
 ## License
