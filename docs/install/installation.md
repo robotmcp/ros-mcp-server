@@ -1,15 +1,13 @@
 # Installation Guide
 
-The ROS-MCP server connects any AI assistant that supports the [MCP protocol](https://modelcontextprotocol.io/) to a robot running ROS. It is built to work across machines, supporting having the AI assistant on the user's laptop connect with robots on the local network.
+The ROS-MCP server lets any [MCP-compatible](https://modelcontextprotocol.io/) AI assistant control a robot running ROS — even from a different machine on the network.
 
-Installation involves two machines (both parts can be installed on the same machine if your AI client runs directly on the robot):
+Setup spans two machines on the **same local network** (or one machine if your AI client runs alongside ROS on the same hardware). A VPN is a great option for connecting over the internet.
 
 | Machine | What to install | Prerequisites | Purpose |
 |---------|----------------|---------------|---------|
 | **Your machine** (laptop/desktop) | An AI client + the ROS-MCP server | An account with an AI provider (e.g., Claude, Codex, Gemini) | Runs the language model and the MCP server |
-| **The robot's machine** | rosbridge | ROS installed | Creates a WebSocket to ROS for the MCP server to reach |
-
-Both machines must be on the **same local network**. Using a VPN is a great option if you want to connect to robots over the internet.
+| **The robot's machine** | rosbridge | ROS installed | Bridges ROS over WebSocket for the MCP server to connect to |
 
 Follow the three steps below to get up and running. Each step includes quick inline commands and a link to a more detailed guide.
 
@@ -18,10 +16,10 @@ Follow the three steps below to get up and running. Each step includes quick inl
 ## Step 1: Set Up Your AI Client
 
 
-Quick instructions for setup with Claude Code are below:
+Quick setup with Claude Code:
 
 ```bash
-# On the user's machine:
+# On your machine:
 # 1.1. Install uv (Python package runner)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -45,9 +43,7 @@ For detailed instructions or to set up a different AI client, follow the guide f
 
 ## Step 2: Set Up Rosbridge on the Robot
 
-Rosbridge runs on the robot's machine (wherever ROS is running). It provides a WebSocket interface that the MCP server on your machine connects to over the network.
-
-Follow the [Step 2: Rosbridge setup guide](rosbridge.md) for detailed instructions and verification. Quick instructions for it are below:
+Install and launch rosbridge on the machine where ROS is running. See the [Step 2: Rosbridge setup guide](rosbridge.md) for detailed instructions. Quick setup below:
 
 ```bash
 # On the robot:
@@ -61,15 +57,10 @@ source /<path to ros WS>/install/setup.bash
 ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 ```
 
-
-
 ## Step 3: Connect to Your Robot
 
-Now that your AI client has the MCP server configured and rosbridge is running on the robot, you're ready to connect.
-
-
-Follow the detailed [Step 3: Connect to your robot and explore](connect.md) guide for connecting and for sample commands. For a quick start, launch your AI assistant and type:
-```bash
+See the [Step 3: Connect and explore](connect.md) guide for connecting to your robot and sample commands. For a quick start, launch your AI assistant and type:
+```
 Connect to the robot on <ip address> and tell me what topics and services you see.
 ```
 
