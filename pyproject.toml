@@ -69,9 +69,10 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "-v --tb=short"
+addopts = "-v --tb=short -p no:launch_testing -p no:launch_ros -p no:ament_flake8 -p no:ament_copyright -p no:ament_lint -p no:ament_pep257 -p no:ament_xmllint"
 markers = [
     "installation: installation tests using Docker containers",
+    "integration: integration tests requiring Docker + ROS",
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
 
