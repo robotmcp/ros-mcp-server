@@ -243,7 +243,7 @@ subscribe_once(topic='/topic_name', msg_type='message_type', ...)
 
 **Response:**
 - For regular messages: Returns the message data
-- For image messages: Returns a message indicating the image was saved, use `analyze_previously_received_image()` to analyze it
+- For image messages: Returns the image directly as ImageContent. The image is also saved to disk and can be re-viewed with `view_saved_image()`
 
 ## Step 7: Subscribe to a Topic (For Duration)
 
