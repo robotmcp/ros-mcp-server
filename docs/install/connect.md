@@ -71,4 +71,6 @@ For more advanced demos with simulated robots in Gazebo, see the [ROS-MCP Demos 
 
 ## Troubleshooting
 
-If the connection fails, see the [Troubleshooting guide](troubleshooting.md).
+---
+
+[Back to Installation Guide](installation.md) | [Troubleshooting](troubleshooting.md)

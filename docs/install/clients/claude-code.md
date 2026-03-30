@@ -46,7 +46,7 @@ To complete the connection, [set up rosbridge](../rosbridge.md) on your robot.
 
 ## Next Step
 
-Set up rosbridge on the machine where ROS is running: [Rosbridge Setup](../rosbridge.md)
+Set up rosbridge on the machine where ROS is running: [Step 2: Rosbridge Setup](../rosbridge.md)
 
 ---
 
@@ -56,3 +56,7 @@ Set up rosbridge on the machine where ROS is running: [Rosbridge Setup](../rosbr
 - Alternate installation methods:
   - [Install via pip](../pip.md) — traditional `pip install` or install from source with pip
   - [Install from source](../from-source.md) — for developers who need to modify the server code
+
+---
+
+[Back to Installation Guide](../installation.md) | [Troubleshooting](../troubleshooting.md)

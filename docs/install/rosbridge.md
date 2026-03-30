@@ -44,10 +44,9 @@ curl -I http://localhost:9090
 
 A successful response confirms rosbridge is listening on its default port (9090).
 
-## Next Steps
+## Next Step
 
-- [Connect to your robot and test it out](connect.md)
-- [Troubleshooting](troubleshooting.md) — if rosbridge won't start or can't be reached
+Connect to your robot and test it out: [Step 3: Connect](connect.md)
 
 ---
 
@@ -77,3 +76,7 @@ roslaunch rosbridge_server rosbridge_websocket.launch
 > Don't forget to `source` your ROS workspace before launching, especially if you're using custom messages or services.
 
 </details>
+
+---
+
+[Back to Installation Guide](installation.md) | [Troubleshooting](troubleshooting.md)
