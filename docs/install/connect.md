@@ -62,14 +62,12 @@ This repo includes several examples to try with different robots and setups:
 
 - [Turtlesim](../../examples/1_turtlesim/README.md) — the "hello world" of ROS
 - [Turtlesim with Docker](../../examples/5_docker_turtlesim/README.md) — no ROS install required
-- [LIMO Mobile Robot](../../examples/3_limo_mobile_robot/README.md)
-- [Unitree Go2](../../examples/4_unitree_go2/README.md)
+- [LIMO Mobile Robot](../../examples/3_limo_mobile_robot/real_robot/README.md)
+- [Unitree Go2](../../examples/4_unitree_go2/real_robot/README.md)
 - [TurtleBot3](../../examples/9_turtlebot3/README.md)
 - [Image Topics](../../examples/8_images/README.md)
 
 For more advanced demos with simulated robots in Gazebo, see the [ROS-MCP Demos repository](https://github.com/robotmcp/demos-ros-mcp-server) which includes a warehouse TugBot, Unitree Go2 quadruped, and drone control with PX4.
-
-## Troubleshooting
 
 ---
 
