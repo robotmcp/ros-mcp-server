@@ -1,7 +1,42 @@
 import platform
 import socket
 import subprocess
-from typing import Dict
+from typing import Dict, Tuple
+
+
+def _resolve_dns(hostname: str) -> Tuple[bool, str | None, str | None]:
+    """
+    Resolve hostname to IP address.
+
+    Args:
+        hostname: The hostname or IP address to resolve
+
+    Returns:
+        Tuple of (success: bool, resolved_ip: str | None, error: str | None)
+        - If hostname is already an IP address, returns immediately with success=True
+        - If DNS resolution succeeds, returns (True, resolved_ip, None)
+        - If DNS resolution fails, returns (False, None, error_message)
+    """
+    # Check if already an IP address
+    try:
+        socket.inet_aton(hostname)
+        return (True, hostname, None)  # Already an IP, no DNS needed
+    except (socket.error, OSError):
+        pass  # Not an IP, need DNS resolution
+
+    # Try to resolve DNS
+    try:
+        addr_info = socket.getaddrinfo(hostname, None, socket.AF_INET, socket.SOCK_STREAM)
+        if addr_info:
+            # Extract IP address from the first result and ensure it's a string
+            resolved_ip = str(addr_info[0][4][0])
+            return (True, resolved_ip, None)
+        else:
+            return (False, None, "DNS resolution returned no results")
+    except socket.gaierror as e:
+        return (False, None, f"DNS resolution error: {str(e)}")
+    except Exception as e:
+        return (False, None, f"DNS resolution error: {str(e)}")
 
 
 def ping_ip_and_port(
@@ -11,7 +46,7 @@ def ping_ip_and_port(
     Ping an IP address and check if a specific port is open.
 
     Args:
-        ip (str): The IP address to ping (e.g., '192.168.1.100')
+        ip (str): The IP address or hostname to ping (e.g., '192.168.1.100' or 'duck7')
         port (int): The port number to check (e.g., 9090)
         ping_timeout (float): Timeout for ping in seconds. Default = 2.0.
         port_timeout (float): Timeout for port check in seconds. Default = 2.0.
@@ -27,13 +62,27 @@ def ping_ip_and_port(
         "overall_status": "unknown",
     }
 
+    # Step 0: DNS Resolution (do this FIRST)
+    dns_success, resolved_ip, dns_error = _resolve_dns(ip)
+    if not dns_success:
+        # Fail fast - return early with DNS error
+        result["ping"]["error"] = dns_error
+        result["port_check"]["error"] = dns_error
+        result["overall_status"] = (
+            "DNS_resolution_failed. Check if the hostname is correct and DNS is configured properly."
+        )
+        return result
+
+    # Use resolved IP for subsequent operations
+    actual_ip = resolved_ip
+
     # Step 1: Ping the IP address
     try:
         # Use platform-specific ping command
         if platform.system().lower() == "windows":
-            ping_cmd = ["ping", "-n", "1", "-w", str(int(ping_timeout * 1000)), ip]
+            ping_cmd = ["ping", "-n", "1", "-w", str(int(ping_timeout * 1000)), actual_ip]
         else:  # Linux, macOS, etc.
-            ping_cmd = ["ping", "-c", "1", "-W", str(int(ping_timeout)), ip]
+            ping_cmd = ["ping", "-c", "1", "-W", str(int(ping_timeout)), actual_ip]
 
         ping_result = subprocess.run(
             ping_cmd, capture_output=True, text=True, timeout=ping_timeout + 1.0
@@ -69,7 +118,7 @@ def ping_ip_and_port(
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(port_timeout)
 
-        port_result = sock.connect_ex((ip, port))
+        port_result = sock.connect_ex((actual_ip, port))
         sock.close()
 
         if port_result == 0:

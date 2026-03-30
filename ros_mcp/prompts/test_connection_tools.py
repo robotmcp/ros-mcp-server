@@ -43,39 +43,51 @@ Before testing connection tools, ensure you have:
 The ROS MCP Server provides the following connection tools:
 
 1. **connect_to_robot** - Connect to a robot by setting IP/port and test connectivity
-2. **ping_robot** - Ping a robot's IP address and check if a specific port is open
+2. **ping_robots** - Ping one or more robot IP addresses and check if specific ports are open
 3. **detect_ros_version** - Detect the ROS version and distribution via rosbridge
 
-## Step 1: Ping a Robot (Test Connectivity)
+## Step 1: Ping Robots (Test Connectivity)
 
-Before connecting, you can test if a robot is reachable and if the rosbridge port is open:
+Before connecting, you can test if one or more robots are reachable and if the rosbridge ports are open:
 
 ```
-ping_robot(ip='192.168.1.100', port=9090)
+ping_robots(targets=[{'ip': '192.168.1.100', 'port': 9090}])
 ```
 
 This will:
-- Ping the IP address to check if the host is reachable
-- Check if the specified port is open
-- Return connectivity status
+- Ping the IP address(es) to check if the host(s) are reachable
+- Check if the specified port(s) are open
+- Return connectivity status for each target
 
-**Example:**
+**Example (single robot):**
 ```
-ping_robot(ip='127.0.0.1', port=9090)
-ping_robot(ip='192.168.1.50', port=9090, ping_timeout=2.0, port_timeout=2.0)
+ping_robots(targets=[{'ip': '127.0.0.1', 'port': 9090}])
+```
+
+**Example (multiple robots):**
+```
+ping_robots(targets=[
+    {'ip': '192.168.1.100', 'port': 9090},
+    {'ip': '192.168.1.101', 'port': 9090},
+    {'ip': '192.168.1.102', 'port': 9091}
+], ping_timeout=2.0, port_timeout=2.0)
 ```
 
 **Parameters:**
-- `ip` (required): The IP address of the robot/rosbridge server
-- `port` (required): The port number (typically 9090 for rosbridge)
+- `targets` (required): List of target dictionaries, each containing:
+  - `ip` (str): The IP address of the robot/rosbridge server
+  - `port` (int): The port number (typically 9090 for rosbridge)
 - `ping_timeout` (optional): Timeout for ping in seconds (default: 2.0)
 - `port_timeout` (optional): Timeout for port check in seconds (default: 2.0)
 
 **Response:**
-The response includes:
-- `ping_successful`: Whether the IP address is reachable
-- `port_open`: Whether the port is open
-- `message`: Status message
+The response includes a `results` list with individual results for each target:
+- Each result contains:
+  - `ip`: The IP address that was pinged
+  - `port`: The port that was checked
+  - `ping`: Ping status with success, error, and response_time_ms
+  - `port_check`: Port check status with open status and error
+  - `overall_status`: Overall connectivity status
 
 **Note:** A successful ping to the IP but not the port can indicate that rosbridge is not running.
 
@@ -151,7 +163,7 @@ For connecting to a robot on the network:
 
 ```
 # First, test connectivity
-ping_robot(ip='192.168.1.100', port=9090)
+ping_robots(targets=[{'ip': '192.168.1.100', 'port': 9090}])
 
 # If successful, connect
 connect_to_robot(ip='192.168.1.100', port=9090)
@@ -166,7 +178,7 @@ If rosbridge is running on a non-standard port:
 
 ```
 connect_to_robot(ip='192.168.1.100', port=9091)
-ping_robot(ip='192.168.1.100', port=9091)
+ping_robots(targets=[{'ip': '192.168.1.100', 'port': 9091}])
 ```
 
 
@@ -174,7 +186,7 @@ ping_robot(ip='192.168.1.100', port=9091)
 
 ### Connection Timeout Errors
 
-**Problem:** `ping_robot()` or `connect_to_robot()` times out
+**Problem:** `ping_robots()` or `connect_to_robot()` times out
 
 **Solutions:**
 - Verify the IP address is correct
@@ -216,7 +228,7 @@ ping_robot(ip='192.168.1.100', port=9091)
 
 ## Tips
 
-- Always use `ping_robot()` first to test connectivity before connecting
+- Always use `ping_robots()` first to test connectivity before connecting
 - The default port for rosbridge is 9090, but it can be configured differently
 - Connection settings persist until you call `connect_to_robot()` again
 - Use `detect_ros_version()` after connecting to verify the connection works
