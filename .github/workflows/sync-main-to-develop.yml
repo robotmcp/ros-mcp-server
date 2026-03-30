@@ -1,0 +1,114 @@
+name: Sync main to develop
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    name: Check if sync is needed
+    outputs:
+      skip: ${{ steps.check-sync.outputs.SKIP }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Check if sync is needed
+        id: check-sync
+        run: |
+          # Use merge-tree to check if merging main into develop would produce
+          # any content changes, without touching the working tree. This correctly
+          # handles cherry-picks where the SHAs differ but the content is identical.
+          if MERGE_TREE=$(git merge-tree --write-tree origin/develop origin/main 2>&1); then
+            DEVELOP_TREE=$(git rev-parse origin/develop^{tree})
+            echo "Merge result tree: $MERGE_TREE"
+            echo "Develop tree:      $DEVELOP_TREE"
+            if [ "$MERGE_TREE" = "$DEVELOP_TREE" ]; then
+              echo "Merge would not change develop. Skipping sync."
+              echo "SKIP=true" >> "$GITHUB_OUTPUT"
+            else
+              echo "Merge would introduce changes. Sync needed."
+              echo "SKIP=false" >> "$GITHUB_OUTPUT"
+            fi
+          else
+            echo "Merge would have conflicts. Sync needed."
+            echo "SKIP=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  sync:
+    needs: check
+    if: needs.check.outputs.skip != 'true'
+    runs-on: ubuntu-latest
+    name: Sync main to develop
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up git user
+        run: |
+          git config user.name "RobotMCP Bot"
+          git config user.email "admin@robotmcp.ai"
+      - name: Create syncing branch off of main
+        id: create-sync-branch
+        run: |
+          SYNC_BRANCH="main-$(git rev-parse --short HEAD)/sync"
+          echo "Creating syncing branch: $SYNC_BRANCH"
+          git switch --create "$SYNC_BRANCH"
+          git push origin "$SYNC_BRANCH"
+          echo "SYNC_BRANCH=$SYNC_BRANCH" >> "$GITHUB_OUTPUT"
+      - name: Create syncing PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNC_BRANCH: ${{ steps.create-sync-branch.outputs.SYNC_BRANCH }}
+        run: |
+          gh pr create \
+            --base develop \
+            --head "$SYNC_BRANCH" \
+            --title "chore: sync main to develop" \
+            --draft \
+            --body "Auto-syncing 'main' to 'develop'
+
+          If this PR does not merge automatically, there are conflicts between 'main' and 'develop'.
+
+          **Do not merge this PR through GitHub.** A maintainer should:
+
+          1. Pull this temporary syncing branch locally:
+             \`\`\`
+             git fetch origin
+             git checkout $SYNC_BRANCH
+             \`\`\`
+
+          2. Merge 'develop' into this branch and resolve conflicts:
+             \`\`\`
+             git merge origin/develop
+             # resolve any conflicts, then commit
+             \`\`\`
+
+          3. Push the resolved branch:
+             \`\`\`
+             git push origin $SYNC_BRANCH
+             \`\`\`
+
+          4. Merge the PR into develop
+
+          5. Delete the sync branch"
+      - name: Merge and push to develop
+        run: |
+          git switch develop
+          git merge --no-ff --no-edit --commit --message "chore: sync main to develop" "${{ steps.create-sync-branch.outputs.SYNC_BRANCH }}"
+          git push origin develop
+      - name: Cleanup sync branch
+        continue-on-error: true
+        env:
+          SYNC_BRANCH: ${{ steps.create-sync-branch.outputs.SYNC_BRANCH }}
+        run: git push origin :"$SYNC_BRANCH"
