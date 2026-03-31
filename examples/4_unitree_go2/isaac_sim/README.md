@@ -112,7 +112,7 @@ To use the robot's topics in ROS-MCP, each node is launched.
 
 ## **Integration with MCP Server**
 
-If rosbridge is running, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/installation.md) .
+If rosbridge is running, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/install/installation.md) .
 
 ## **Example Walkthrough**
 Once all the above connections are completed, you can connect to and control the Go2 robot from the **ros-mcp-server**. Below is an example screen showing the connection to the Go2 robot from the **ros-mcp-server**.

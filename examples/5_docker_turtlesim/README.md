@@ -114,7 +114,7 @@ This will allow you to use arrow keys or WASD to manually move the turtle around
 ## Integration with MCP Server
 
 Once turtlesim and rosbridge are running, you can connect the MCP server to control the turtle programmatically.
-Follow the [installation guide](../../docs/installation.md) for full setup instructions if you haven't already set up the MCP server.
+Follow the [installation guide](../../docs/install/installation.md) for full setup instructions if you haven't already set up the MCP server.
 
 Since it is running on the same machine, you can tell the LLM to connect to the robot on localhost.
 
