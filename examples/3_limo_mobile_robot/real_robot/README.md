@@ -146,7 +146,7 @@ To use the robot's topics in ROS-MCP, each node is launched on the robot.
     ```
 ## **Integration with MCP Server**
     
-Once rosbridge is running on the LIMO and your PC is on the same network, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/installation.md) .
+Once rosbridge is running on the LIMO and your PC is on the same network, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/install/installation.md) .
     
 Since The ROS-MCP to recognize the robot, configure it to connect to the robot’s IP address.
 

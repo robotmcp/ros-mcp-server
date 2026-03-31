@@ -1,0 +1,20 @@
+FROM ros:noetic-ros-base
+
+ENV ROS_DISTRO=noetic
+ENV DEBIAN_FRONTEND=noninteractive
+ENV QT_QPA_PLATFORM=offscreen
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-noetic-rosbridge-suite \
+    ros-noetic-turtlesim \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros_ws
+
+COPY ros1_launch.launch /ros_ws/ros1_launch.launch
+
+EXPOSE 9090
+
+# Plain roslaunch (no --wait) auto-starts roscore if none is running.
+CMD ["roslaunch", "/ros_ws/ros1_launch.launch"]
