@@ -1,5 +1,7 @@
 # Cursor Desktop with ROS-MCP-Server
 
+> **See also:** The [Cursor setup guide](../../docs/install/clients/cursor.md) in the main installation docs for a streamlined setup.
+
 ## Prerequisites
 
 ### Prepare host machine (MCP Server)

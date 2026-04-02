@@ -99,7 +99,7 @@ ros2 launch rosbridge_server rosbridge_websocket_launch.xml
 
 ## **Integration with MCP Server**
     
-If rosbridge is running, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/installation.md) .
+If rosbridge is running, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/install/installation.md) .
 
 Since The **ros-mcp-server** needs to recognize the robot, configure it to connect to the robot’s IP address.
 

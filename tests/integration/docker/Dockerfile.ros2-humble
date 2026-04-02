@@ -1,0 +1,21 @@
+FROM ros:humble-ros-base
+
+ENV ROS_DISTRO=humble
+ENV DEBIAN_FRONTEND=noninteractive
+ENV QT_QPA_PLATFORM=offscreen
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-humble-rosbridge-suite \
+    ros-humble-turtlesim \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros2_ws
+
+COPY ros2_launch.py /ros2_ws/ros2_launch.py
+COPY entrypoint-ros2.sh /ros2_ws/entrypoint.sh
+RUN chmod +x /ros2_ws/entrypoint.sh
+
+EXPOSE 9090
+
+CMD ["/ros2_ws/entrypoint.sh"]

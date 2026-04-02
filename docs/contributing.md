@@ -129,7 +129,7 @@ The devcontainer provides a stable testing platform with ROS2 humble pre-install
      This flag is not included by default because it prevents the container from starting on macOS and Windows, where the NVIDIA Container Toolkit is not available.
      </details>
 
-4. You can now control the Turtlesim robot following **Step-2** and **Step-4** from the [installation guide](installation.md).
+4. You can now control the Turtlesim robot following the [Rosbridge setup](install/rosbridge.md) and [Connect to your robot](install/connect.md) guides.
 5. Initialize pre-commit hooks (optional but recommended):
    ```bash
    pre-commit install
