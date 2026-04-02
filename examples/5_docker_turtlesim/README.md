@@ -55,7 +55,7 @@ docker compose build --no-cache turtlesim
 The easiest way to launch turtlesim with proper X11 setup:
 
 ```bash
-./scrips/launch.sh
+./scripts/launch.sh
 ```
 
 This script automatically detects your OS and handles all platform-specific X11 configuration. It will:
