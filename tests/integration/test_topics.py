@@ -5,6 +5,7 @@ get_topic_details, get_message_details, subscribe_once, subscribe_for_duration,
 publish_once, publish_for_durations) against a live rosbridge container.
 """
 
+import json
 import time
 
 import pytest
@@ -125,9 +126,11 @@ class TestSubscribeForDuration:
             duration=2.0,
             max_messages=5,
         )
-        assert "messages" in result, f"subscribe_for_duration failed: {result}"
-        assert result["collected_count"] > 0
-        assert result["topic"] == "/turtle1/pose"
+        # subscribe_for_duration returns a ToolResult; summary is in content[0].text
+        assert hasattr(result, "content"), f"subscribe_for_duration failed: {result}"
+        summary = json.loads(result.content[0].text)
+        assert summary["collected_count"] > 0
+        assert summary["topic"] == "/turtle1/pose"
 
     def test_missing_args_returns_error(self, tools):
         """subscribe_for_duration without topic/msg_type should return error."""
