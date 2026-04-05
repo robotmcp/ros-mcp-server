@@ -1,6 +1,5 @@
 """Action tools for ROS MCP."""
 
-import asyncio
 import json
 import time
 import uuid
@@ -9,6 +8,7 @@ from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _safe_get_values
+from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -36,14 +36,14 @@ def register_action_tools(
                 or a message string if no actions are found.
         """
         # Check if required service is available
-        required_services = ["/rosapi/action_servers"]
+        required_services = [rosapi_service("action_servers")]
 
         with ws_manager:
             # Get available services to check compatibility
             services_message = {
                 "op": "call_service",
-                "service": "/rosapi/services",
-                "type": "rosapi/Services",
+                "service": rosapi_service("services"),
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "check_services_for_get_actions",
             }
@@ -78,8 +78,8 @@ def register_action_tools(
         # rosbridge service call to get action list
         message = {
             "op": "call_service",
-            "service": "/rosapi/action_servers",
-            "type": "rosapi/ActionServers",
+            "service": rosapi_service("action_servers"),
+            "type": rosapi_type("ActionServers"),
             "args": {},
             "id": "get_actions_request_1",
         }
@@ -137,14 +137,14 @@ def register_action_tools(
         action_interfaces = []  # Initialize before if/else block
 
         # Check if required service is available
-        required_services = ["/rosapi/interfaces"]
+        required_services = [rosapi_service("interfaces")]
 
         with ws_manager:
             # Get available services to check compatibility
             services_message = {
                 "op": "call_service",
-                "service": "/rosapi/services",
-                "type": "rosapi/Services",
+                "service": rosapi_service("services"),
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "check_services_for_get_action_type",
             }
@@ -191,8 +191,8 @@ def register_action_tools(
             # For unknown actions, try to derive the type from interfaces list
             interfaces_message = {
                 "op": "call_service",
-                "service": "/rosapi/interfaces",
-                "type": "rosapi/Interfaces",
+                "service": rosapi_service("interfaces"),
+                "type": rosapi_type("Interfaces"),
                 "args": {},
                 "id": f"get_interfaces_for_action_{action.replace('/', '_')}",
             }
@@ -231,17 +231,17 @@ def register_action_tools(
 
         # Check if required action detail services are available
         required_detail_services = [
-            "/rosapi/action_goal_details",
-            "/rosapi/action_result_details",
-            "/rosapi/action_feedback_details",
+            rosapi_service("action_goal_details"),
+            rosapi_service("action_result_details"),
+            rosapi_service("action_feedback_details"),
         ]
 
         with ws_manager:
             # Get available services to check compatibility
             services_message = {
                 "op": "call_service",
-                "service": "/rosapi/services",
-                "type": "rosapi/Services",
+                "service": rosapi_service("services"),
+                "type": rosapi_type("Services"),
                 "args": {},
                 "id": "check_services_for_action_details",
             }
@@ -286,8 +286,8 @@ def register_action_tools(
         # Get goal details using action-specific service
         goal_message = {
             "op": "call_service",
-            "service": "/rosapi/action_goal_details",
-            "type": "rosapi_msgs/srv/ActionGoalDetails",
+            "service": rosapi_service("action_goal_details"),
+            "type": rosapi_type("ActionGoalDetails"),
             "args": {"type": action_type},
             "id": f"get_action_goal_details_{action_type.replace('/', '_')}",
         }
@@ -327,8 +327,8 @@ def register_action_tools(
         # Get result details using action-specific service
         result_message = {
             "op": "call_service",
-            "service": "/rosapi/action_result_details",
-            "type": "rosapi_msgs/srv/ActionResultDetails",
+            "service": rosapi_service("action_result_details"),
+            "type": rosapi_type("ActionResultDetails"),
             "args": {"type": action_type},
             "id": f"get_action_result_details_{action_type.replace('/', '_')}",
         }
@@ -368,8 +368,8 @@ def register_action_tools(
         # Get feedback details using action-specific service
         feedback_message = {
             "op": "call_service",
-            "service": "/rosapi/action_feedback_details",
-            "type": "rosapi_msgs/srv/ActionFeedbackDetails",
+            "service": rosapi_service("action_feedback_details"),
+            "type": rosapi_type("ActionFeedbackDetails"),
             "args": {"type": action_type},
             "id": f"get_action_feedback_details_{action_type.replace('/', '_')}",
         }
@@ -659,11 +659,6 @@ def register_action_tools(
 
                     except json.JSONDecodeError:
                         continue
-                else:
-                    # No response received, continue waiting
-                    pass
-
-                await asyncio.sleep(0.1)
 
             # Timeout - return last feedback if available
             if ctx and feedback_count > 0:
