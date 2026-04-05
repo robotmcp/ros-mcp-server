@@ -18,7 +18,7 @@ Before starting this tutorial, make sure you have:
 
 ✅ **ROS2 installed** (Humble or Jazzy recommended)  
 ✅ **Basic familiarity with terminal/command line**  
-✅ **The ROS MCP Server installed** (see [Installation Guide](../../docs/installation.md))  
+✅ **The ROS MCP Server installed** (see [Installation Guide](../../docs/install/installation.md))  
 ✅ **OpenCV and image processing libraries** (usually included with ROS2)
 
 ## Camera Options
