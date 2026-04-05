@@ -1,5 +1,7 @@
 # ChatGPT Desktop with ROS-MCP-Server
 
+> **See also:** The [ChatGPT setup guide](../../docs/install/clients/chatgpt.md) in the main installation docs for a streamlined setup.
+
 ## Prerequisites
 
 ### Prepare host machine (MCP Server)

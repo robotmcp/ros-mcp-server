@@ -1,0 +1,14 @@
+services:
+  ros:
+    build:
+      context: ./docker
+      dockerfile: ${ROS_DOCKERFILE:-Dockerfile.ros2-humble}
+    container_name: ${ROS_CONTAINER_NAME:-ros-mcp-test}
+    ports:
+      - "9090:9090"
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/9090"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 15s
