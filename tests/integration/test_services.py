@@ -80,9 +80,18 @@ class TestGetServiceDetails:
 class TestCallService:
     """Verify call_service MCP tool can call a live service."""
 
+    def test_call_clear(self, tools):
+        """call_service for /clear should succeed (clears drawing traces)."""
+        type_result = tools["get_service_type"](service="/clear")
+        result = tools["call_service"](
+            service_name="/clear",
+            service_type=type_result["type"],
+            request={},
+        )
+        assert result["success"] is True
+
     def test_call_spawn_turtle(self, tools):
         """call_service for /spawn should create a new turtle."""
-        # Use a unique name to avoid conflicts across test runs
         turtle_name = f"test_turtle_{int(time.time_ns())}"
         type_result = tools["get_service_type"](service="/spawn")
         spawn_type = type_result["type"]
@@ -92,3 +101,12 @@ class TestCallService:
             request={"x": 3.0, "y": 3.0, "theta": 0.0, "name": turtle_name},
         )
         assert result["success"] is True
+
+    def test_call_nonexistent_service(self, tools):
+        """call_service for a nonexistent service should return an error."""
+        result = tools["call_service"](
+            service_name="/this_service_does_not_exist",
+            service_type="std_srvs/srv/Empty",
+            request={},
+        )
+        assert result["success"] is False
