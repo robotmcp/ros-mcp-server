@@ -11,7 +11,6 @@ from PIL import Image as PILImage
 
 from ros_mcp.tools.images import _encode_image_to_imagecontent, convert_expects_image_hint
 from ros_mcp.utils.response import _check_response, _safe_get_values
-from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
 
@@ -39,8 +38,8 @@ def register_topic_tools(
         # rosbridge service call to get topic list
         message = {
             "op": "call_service",
-            "service": rosapi_service("topics"),
-            "type": rosapi_type("Topics"),
+            "service": "/rosapi/topics",
+            "type": "rosapi/Topics",
             "args": {},
             "id": "get_topics_request_1",
         }
@@ -88,8 +87,8 @@ def register_topic_tools(
         # rosbridge service call to get topic type
         message = {
             "op": "call_service",
-            "service": rosapi_service("topic_type"),
-            "type": rosapi_type("TopicType"),
+            "service": "/rosapi/topic_type",
+            "type": "rosapi/TopicType",
             "args": {"topic": topic},
             "id": f"get_topic_type_request_{topic.replace('/', '_')}",
         }
@@ -150,8 +149,8 @@ def register_topic_tools(
             # Get topic type
             type_message = {
                 "op": "call_service",
-                "service": rosapi_service("topic_type"),
-                "type": rosapi_type("TopicType"),
+                "service": "/rosapi/topic_type",
+                "type": "rosapi/TopicType",
                 "args": {"topic": topic},
                 "id": f"get_topic_type_{topic.replace('/', '_')}",
             }
@@ -164,8 +163,8 @@ def register_topic_tools(
             # Get publishers for this topic
             publishers_message = {
                 "op": "call_service",
-                "service": rosapi_service("publishers"),
-                "type": rosapi_type("Publishers"),
+                "service": "/rosapi/publishers",
+                "type": "rosapi/Publishers",
                 "args": {"topic": topic},
                 "id": f"get_publishers_{topic.replace('/', '_')}",
             }
@@ -178,8 +177,8 @@ def register_topic_tools(
             # Get subscribers for this topic
             subscribers_message = {
                 "op": "call_service",
-                "service": rosapi_service("subscribers"),
-                "type": rosapi_type("Subscribers"),
+                "service": "/rosapi/subscribers",
+                "type": "rosapi/Subscribers",
                 "args": {"topic": topic},
                 "id": f"get_subscribers_{topic.replace('/', '_')}",
             }
@@ -227,8 +226,8 @@ def register_topic_tools(
         # rosbridge service call to get message details
         message = {
             "op": "call_service",
-            "service": rosapi_service("message_details"),
-            "type": rosapi_type("MessageDetails"),
+            "service": "/rosapi/message_details",
+            "type": "rosapi/MessageDetails",
             "args": {"type": message_type},
             "id": f"get_message_details_request_{message_type.replace('/', '_')}",
         }
