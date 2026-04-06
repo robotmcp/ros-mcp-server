@@ -1,0 +1,68 @@
+name: Integration Tests
+
+on:
+  pull_request:
+  push:
+    branches: [develop, main]
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ros-distro: [melodic, noetic, humble, jazzy]
+        include:
+          - ros-distro: melodic
+            dockerfile: Dockerfile.ros1-melodic
+            container-name: integration-ros-melodic
+          - ros-distro: noetic
+            dockerfile: Dockerfile.ros1-noetic
+            container-name: integration-ros-noetic
+          - ros-distro: humble
+            dockerfile: Dockerfile.ros2-humble
+            container-name: integration-ros2-humble
+          - ros-distro: jazzy
+            dockerfile: Dockerfile.ros2-jazzy
+            container-name: integration-ros2-jazzy
+
+    name: ${{ matrix.ros-distro }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Start ROS container
+        run: |
+          ROS_DOCKERFILE=${{ matrix.dockerfile }} \
+          ROS_CONTAINER_NAME=${{ matrix.container-name }} \
+          docker compose -f tests/integration/docker-compose.yml up --build -d --wait
+        timeout-minutes: 10
+
+      - name: Detect ROS version
+        run: uv run python tests/integration/test_quick_detect.py
+
+      - name: Run integration tests
+        run: |
+          uv run pytest tests/integration/ -v \
+            --ros-distro ${{ matrix.ros-distro }} --skip-compose
+
+      - name: Tear down
+        if: always()
+        run: |
+          ROS_DOCKERFILE=${{ matrix.dockerfile }} \
+          ROS_CONTAINER_NAME=${{ matrix.container-name }} \
+          docker compose -f tests/integration/docker-compose.yml down --volumes --remove-orphans

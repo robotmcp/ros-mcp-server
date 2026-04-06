@@ -231,7 +231,7 @@ python3 camera_bridge.py
 
 ## **Integration with MCP Server**
     
-Once rosbridge is running on the Unitree GO2 and your PC is on the same network, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/installation.md) .
+Once rosbridge is running on the Unitree GO2 and your PC is on the same network, you can connect the MCP server to control the robot. If you haven’t set up the MCP server yet, follow the [installation guide](https://github.com/robotmcp/ros-mcp-server/blob/main/docs/install/installation.md) .
     
 Since The **ros-mcp-server** to recognize the robot, configure it to connect to the robot’s IP address.
 

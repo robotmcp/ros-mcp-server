@@ -1,0 +1,19 @@
+FROM ros:melodic-ros-base
+
+ENV ROS_DISTRO=melodic
+ENV DEBIAN_FRONTEND=noninteractive
+ENV QT_QPA_PLATFORM=offscreen
+SHELL ["/bin/bash", "-c"]
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ros-melodic-rosbridge-suite \
+    ros-melodic-turtlesim \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /ros_ws
+
+COPY ros1_launch.launch /ros_ws/ros1_launch.launch
+
+EXPOSE 9090
+
+CMD ["roslaunch", "/ros_ws/ros1_launch.launch"]
