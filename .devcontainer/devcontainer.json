@@ -6,7 +6,6 @@
     "source=${localWorkspaceFolder},target=/home/vscode/workspace,type=bind"
   ],
   "runArgs": [
-      "--gpus=all",
       "-v", "${env:SSH_AUTH_SOCK}:/ssh-agent",
       "-e", "SSH_AUTH_SOCK=/ssh-agent",
       "-e", "DISPLAY=${localEnv:DISPLAY}",
