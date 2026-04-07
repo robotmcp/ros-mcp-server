@@ -18,7 +18,7 @@ Before starting this tutorial, make sure you have:
 
 ✅ **Any version of ROS installed** (ROS1 Noetic, ROS2 Humble, or ROS2 Jazzy)  
 ✅ **Basic familiarity with terminal/command line**  
-✅ **The ROS MCP Server installed** (see [Installation Guide](../../docs/installation.md) for setup instructions)
+✅ **The ROS MCP Server installed** (see [Installation Guide](../../docs/install/installation.md) for setup instructions)
 
 > 💡 **Tip**: If you don't have ROS installed yet, you can use our [Docker Turtlesim example](../5_docker_turtlesim/). However, we recommend this option only for users who are familiar with Docker and X11 forwarding settings. (We would like you to spend time exploring the Robot MCP server, not figuring out X11 forwarding on your machine!)
 
@@ -154,7 +154,7 @@ ros2 service type /turtle1/set_pen
 
 ## Step 3: Install and Configure the MCP Server
 
-If you haven't already set up the ROS MCP Server, follow the detailed [Installation Guide](../../docs/installation.md). The MCP server can run on:
+If you haven't already set up the ROS MCP Server, follow the detailed [Installation Guide](../../docs/install/installation.md). The MCP server can run on:
 
 - **Same machine** as your ROS system (simplest setup)
 - **Different machine** on the same local network (for remote control)
