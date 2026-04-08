@@ -8,6 +8,8 @@ from fastmcp.utilities.types import Image
 from mcp.types import ImageContent, ToolAnnotations
 from PIL import Image as PILImage
 
+from ros_mcp.utils.paths import get_fixed_image_path
+
 
 def convert_expects_image_hint(expects_image: str) -> bool | None:
     """
@@ -68,7 +70,7 @@ def register_image_tools(
         ),
     )
     def view_saved_image(
-        image_path: str = "./camera/received_image.jpeg",
+        image_path: str = "",
     ) -> ImageContent:  # type: ignore  # See issue #140
         """
         View a previously saved image from the specified path.
@@ -78,11 +80,19 @@ def register_image_tools(
         re-view a saved image without re-subscribing.
 
         Args:
-            image_path (str): Path to the saved image file (default: "./camera/received_image.jpeg")
+            image_path (str): Optional custom path to the image file. If not provided,
+                            uses the default system cache location.
 
         Returns:
             ImageContent: JPEG-encoded image wrapped in an ImageContent object, or error dict if file not found.
         """
+        # Use default path if not specified
+        if not image_path:
+            try:
+                image_path = str(get_fixed_image_path("received_image.jpeg"))
+            except RuntimeError as e:
+                return {"error": f"Failed to get image path: {e}"}  # type: ignore[return-value]  # See issue #140
+
         if not os.path.exists(image_path):
             return {"error": f"No image found at {image_path}"}  # type: ignore[return-value]  # See issue #140
         img = PILImage.open(image_path)
