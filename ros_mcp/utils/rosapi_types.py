@@ -149,7 +149,7 @@ class RosapiTypeResolver:
                         )
                         logger.info("ROS 1 distro: '%s'", self._distro)
         except Exception as e:
-            logger.debug("ROS 1 distro detection failed (non-fatal): %s", e)
+            logger.warning("ROS 1 distro detection failed (non-fatal): %s", e)
 
     def _reset(self) -> None:
         """Reset detection state. For testing only."""
@@ -168,8 +168,18 @@ class RosapiTypeResolver:
         return self._distro
 
     def get_type(self, short_name: str) -> str:
-        """Return the version-appropriate type string."""
-        type_prefix = _TYPE_PREFIX[self.version]
+        """Return the version-appropriate type string.
+
+        Falls back to ROS 2 format (rosapi_msgs/srv/) when version is unknown.
+        """
+        if self._version is None:
+            logger.warning(
+                "ROS version unknown — falling back to ROS 2 type format for '%s'",
+                short_name,
+            )
+            type_prefix = _TYPE_PREFIX[RosVersion.ROS2]
+        else:
+            type_prefix = _TYPE_PREFIX[self._version]
         return f"{type_prefix}/{short_name}"
 
     def get_service(self, service_name: str) -> str:
