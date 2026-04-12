@@ -3,29 +3,6 @@
 import pytest
 
 # ---------------------------------------------------------------------------
-# rosbridge response fixtures (used by test_response.py)
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def success_response():
-    """A rosbridge response indicating success with values."""
-    return {"result": True, "values": {"message": "ok", "data": [1, 2, 3]}}
-
-
-@pytest.fixture
-def failure_response():
-    """A rosbridge response indicating failure with an error message."""
-    return {"result": False, "values": {"message": "Service not available"}}
-
-
-@pytest.fixture
-def failure_response_no_message():
-    """A rosbridge response indicating failure without an error message."""
-    return {"result": False, "values": {}}
-
-
-# ---------------------------------------------------------------------------
 # Robot config fixtures (used by test_config_utils.py)
 # ---------------------------------------------------------------------------
 

@@ -40,7 +40,13 @@ class TestLoadRobotConfig:
 
 
 def _patch_specs_dir(monkeypatch, tmp_path):
-    """Redirect config_utils.__file__ so specs_dir resolves to tmp_path/robot_specifications."""
+    """Redirect config_utils.__file__ so specs_dir resolves to tmp_path/robot_specifications.
+
+    Note: this approach is tightly coupled to config_utils's internal path
+    resolution (Path(__file__).parent.parent.parent / "robot_specifications").
+    If config_utils is refactored to accept specs_dir via injection or
+    configuration, these monkeypatches will need to be revisited.
+    """
     # config_utils resolves: Path(__file__).parent.parent.parent / "robot_specifications"
     # So __file__ must be at: tmp_path / "a" / "b" / "config_utils.py"
     fake_file = tmp_path / "a" / "b" / "config_utils.py"
