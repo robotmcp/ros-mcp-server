@@ -6,7 +6,7 @@
 
 ### Prepare host machine (MCP Server)
 
-* Installation of ChatGPT Desktop. Download [here](chatgpt.com/download) or Microsoft Store.
+* Installation of ChatGPT Desktop. Download [here](https://chatgpt.com/download) or Microsoft Store.
 * Installation of WSL (Linux) or a terminal on macOS.
 
 > 💡 **macOS Users**: You can run the MCP server and ngrok directly on macOS without WSL. For ROS2, use Docker (see [5_docker_turtlesim](../5_docker_turtlesim/) for a ready-made container) since ROS2 is not natively available on macOS.
@@ -272,7 +272,7 @@ cd ros-mcp-server
 	```
 	Or you can also launch:
 	```bash
-	launch_mcp_tunnel_.sh
+	launch_mcp_tunnel.sh
 	```
  	</details>
 
