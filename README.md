@@ -35,11 +35,9 @@ ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) 
 </p>
 
 🏭 **Example - AI Agent diagnosis of Industrial Robot End Effector** ([Video](https://youtu.be/EhZNFULz9P4))  
-- The MCP server enables Claude to access data from an industrial robot in production
-- Claude was given access to the technician manuals for the robot, but no other pre-training.   
-- The agent queries details about custom topic and service types and their syntax.
-- From only a single prompt to test the gripper, the Agent was able to read the technician manuals, use ROS MCP to understand the robot, infer how to conduct tests and run them. 
-- From the test results, the Agent was able to infer an anomaly, decide further tests, conduct them and report the root cause.
+- The MCP server connects Claude to a production industrial robot, with only the technician manuals as reference.
+- Claude discovers the robot's custom topic and service types and their syntax on its own.
+- From a single prompt to test the gripper, it reads the manuals, runs its own tests, finds an anomaly, and reports the root cause.
 
 <p align="center">
   <a href="https://youtu.be/EhZNFULz9P4">
