@@ -26,6 +26,7 @@ ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) 
 - **Works with any MCP client** → built on the open [MCP standard](https://modelcontextprotocol.io/), supporting Claude Code, Codex CLI, Gemini CLI, Claude Desktop, ChatGPT, Cursor, and more.
 - **Works across ROS versions** → compatible across ROS 2 (Jazzy, Humble, and others) and ROS 1 distros.
 
+---
 ## 🎥 Examples in Action  
 
 <p align="center">
@@ -34,6 +35,7 @@ ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) 
   </a>
 </p>
 
+---
 🏭 **Example - AI Agent diagnosis of Industrial Robot End Effector** ([Video](https://youtu.be/EhZNFULz9P4))  
 - The MCP server connects Claude to a production industrial robot, with only the technician manuals as reference.
 - Claude discovers the robot's custom topic and service types and their syntax on its own.
@@ -45,6 +47,7 @@ ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) 
   </a>
 </p>
 
+---
 🤖 **Example - Controlling "Wilson" with natural language**  ([video](https://www.traceglarue.com/wilson))  
 From a single prompt — *"Grab a Coke from the fridge & go to the living room."* — Google Gemini uses the MCP server to navigate and manipulate autonomously. Built on ROS 2 with Nav2 (SLAM) for mapping and navigation, and MoveIt to command the manipulator.
 
@@ -63,8 +66,6 @@ The MCP server connects Claude to a simulated Unitree Go2 quadruped in NVIDIA Is
     <img src="https://img.youtube.com/vi/9StFx4lnvmc/maxresdefault.jpg" width="400" alt="Controlling Unitree Go2 in NVIDIA Isaac Sim" />
   </a>
 </p>  
-
----
 
 
 ---
