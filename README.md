@@ -28,32 +28,46 @@ ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) 
 
 ## 🎥 Examples in Action  
 
-🖥️ **Example - Controlling the MOCA mobile manipulator in NVIDIA Isaac Sim**  
-Commands are entered into Claude Desktop, which uses the MCP server to control the simulated robot.  
-
 <p align="center">
-  <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/result.gif" />
-</p>  
-
----
-🐕 **Example - Controlling Unitree Go2 with natural language**  ([video](https://youtu.be/RW9_FgfxWzs?si=8bdhpHNYaupzi9q3))  
-The MCP server enables Claude to interpret images from the robot's cameras, and then command the robot based on human natural language commands. 
-
-<p align="left">
-  <img src="https://contoro.com/asset/media/demo_go2.gif" />
-</p>  
-
----
-🏭 **Example - Debugging an industrial robot** ([Video](https://youtu.be/SrHzC5InJDA))  
-- Connecting to an industrial robot enables the LLM to browse all ROS topics and services to assess the robot state. 
-- With no predefined context, the MCP server enables the LLM to query details about custom topic and service types and their syntax (00:28). 
-- Using only natural language, the operator calls the custom services to test and debug the robot (01:42). 
-
-<p align="center">
-  <a href="https://contoroinc.sharepoint.com/:v:/s/SandboxNewBusiness/EVh2t2_YG9BEl-Bw-8k6xucBcEv7XebJv1MtqLTIfrQpig?e=deu3YO">
-    <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/Contoro_robot.png" width="400" alt="Testing and debugging an industrial robot" />
+  <a href="https://youtu.be/Yy1loJAn9sA">
+    <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/MCP%20Demos%20Slide%20-%20With%20text%20-%20640p.gif" alt="ROS MCP demos" />
   </a>
 </p>
+
+🏭 **Example - AI Agent diagnosis of Industrial Robot End Effector** ([Video](https://youtu.be/EhZNFULz9P4))  
+- The MCP server enables Claude to access data from an industrial robot in production
+- Claude was given access to the technician manuals for the robot, but no other pre-training.   
+- The agent queries details about custom topic and service types and their syntax.
+- From only a single prompt to test the gripper, the Agent was able to read the technician manuals, use ROS MCP to understand the robot, infer how to conduct tests and run them. 
+- From the test results, the Agent was able to infer an anomaly, decide further tests, conduct them and report the root cause.
+
+<p align="center">
+  <a href="https://youtu.be/EhZNFULz9P4">
+    <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/ROS%20MCP%20Gripper%20vacuum%20test.jpg" width="400" alt="Testing and debugging an industrial robot" />
+  </a>
+</p>
+
+🤖 **Example - Controlling "Wilson" with natural language**  ([video](https://www.traceglarue.com/wilson))  
+From a single prompt — *"Grab a Coke from the fridge & go to the living room."* — Google Gemini uses the MCP server to navigate and manipulate autonomously. Built on ROS 2 with Nav2 (SLAM) for mapping and navigation, and MoveIt to command the manipulator.
+
+<p align="center">
+  <a href="https://www.traceglarue.com/wilson">
+    <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/Wilson%20thumbnail.jpg" width="400" alt="Wilson robot controlled with natural language" />
+  </a>
+</p>  
+
+---
+🐕 **Example - Controlling Unitree Go2 in NVIDIA Isaac Sim**  ([video](https://www.youtube.com/watch?v=9StFx4lnvmc))  
+The MCP server connects Claude to a simulated Unitree Go2 quadruped in NVIDIA Isaac Sim, interpreting natural language commands to navigate and control the robot. 
+
+<p align="center">
+  <a href="https://www.youtube.com/watch?v=9StFx4lnvmc">
+    <img src="https://img.youtube.com/vi/9StFx4lnvmc/maxresdefault.jpg" width="400" alt="Controlling Unitree Go2 in NVIDIA Isaac Sim" />
+  </a>
+</p>  
+
+---
+
 
 ---
 
