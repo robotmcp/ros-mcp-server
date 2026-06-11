@@ -31,7 +31,7 @@ ROS-MCP-Server connects large language models (such as Claude, GPT, and Gemini) 
 
 <p align="center">
   <a href="https://youtu.be/Yy1loJAn9sA">
-    <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/MCP%20Demos%20Slide%20-%20With%20text%20-%20640p.gif" alt="ROS MCP demos" />
+    <img src="https://github.com/robotmcp/ros-mcp-server/blob/main/docs/images/MCP%20Demos%20Slide%20-%207to12s.gif" alt="ROS MCP demos" />
   </a>
 </p>
 
