@@ -7,12 +7,14 @@
 ### Prepare host machine (MCP Server)
 
 * Installation of ChatGPT Desktop. Download [here](chatgpt.com/download) or Microsoft Store.
-* Installation of WSL (Linux).
+* Installation of WSL (Linux) or a terminal on macOS.
+
+> 💡 **macOS Users**: You can run the MCP server and ngrok directly on macOS without WSL. For ROS2, use Docker (see [5_docker_turtlesim](../5_docker_turtlesim/) for a ready-made container) since ROS2 is not natively available on macOS.
 
 ### Prepare target robot (ROS)
 
-* Installation of Ubuntu or WSL (Windows Subsystem for Linux).
-* Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow, this tutorial \[https://wiki.ros.org/ROS/Tutorials]
+* Installation of Ubuntu, WSL (Windows Subsystem for Linux), or Docker (macOS).
+* Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow this tutorial \[https://wiki.ros.org/ROS/Tutorials]
 
 # Tutorial
 
@@ -61,6 +63,24 @@
 	```
 	</details>
 
+	<details>
+	<summary><strong>Option C: macOS</strong></summary>
+
+	Using Homebrew:
+	```bash
+	brew install uv
+	```
+	or curl:
+	```bash
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+	```
+	or pip:
+	```bash
+	pip3 install uv
+	```
+	> 💡 **Note**: If installed via pip, you may need to add `~/Library/Python/3.x/bin` to your PATH.
+	</details>
+
 * Install [`ngrok`](https://dashboard.ngrok.com/get-started/setup/linux) using one of the following methods:
 	
 	<details>
@@ -86,6 +106,16 @@
 	```bash
 	sudo snap install ngrok
 	```
+	</details>
+
+	<details>
+	<summary><strong>Option C: macOS</strong></summary>
+
+	Using Homebrew:
+	```bash
+	brew install ngrok
+	```
+	or download directly from [ngrok.com/download](https://ngrok.com/download).
 	</details>
 
 * Login or create your account at [`ngrok`](https://dashboard.ngrok.com/login)
@@ -116,7 +146,16 @@ ngrok config add-authtoken <YOUR_AUTHTOKEN>
 	```
 	</details>
 
-* In WSL (Linux), consider adding all your `MCP` variable to `.bashrc`
+	<details>
+	<summary><strong>Option C: macOS (zsh)</strong></summary>
+
+	```bash
+	export MCP_DOMAIN=abc123-xyz789.ngrok-free.app
+	```
+	Add to `~/.zshrc` for persistence.
+	</details>
+
+* In WSL (Linux) or macOS, consider adding all your `MCP` variables to `.bashrc` or `~/.zshrc`
 
 ```bash
 export MCP_HOST=127.0.0.1
@@ -182,6 +221,19 @@ cd ros-mcp-server
 	```
 	</details>
 
+	<details>
+	<summary><strong>Option C: macOS</strong></summary>
+
+	```bash
+	uv run server.py --transport streamable-http
+	```
+
+	Or if `uv` was installed via pip and is not in your PATH:
+	```bash
+	python3 -m uv run server.py --transport streamable-http
+	```
+	</details>
+
 * By default, the server should start at `127.0.0.1:9000`, you can set `MCP_HOST` and `MCP_PORT` variables as needed
 
 
@@ -224,6 +276,16 @@ cd ros-mcp-server
 	```
  	</details>
 
+	<details>
+	<summary><strong>Option C: macOS</strong></summary>
+
+	```bash
+	export MCP_PORT=9000
+	export MCP_DOMAIN=<YOUR_DOMAIN>
+	ngrok http --url=${MCP_DOMAIN} ${MCP_PORT}
+	```
+	</details>
+
 * Once you launch `ngrok`, verify your public url domain, it should be the same as `MCP_DOMAIN`.
 
 	```bash
@@ -260,6 +322,13 @@ or
 ```bash
 launch_ros.sh
 ```
+
+> 💡 **macOS Users**: ROS2 is not natively available on macOS. Use the Docker-based approach from [5_docker_turtlesim](../5_docker_turtlesim/):
+> ```bash
+> cd ../5_docker_turtlesim
+> docker compose up turtlesim
+> ```
+> This starts `rosbridge` on port 9090 and `turtlesim` in a container. The MCP server on your host connects to it automatically. Note that the turtlesim GUI requires X11 forwarding (install [XQuartz](https://www.xquartz.org/)), but `rosbridge` works without it.
 
 ## 1.6 Test Your Setup
 
@@ -298,6 +367,12 @@ Once everything is configured, test your connection:
 - Check if "I trust this application" is checked
 - Restart ChatGPT Desktop after adding the connector
 
+**macOS-specific issues:**
+- **No ROS2 natively**: Use Docker — see [5_docker_turtlesim](../5_docker_turtlesim/) or a Linux VM
+- **Turtlesim GUI not displaying**: Install [XQuartz](https://www.xquartz.org/) (`brew install --cask xquartz`), log out/in, then run `xhost +localhost` before launching Docker. Alternatively, run headless — rosbridge still works without the GUI.
+- **`uv` not found after `pip3 install uv`**: Add `~/Library/Python/3.x/bin` to your PATH, or use `curl -LsSf https://astral.sh/uv/install.sh | sh` instead
+- **Port 9000 already in use**: Check with `lsof -i :9000` and kill the conflicting process
+
 ### Debug Commands
 
 ```bash
@@ -307,11 +382,17 @@ curl http://127.0.0.1:9000/mcp
 # Test ngrok tunnel
 curl https://your-domain.ngrok-free.app/mcp
 
-# Test ROS installation
+# Test ROS installation (WSL)
 wsl -- ros2 node list
 
-# Test rosbridge
+# Test ROS installation (macOS Docker)
+docker exec ros2-turtlesim ros2 node list
+
+# Test rosbridge (WSL)
 wsl -- ros2 topic list
+
+# Test rosbridge (macOS Docker)
+docker exec ros2-turtlesim ros2 topic list
 
 # Check ngrok status
 ngrok api tunnels list
@@ -370,16 +451,28 @@ A: The current setup requires WSL for ROS compatibility on Windows. Linux and ma
 
 ## 6. Tested Configurations
 
-### Host Machine
+### Host Machine (Windows)
 * Windows 11
 * WSL with Ubuntu 22.04
 * ChatGPT Desktop
 * ngrok (free/paid)
 
-### Target Machine
+### Target Machine (Windows/WSL)
 * WSL with Ubuntu 22.04
 * ROS 2 Jazzy
 * rosbridge_server
+
+### Host Machine (macOS)
+* macOS (Apple Silicon / ARM64)
+* Python 3.13, uv (via pip or Homebrew)
+* MCP server: streamable-http on localhost:9000
+
+### Target Machine (macOS via Docker)
+* Docker Desktop for Mac
+* ROS 2 Humble in Docker container ([5_docker_turtlesim](../5_docker_turtlesim/))
+* rosbridge_server on port 9090
+
+> **Tested 2026-03-29**: MCP server started on macOS, connected to rosbridge in Docker, successfully called MCP tools (connect_to_robot, get_topics, get_nodes, publish_once, call_service).
 
 ## 7. Support and Contributing
 
