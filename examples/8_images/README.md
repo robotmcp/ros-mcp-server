@@ -21,6 +21,8 @@ Before starting this tutorial, make sure you have:
 ✅ **The ROS MCP Server installed** (see [Installation Guide](../../docs/install/installation.md))  
 ✅ **OpenCV and image processing libraries** (usually included with ROS2)
 
+> ⚠️ **macOS/Windows Users**: This tutorial requires ROS2 packages installed via `apt`, which is only available on Linux. If you don't have a native Linux environment, see **Option 3: Docker-Based Camera** below for a setup that works on macOS and Windows.
+
 ## Camera Options
 
 This tutorial supports two camera types:
@@ -32,6 +34,33 @@ This tutorial supports two camera types:
 ### 📷 **Option 2: RealSense Camera (realsense2_camera)**
 - **Best for**: Real-world applications and advanced computer vision
 - **Requirements**: Intel RealSense camera + realsense2_camera package
+
+### 🐳 **Option 3: Docker-Based Camera (No native ROS2 required)**
+- **Best for**: macOS and Windows users without native ROS2
+- **Requirements**: Docker Desktop
+
+This option uses the existing [5_docker_turtlesim](../5_docker_turtlesim/) Docker container (which includes rosbridge) and extends it with image_tools.
+
+#### Setup
+
+```bash
+# Step 1: Start the turtlesim Docker container (includes rosbridge on port 9090)
+cd ../5_docker_turtlesim
+docker compose up -d turtlesim
+
+# Step 2: Install image_tools inside the running container
+docker exec -it ros2-turtlesim bash -c "\
+  apt-get update && \
+  apt-get install -y ros-\${ROS_DISTRO}-image-tools ros-\${ROS_DISTRO}-image-transport-plugins && \
+  source /opt/ros/\${ROS_DISTRO}/setup.bash && \
+  ros2 run image_tools cam2image --ros-args -p burger_mode:=true"
+```
+
+> 💡 **Note**: The rosbridge on port 9090 is already exposed by the Docker container. The MCP server on your host can connect to it directly.
+>
+> The `showimage` GUI display requires X11 forwarding. On macOS, install [XQuartz](https://www.xquartz.org/) first. If you skip display, image capture via MCP still works headlessly.
+
+After the container is running with `cam2image`, continue to **Step 2** to verify the system, and **Step 3** to connect with MCP.
 
 ## Dependencies
 
@@ -367,6 +396,7 @@ Check the depth camera parameters
 - **WSL users**: Install X11 forwarding: `sudo apt install x11-apps`
 - **Remote connections**: Use X11 forwarding: `ssh -X username@hostname`
 - **Docker users**: Check X11 forwarding configuration
+- **macOS users**: Install [XQuartz](https://www.xquartz.org/) (`brew install --cask xquartz`), log out and back in, then run `xhost +localhost` before launching Docker. Alternatively, skip the GUI — image capture via MCP still works without display.
 - **For Synthetic Camera**: Try running without display: `ros2 run image_tools cam2image --ros-args -p show_camera:=false`
 - **For RealSense Camera**: Try running without display: `ros2 launch realsense2_camera rs_launch.py enable_color:=true enable_depth:=true`
 
@@ -383,6 +413,15 @@ Check the depth camera parameters
 - List all available topics: `ros2 topic list`
 - Check topic info: `ros2 topic info <topic_name>`
 - Verify camera launch parameters
+
+</details>
+
+<details>
+<summary><strong>No Native ROS2 on macOS</strong></summary>
+
+**Problem**: `sudo apt install ros-*` commands not available on macOS
+
+**Solution**: Use the Docker-based approach described in **Option 3** above. The [5_docker_turtlesim](../5_docker_turtlesim/) example provides a ready-made Docker container with rosbridge that can be extended with `image_tools`. See the [Docker setup instructions](#-option-3-docker-based-camera-no-native-ros2-required) for step-by-step guidance.
 
 </details>
 
