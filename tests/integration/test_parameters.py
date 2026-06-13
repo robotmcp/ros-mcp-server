@@ -125,17 +125,19 @@ class TestHasParameter:
 
 class TestDeleteParameter:
     def test_delete_round_trip(self, tools):
-        if get_ros_version() == RosVersion.ROS2:
+        version = get_ros_version()
+        if version == RosVersion.ROS2:
             pytest.skip(
                 "Deleting turtlesim parameters on ROS 2 leaves the node in a bad state; "
                 "covered by set_parameter test instead"
             )
-        pytest.skip(
-            "On ROS 1, the delete_param rosapi service returns successful=False even when "
-            "deletion succeeds (rosbridge response format mismatch). This is a known tool "
-            "limitation on ROS 1 — the delete_param response does not include a 'successful' "
-            "field and the code defaults to False. Covered by set_parameter test instead."
-        )
+        if version == RosVersion.ROS1:
+            pytest.skip(
+                "On ROS 1, the delete_param rosapi service returns successful=False even when "
+                "deletion succeeds (rosbridge response format mismatch). The delete_param "
+                "response does not include a 'successful' field and the code defaults to False. "
+                "Covered by set_parameter test instead."
+            )
         name = f"/ros_mcp_test_delete_{int(time.time_ns())}"
         tools["set_parameter"](name=name, value="1")
         assert tools["has_parameter"](name=name)["exists"] is True
