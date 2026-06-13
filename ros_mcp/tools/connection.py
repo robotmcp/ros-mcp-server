@@ -57,17 +57,24 @@ def register_connection_tools(
         ping_result = ping_ip_and_port(actual_ip, actual_port, ping_timeout, port_timeout)
 
         # Detect ROS version and cache rosapi type resolver
+        detection_warning = None
         if ping_result.get("port_check", {}).get("open"):
             try:
                 detect_rosapi_types(ws_manager)
-            except Exception:
-                pass  # Detection failure is non-fatal; tools will use defaults
+            except Exception as e:
+                detection_warning = (
+                    f"ROS version detection failed: {e}. "
+                    "Tools will assume ROS 2 type format (rosapi_msgs/srv/*)."
+                )
 
         # Combine the results
-        return {
+        result: dict[str, Any] = {
             "message": f"WebSocket IP set to {actual_ip}:{actual_port}",
             "connectivity_test": ping_result,
         }
+        if detection_warning:
+            result["warning"] = detection_warning
+        return result
 
     @mcp.tool(
         description=(
