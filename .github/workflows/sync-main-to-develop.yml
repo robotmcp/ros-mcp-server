@@ -69,9 +69,7 @@ jobs:
           echo "SYNC_BRANCH=$SYNC_BRANCH" >> "$GITHUB_OUTPUT"
       - name: Create syncing PR
         env:
-          # GITHUB_TOKEN cannot open PRs when the org disallows Actions from
-          # creating PRs, so use a PAT/App token stored as PR_BOT_TOKEN.
-          GH_TOKEN: ${{ secrets.PR_BOT_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SYNC_BRANCH: ${{ steps.create-sync-branch.outputs.SYNC_BRANCH }}
         run: |
           gh pr create \
