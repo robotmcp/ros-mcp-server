@@ -20,12 +20,16 @@ def _safe_check_parameter_exists(
     """
 
     def _is_empty_value(value: str) -> bool:
-        """Check if a parameter value is effectively empty."""
+        """Check if a parameter value indicates the parameter does not exist."""
         if not value:
             return True
-        # Strip quotes (handles cases like '""' which represents empty string)
+        # Strip quotes (handles '""' which represents empty string)
         stripped = value.strip('"').strip("'")
-        return not stripped or stripped == ""
+        if not stripped:
+            return True
+        # ROS 1 rosbridge get_param returns the literal JSON value `null` (string "null")
+        # for missing parameters, with result=true. Treat as nonexistent.
+        return stripped == "null"
 
     message = {
         "op": "call_service",
@@ -357,7 +361,13 @@ def register_parameter_tools(
         if response and "values" in response:
             result_data = response["values"]
             if isinstance(result_data, dict):
-                successful = result_data.get("successful", False)
+                # ROS 1 rosapi delete_param returns {"values": {}, "result": true} on
+                # success, so when "successful" is absent inside values, fall back to
+                # the top-level "result" field.
+                if "successful" in result_data:
+                    successful = result_data["successful"]
+                else:
+                    successful = bool(response.get("result"))
                 reason = result_data.get("reason", "")
                 return {
                     "name": name,

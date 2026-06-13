@@ -12,7 +12,9 @@ Parameter semantics differ across ROS versions:
   rosbridge (e.g. /turtlesim:background_r). turtlesim populates background_r/g/b
   on launch.
 
-get_parameter_details uses rcl_interfaces/DescribeParameters and is ROS 2-only.
+get_parameters relies on rcl_interfaces/srv/ListParameters and is ROS 2-only;
+on ROS 1 the tool returns a graceful "service does not exist" error, which the
+test asserts directly.
 """
 
 import time
@@ -109,13 +111,6 @@ class TestHasParameter:
         assert result["exists"] is True
 
     def test_nonexistent_parameter(self, tools):
-        if get_ros_version() == RosVersion.ROS1:
-            pytest.skip(
-                "On ROS 1, _safe_check_parameter_exists uses get_param which returns a "
-                "non-empty value for unknown params (e.g. '0' or empty string treated as "
-                "non-empty), causing has_parameter to incorrectly report exists=True. "
-                "This is a known tool limitation on ROS 1."
-            )
         result = tools["has_parameter"](name="/ros_mcp_does_not_exist_xyz")
         assert result["exists"] is False
 
@@ -126,18 +121,11 @@ class TestHasParameter:
 
 class TestDeleteParameter:
     def test_delete_round_trip(self, tools):
-        version = get_ros_version()
-        if version == RosVersion.ROS2:
+        if get_ros_version() == RosVersion.ROS2:
             pytest.skip(
-                "Deleting turtlesim parameters on ROS 2 leaves the node in a bad state; "
-                "covered by set_parameter test instead"
-            )
-        if version == RosVersion.ROS1:
-            pytest.skip(
-                "On ROS 1, the delete_param rosapi service returns successful=False even when "
-                "deletion succeeds (rosbridge response format mismatch). The delete_param "
-                "response does not include a 'successful' field and the code defaults to False. "
-                "Covered by set_parameter test instead."
+                "ROS 2 parameters are per-node; turtlesim doesn't allow deleting its "
+                "own params at runtime. ROS 2 deletion is covered by the existence "
+                "check in TestHasParameter and the set restore in TestSetParameter."
             )
         name = f"/ros_mcp_test_delete_{int(time.time_ns())}"
         tools["set_parameter"](name=name, value="1")
@@ -157,14 +145,14 @@ class TestDeleteParameter:
 
 class TestGetParameters:
     def test_returns_list_for_known_node(self, tools):
+        result = tools["get_parameters"](node_name="turtlesim")
         if get_ros_version() == RosVersion.ROS1:
-            pytest.skip(
-                "get_parameters calls node/list_parameters (rcl_interfaces/srv/ListParameters), "
-                "which is a ROS 2-only per-node service. On ROS 1 there is no equivalent "
-                "rosbridge mechanism."
-            )
-        node = "turtlesim"
-        result = tools["get_parameters"](node_name=node)
+            # get_parameters relies on rcl_interfaces/srv/ListParameters which only
+            # exists on ROS 2. The tool documents "Works only with ROS 2" and returns
+            # a graceful error pointing at the missing per-node service.
+            assert "error" in result
+            assert "list_parameters" in result["error"]
+            return
         assert "parameters" in result
         assert "parameter_count" in result
         assert isinstance(result["parameters"], list)
@@ -176,21 +164,20 @@ class TestGetParameters:
 
 class TestGetParameterDetails:
     def test_returns_details_for_known_parameter(self, tools, ros1_seeded_param):
-        if get_ros_version() == RosVersion.ROS1:
-            pytest.skip(
-                "get_parameter_details relies on rcl_interfaces/DescribeParameters (ROS 2 only)"
-            )
-        result = tools["get_parameter_details"](name=ros1_seeded_param["read_name"])
+        # On ROS 1, the describe_parameters call fails internally but the tool
+        # falls back to type inference from the value, so the test passes on both
+        # versions. On ROS 2, describe_parameters supplies the type.
+        result = tools["get_parameter_details"](name=ros1_seeded_param["existing_name"])
         assert result["exists"] is True
         assert "value" in result
         assert "type" in result
 
     def test_nonexistent_returns_error_response(self, tools):
         if get_ros_version() == RosVersion.ROS1:
-            pytest.skip(
-                "get_parameter_details relies on rcl_interfaces/DescribeParameters (ROS 2 only)"
-            )
-        result = tools["get_parameter_details"](name="/turtlesim:does_not_exist")
+            name = "/ros_mcp_definitely_does_not_exist"
+        else:
+            name = "/turtlesim:does_not_exist"
+        result = tools["get_parameter_details"](name=name)
         assert result["exists"] is False
 
     def test_empty_name_returns_error(self, tools):
