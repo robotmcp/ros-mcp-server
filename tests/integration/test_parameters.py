@@ -29,11 +29,15 @@ _PARAMS = {
         "read_name": "/turtlesim/background_r",
         "seed_name": "/ros_mcp_test_param",
         "seed_value": "42",
+        # On ROS 1, the only param we know exists post-fixture is the one we seed.
+        "existing_name": "/ros_mcp_test_param",
     },
     RosVersion.ROS2: {
         "read_name": "/turtlesim:background_r",
         "seed_name": "/turtlesim:background_r",
         "seed_value": "100",
+        # On ROS 2, turtlesim populates background_r on launch.
+        "existing_name": "/turtlesim:background_r",
     },
 }
 
@@ -61,14 +65,9 @@ def ros1_seeded_param(tools, params):
 
 class TestGetParameter:
     def test_returns_value_for_known_parameter(self, tools, ros1_seeded_param):
-        target = (
-            ros1_seeded_param["seed_name"]
-            if get_ros_version() == RosVersion.ROS1
-            else ros1_seeded_param["read_name"]
-        )
-        result = tools["get_parameter"](name=target)
+        result = tools["get_parameter"](name=ros1_seeded_param["existing_name"])
         assert "value" in result
-        assert result.get("successful", True) is True
+        assert result.get("successful") is True
         assert str(result["value"]).strip() != ""
 
     def test_empty_name_returns_error(self, tools):
@@ -82,15 +81,22 @@ class TestGetParameter:
 
 class TestSetParameter:
     def test_set_succeeds(self, tools, params):
-        unique_name = (
-            f"/ros_mcp_test_set_{int(time.time_ns())}"
-            if get_ros_version() == RosVersion.ROS1
-            else params["seed_name"]
-        )
-        result = tools["set_parameter"](name=unique_name, value="7")
-        assert result.get("successful") is True
-        if get_ros_version() == RosVersion.ROS1:
+        version = get_ros_version()
+        if version == RosVersion.ROS1:
+            unique_name = f"/ros_mcp_test_set_{int(time.time_ns())}"
+            result = tools["set_parameter"](name=unique_name, value="7")
+            assert result.get("successful") is True
             tools["delete_parameter"](name=unique_name)
+            return
+        # ROS 2: mutating turtlesim's params, so capture and restore.
+        target = params["seed_name"]
+        original = tools["get_parameter"](name=target).get("value")
+        try:
+            result = tools["set_parameter"](name=target, value="7")
+            assert result.get("successful") is True
+        finally:
+            if original is not None:
+                tools["set_parameter"](name=target, value=str(original))
 
     def test_empty_name_returns_error(self, tools):
         result = tools["set_parameter"](name="", value="1")
@@ -99,12 +105,7 @@ class TestSetParameter:
 
 class TestHasParameter:
     def test_existing_parameter(self, tools, ros1_seeded_param):
-        target = (
-            ros1_seeded_param["seed_name"]
-            if get_ros_version() == RosVersion.ROS1
-            else ros1_seeded_param["read_name"]
-        )
-        result = tools["has_parameter"](name=target)
+        result = tools["has_parameter"](name=ros1_seeded_param["existing_name"])
         assert result["exists"] is True
 
     def test_nonexistent_parameter(self, tools):
