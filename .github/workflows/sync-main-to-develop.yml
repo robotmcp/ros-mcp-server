@@ -3,6 +3,7 @@ name: Sync main to develop
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -99,9 +100,9 @@ jobs:
              git push origin $SYNC_BRANCH
              \`\`\`
 
-          4. Merge the PR into develop
+          4. Run the 'Merge branch into target' workflow from this branch with target branch 'develop'
 
-          5. Delete the sync branch"
+          5. After the workflow completes, this PR will close automatically"
       - name: Merge and push to develop
         run: |
           git switch develop
