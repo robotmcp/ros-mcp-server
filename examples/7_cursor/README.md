@@ -12,7 +12,7 @@
 ### Prepare target robot (ROS)
 
 * Installation of Ubuntu or WSL (Windows Subsystem for Linux) on Windows.
-* Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow, this tutorial. See [here](https://wiki.ros.org/ROS/Tutorials).
+* Installation of ROS or ROS2. Test if ROS is installed by running Turtlesim. If you are not sure, follow this tutorial. See [here](https://wiki.ros.org/ROS/Tutorials).
 
 # Tutorial
 

@@ -1,0 +1,154 @@
+name: Merge branch into target
+
+# Manual trigger only
+on:
+  workflow_dispatch:
+    inputs:
+      source_branch:
+        description: "Branch to merge from (default: the branch this workflow is run on)"
+        type: string
+        required: false
+        default: ""
+      target_branch:
+        description: "Branch to merge into"
+        type: string
+        required: true
+        default: develop
+      delete_source_branch:
+        description: "Delete the source branch after a successful merge"
+        type: boolean
+        required: false
+        default: false
+      check_only:
+        description: "Verify the merge succeeds without pushing"
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  merge-into-branch:
+    runs-on: ubuntu-latest
+    name: Merge '${{ inputs.source_branch || github.ref_name }}' into '${{ inputs.target_branch }}'
+    env:
+      SRC_BRANCH: ${{ inputs.source_branch || github.ref_name }}
+      TARGET_BRANCH: ${{ inputs.target_branch }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch }}
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up git user
+        run: |
+          git config user.name "RobotMCP Bot"
+          git config user.email "admin@robotmcp.ai"
+
+          # Make sure we have the source branch and a common ancestor to merge.
+          git fetch origin "$SRC_BRANCH"
+          if ! git merge-base "$TARGET_BRANCH" "origin/$SRC_BRANCH"; then
+            echo "No common ancestor found for merging!"
+            exit 1
+          fi
+      - name: Abort if conflict-resolution PR already open
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          SAFE_SRC="${SRC_BRANCH//\//_}"
+          SAFE_TARGET="${TARGET_BRANCH//\//_}"
+          EXISTING_PR=$(gh pr list \
+            --base "$TARGET_BRANCH" \
+            --state open \
+            --json url,headRefName \
+            --jq ".[] | select(.headRefName | startswith(\"${SAFE_SRC}-\") and endswith(\"/merge-into-${SAFE_TARGET}\")) | .url" \
+            2>/dev/null | head -n1 || true)
+          if [ -n "$EXISTING_PR" ]; then
+            echo "::error::An open conflict-resolution PR already exists for '$SRC_BRANCH' -> '$TARGET_BRANCH': $EXISTING_PR"
+            echo "::error::Resolve and merge that PR before re-running this workflow."
+            exit 1
+          fi
+      - name: Attempt merge
+        id: merge
+        run: |
+          set +e
+          git merge \
+              --no-ff \
+              --no-edit \
+              --commit \
+              --message "Merged '$SRC_BRANCH' into '$TARGET_BRANCH'" \
+              "origin/$SRC_BRANCH"
+          STATUS=$?
+          if [ $STATUS -ne 0 ]; then
+            echo "Merge conflicts detected; aborting in-runner merge."
+            git merge --abort || true
+            echo "conflict=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "conflict=false" >> "$GITHUB_OUTPUT"
+          fi
+          exit 0
+      - name: Push merged branch
+        if: ${{ steps.merge.outputs.conflict == 'false' && !inputs.check_only }}
+        run: git push origin "$TARGET_BRANCH"
+      - name: Delete source branch
+        if: ${{ inputs.delete_source_branch && steps.merge.outputs.conflict == 'false' && !inputs.check_only }}
+        run: git push origin --delete "$SRC_BRANCH"
+      - name: Create sync branch for conflict resolution
+        id: sync-branch
+        if: ${{ steps.merge.outputs.conflict == 'true' && !inputs.check_only }}
+        run: |
+          SAFE_SRC="${SRC_BRANCH//\//_}"
+          SAFE_TARGET="${TARGET_BRANCH//\//_}"
+          SHA_SHORT=$(git rev-parse --short "origin/$SRC_BRANCH")
+          SYNC_BRANCH="${SAFE_SRC}-${SHA_SHORT}/merge-into-${SAFE_TARGET}"
+          echo "Creating sync branch: $SYNC_BRANCH"
+          # If a stale sync branch exists from a previously closed-but-unmerged PR, drop it.
+          git push origin --delete "$SYNC_BRANCH" 2>/dev/null || true
+          git branch -f "$SYNC_BRANCH" "origin/$SRC_BRANCH"
+          git push origin "$SYNC_BRANCH"
+          echo "SYNC_BRANCH=$SYNC_BRANCH" >> "$GITHUB_OUTPUT"
+      - name: Open conflict-resolution PR
+        if: ${{ steps.merge.outputs.conflict == 'true' && !inputs.check_only }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SYNC_BRANCH: ${{ steps.sync-branch.outputs.SYNC_BRANCH }}
+        run: |
+          gh pr create \
+            --base "$TARGET_BRANCH" \
+            --head "$SYNC_BRANCH" \
+            --title "Conflict-resolution: merge '$SRC_BRANCH' into '$TARGET_BRANCH'" \
+            --draft \
+            --body "Automated merge of \`$SRC_BRANCH\` into \`$TARGET_BRANCH\` failed due to conflicts.
+
+          A temporary sync branch \`$SYNC_BRANCH\` was created off \`$SRC_BRANCH\` so conflicts can be resolved even when both branches are protected.
+
+          **Do not merge this PR through the GitHub UI.** Squash-merging a sync branch rewrites its commits, which inflates the commit count of later merges into \`$TARGET_BRANCH\`. Instead, a maintainer should:
+
+          1. Check out the sync branch locally:
+             \`\`\`
+             git fetch origin
+             git checkout $SYNC_BRANCH
+             \`\`\`
+
+          2. Merge '$TARGET_BRANCH' into the sync branch and resolve conflicts:
+             \`\`\`
+             git merge origin/$TARGET_BRANCH
+             # resolve conflicts, then commit
+             \`\`\`
+
+          3. Push the resolved sync branch:
+             \`\`\`
+             git push origin $SYNC_BRANCH
+             \`\`\`
+
+          4. Re-run the 'Merge branch into target' workflow from this branch (\`$SYNC_BRANCH\`) with target branch '$TARGET_BRANCH'.
+
+          5. After the workflow completes, this PR will close automatically."
+      - name: Fail on conflict
+        if: ${{ steps.merge.outputs.conflict == 'true' }}
+        run: |
+          echo "::error::Merge of '$SRC_BRANCH' into '$TARGET_BRANCH' has conflicts."
+          exit 1

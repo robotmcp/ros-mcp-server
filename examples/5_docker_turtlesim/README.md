@@ -105,7 +105,7 @@ docker exec -it ros2-turtlesim bash
 Once inside the container, you can manually launch turtle teleop to control the turtle:
 
 ```bash
-source /opt/ros/${ROS_DISTRO}$/setup.bash
+source /opt/ros/${ROS_DISTRO}/setup.bash
 ros2 run turtlesim turtle_teleop_key
 ```
 
@@ -261,7 +261,7 @@ If the automatic launch isn't working or you prefer to launch turtlesim manually
 docker exec -it ros2-turtlesim bash
 
 # Source ROS2 environment
-source /opt/ros/${ROS_DISTRO}$/setup.bash
+source /opt/ros/${ROS_DISTRO}/setup.bash
 
 # Start turtlesim in one terminal
 ros2 run turtlesim turtlesim_node
@@ -283,7 +283,7 @@ In a separate terminal, you can inspect the ROS2 topics:
 docker exec -it ros2-turtlesim bash
 
 # Source ROS2 environment
-source /opt/ros/${ROS_DISTRO}$/setup.bash
+source /opt/ros/${ROS_DISTRO}/setup.bash
 
 # List all topics
 ros2 topic list

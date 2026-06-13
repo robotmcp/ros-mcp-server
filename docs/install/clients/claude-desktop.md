@@ -45,7 +45,7 @@ Add the following to the file:
   "mcpServers": {
     "ros-mcp-server": {
       "command": "zsh",
-      "args": ["-lc", "PATH=$HOME/.local/bin:$PATH uvx ros-mcp --transport=stdio"]
+      "args": ["-lc", "uvx ros-mcp --transport=stdio"]
     }
   }
 }
