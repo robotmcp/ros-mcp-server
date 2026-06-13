@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _extract_error
+from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -28,8 +29,8 @@ def _safe_check_parameter_exists(
 
     message = {
         "op": "call_service",
-        "service": "/rosapi/get_param",
-        "type": "rosapi_msgs/srv/GetParam",
+        "service": rosapi_service("get_param"),
+        "type": rosapi_type("GetParam"),
         "args": {"name": name},
         "id": f"check_param_exists_{name.replace('/', '_').replace(':', '_')}",
     }
@@ -194,8 +195,8 @@ def register_parameter_tools(
 
         message = {
             "op": "call_service",
-            "service": "/rosapi/set_param",
-            "type": "rosapi_msgs/srv/SetParam",
+            "service": rosapi_service("set_param"),
+            "type": rosapi_type("SetParam"),
             "args": {"name": name, "value": value},
             "id": f"set_param_{name.replace('/', '_').replace(':', '_')}",
         }
@@ -328,8 +329,8 @@ def register_parameter_tools(
 
         message = {
             "op": "call_service",
-            "service": "/rosapi/delete_param",
-            "type": "rosapi_msgs/srv/DeleteParam",
+            "service": rosapi_service("delete_param"),
+            "type": rosapi_type("DeleteParam"),
             "args": {"name": name},
             "id": f"delete_param_{name.replace('/', '_').replace(':', '_')}",
         }
@@ -539,8 +540,8 @@ def register_parameter_tools(
         if value_response is None:
             value_message = {
                 "op": "call_service",
-                "service": "/rosapi/get_param",
-                "type": "rosapi_msgs/srv/GetParam",
+                "service": rosapi_service("get_param"),
+                "type": rosapi_type("GetParam"),
                 "args": {"name": name},
                 "id": f"get_param_details_{name.replace('/', '_').replace(':', '_')}",
             }
@@ -589,7 +590,7 @@ def register_parameter_tools(
         # Get parameter type
         type_message = {
             "op": "call_service",
-            "service": "/rosapi/describe_parameters",
+            "service": rosapi_service("describe_parameters"),
             "type": "rcl_interfaces/DescribeParameters",
             "args": {"names": [name]},
             "id": f"describe_param_details_{name.replace('/', '_').replace(':', '_')}",
