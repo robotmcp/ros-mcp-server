@@ -65,11 +65,12 @@ class TestGetTopicDetails:
     """Verify get_topic_details MCP tool returns type + publishers + subscribers."""
 
     def test_pose_details(self, tools):
-        """get_topic_details for /turtle1/pose should have a publisher (turtlesim)."""
+        """get_topic_details for /turtle1/pose should have turtlesim as publisher."""
         result = tools["get_topic_details"](topic="/turtle1/pose")
         assert result["topic"] == "/turtle1/pose"
         assert "Pose" in result["type"]
         assert result["publisher_count"] > 0
+        assert any("turtlesim" in p for p in result["publishers"]), result["publishers"]
 
     def test_empty_topic_returns_error(self, tools):
         """get_topic_details with empty string should return error."""
@@ -177,6 +178,7 @@ class TestPublishForDurations:
             msg_type=cmd_vel_type,
             messages=[{"linear": {"x": 0.1}}, {"linear": {"x": 0.0}}],
             durations=[0.5, 0.1],
+            rate_hz=0,
         )
         assert result.get("success") is True, f"publish_for_durations failed: {result}"
         # published_count may be < total on some distros due to rosbridge
