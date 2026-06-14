@@ -173,17 +173,22 @@ class TestPublishForDurations:
     def test_publish_sequence(self, tools):
         """publish_for_durations should publish a message sequence."""
         cmd_vel_type = _get_type(tools, "/turtle1/cmd_vel")
+        messages = [{"linear": {"x": 0.1}}, {"linear": {"x": 0.0}}]
         result = tools["publish_for_durations"](
             topic="/turtle1/cmd_vel",
             msg_type=cmd_vel_type,
-            messages=[{"linear": {"x": 0.1}}, {"linear": {"x": 0.0}}],
+            messages=messages,
             durations=[0.5, 0.1],
             rate_hz=0,
         )
         assert result.get("success") is True, f"publish_for_durations failed: {result}"
-        # published_count may be < total on some distros due to rosbridge
-        # response timing in non-streaming mode (rate_hz=0)
-        assert result["published_count"] >= 1
+        # published_count may be < total on some distros due to rosbridge response
+        # timing in non-streaming mode (rate_hz=0), but it must never exceed the
+        # number of messages requested.
+        published = result["published_count"]
+        assert 1 <= published <= len(messages), (
+            f"expected 1..{len(messages)} published, got {published}: {result}"
+        )
 
     def test_empty_sequence(self, tools):
         """publish_for_durations with empty lists should succeed with 0 published."""
@@ -234,4 +239,7 @@ class TestPublishAndSubscribe:
         assert "msg" in after, f"Failed to get new pose: {after}"
         x_after = after["msg"]["x"]
 
-        assert x_after != x_before, f"Turtle did not move: x_before={x_before}, x_after={x_after}"
+        # Forward velocity (linear.x > 0) should increase x specifically.
+        assert x_after > x_before, (
+            f"Turtle did not move forward: x_before={x_before}, x_after={x_after}"
+        )
