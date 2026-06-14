@@ -103,8 +103,11 @@ def register_action_tools(
 
     @mcp.tool(
         description=(
-            "Get complete action details including type, goal, result, and feedback structures.\n"
-            "Example:\nget_action_details('/turtle1/rotate_absolute')"
+            "Get complete action details including goal, result, and feedback structures. "
+            "Requires the action type; if you don't know it, call without action_type to get "
+            "the list of available types back in the error.\n"
+            "Example:\n"
+            "get_action_details('/turtle1/rotate_absolute', 'turtlesim/action/RotateAbsolute')"
         ),
         annotations=ToolAnnotations(
             title="Get Action Details",
@@ -113,15 +116,17 @@ def register_action_tools(
     )
     def get_action_details(action: str, action_type: str = "") -> dict:
         """
-        Get complete action details including type, goal, result, and feedback structures.
+        Get complete action details including goal, result, and feedback structures.
 
         Args:
             action (str): The action name (e.g., '/turtle1/rotate_absolute')
             action_type (str): The action type (e.g., 'turtlesim/action/RotateAbsolute').
-                Required. Use get_actions() to discover available action types.
+                Required. Call without action_type to get the available types back
+                in the error (they are also listed by the interfaces service, not
+                by get_actions(), which returns action *names*).
 
         Returns:
-            dict: Contains complete action definition with type, goal, result, and feedback structures.
+            dict: Contains complete action definition with goal, result, and feedback structures.
         """
         if not action or not action.strip():
             return {"error": "Action name cannot be empty"}
@@ -141,6 +146,7 @@ def register_action_tools(
                     "id": f"get_interfaces_for_{action.replace('/', '_')}",
                 }
             )
+            interfaces_error = _check_response(interfaces_response)
             iface_values = _safe_get_values(interfaces_response)
             available = (
                 [i for i in iface_values.get("interfaces", []) if "/action/" in i]
@@ -153,6 +159,19 @@ def register_action_tools(
                     "error": f"action_type is required for {action}",
                     "action": action,
                     "available_action_types": available,
+                }
+
+            # If the interfaces list is unavailable we cannot validate the type,
+            # and we must not fall through to the detail services (a bad type
+            # crashes rosapi). Report that distinctly from a genuine "not found".
+            if interfaces_error:
+                return {
+                    "error": (
+                        f"Cannot validate action_type for {action}: "
+                        "the action interfaces service is unavailable"
+                    ),
+                    "action": action,
+                    "action_type": action_type,
                 }
 
             if action_type not in available:
@@ -238,9 +257,13 @@ def register_action_tools(
                 ws_manager.send({"op": "unsubscribe", "topic": status_topic})
 
                 if not response:
+                    # An idle action server may not publish status; that is not
+                    # an error, just no goals in flight.
                     return {
-                        "error": "No response from action status topic",
                         "action_name": action_name,
+                        "active_goals": [],
+                        "goal_count": 0,
+                        "note": "No status published; the action is idle or not running",
                     }
 
                 response_data = json.loads(response)
@@ -318,6 +341,9 @@ def register_action_tools(
             return {"error": "Action type cannot be empty"}
         if not goal:
             return {"error": "Goal cannot be empty"}
+
+        if not action_name.startswith("/"):
+            action_name = f"/{action_name}"
 
         if timeout is None:
             timeout = ws_manager.default_timeout
@@ -427,6 +453,9 @@ def register_action_tools(
         if not goal_id or not goal_id.strip():
             return {"error": "Goal ID cannot be empty"}
 
+        if not action_name.startswith("/"):
+            action_name = f"/{action_name}"
+
         with ws_manager:
             send_error = ws_manager.send(
                 {
@@ -442,8 +471,11 @@ def register_action_tools(
                     "goal_id": goal_id,
                 }
 
+        # success here confirms the request was sent, not that the server
+        # accepted it — the action may still be executing.
         return {
             "action": action_name,
             "goal_id": goal_id,
             "success": True,
+            "note": "Cancel request sent; the action may still be executing",
         }

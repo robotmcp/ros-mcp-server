@@ -1,7 +1,8 @@
 """Integration tests for action tools.
 
 These tests call the actual MCP tool functions (get_actions, get_action_details,
-get_action_status) against a live rosbridge container.
+get_action_status, send_action_goal, cancel_action_goal) against a live
+rosbridge container.
 
 Action servers per distro:
 - ROS 1 (melodic/noetic): /shape_server (from turtle_actionlib)
@@ -11,6 +12,8 @@ get_action_details and get_action_status use ROS 2-only rosbridge features
 (/rosapi/interfaces, send_action_goal op). See issue #320 for ROS 1 support
 via the 5-topic actionlib pattern.
 """
+
+import asyncio
 
 import pytest
 
@@ -88,6 +91,10 @@ class TestGetActionDetails:
         # The caller is told which types they could pass instead.
         assert isinstance(result["available_action_types"], list)
 
+    @pytest.mark.skipif(
+        "get_ros_version() != RosVersion.ROS2",
+        reason="action_type validation/crash is ROS 2 rosapi-specific (see #320)",
+    )
     def test_nonexistent_action_type_does_not_crash_rosapi(self, tools):
         """A bogus action_type must be rejected WITHOUT crashing rosapi.
 
@@ -131,19 +138,85 @@ class TestGetActionStatus:
         reason="Action status subscription uses ROS 2 topic format (see #320)",
     )
     def test_action_status(self, tools):
-        """get_action_status should echo the action and report well-formed status.
+        """get_action_status should echo the action and report goal status.
 
-        With no goal in flight the status topic may not publish, so a "no
-        response" error is acceptable; what must hold is that the action name is
-        echoed and, when a status is returned, goal_count matches the goal list.
+        With no goal in flight the action is reported as idle (goal_count 0),
+        not an error; goal_count must always match the active_goals list.
         """
         action_name = _action()["name"]
         result = tools["get_action_status"](action_name=action_name)
         assert result.get("action_name") == action_name
-        if "error" not in result:
-            assert result["goal_count"] == len(result["active_goals"])
+        assert "error" not in result, f"unexpected error: {result}"
+        assert result["goal_count"] == len(result["active_goals"])
 
     def test_empty_action_returns_error(self, tools):
         """get_action_status with empty string should return error."""
         result = tools["get_action_status"](action_name="")
         assert "error" in result
+
+
+class TestSendActionGoal:
+    """Verify send_action_goal MCP tool.
+
+    Sending a goal uses the ROS 2 rosbridge ``send_action_goal`` op; on ROS 1
+    actions use a different transport (see #320). The async tool is driven with
+    ``asyncio.run`` since the suite has no asyncio plugin.
+    """
+
+    def test_empty_action_returns_error(self, tools):
+        result = asyncio.run(
+            tools["send_action_goal"](action_name="", action_type="x", goal={"a": 1})
+        )
+        assert "error" in result
+
+    def test_empty_type_returns_error(self, tools):
+        result = asyncio.run(
+            tools["send_action_goal"](action_name="/a", action_type="", goal={"a": 1})
+        )
+        assert "error" in result
+
+    def test_empty_goal_returns_error(self, tools):
+        result = asyncio.run(tools["send_action_goal"](action_name="/a", action_type="x", goal={}))
+        assert "error" in result
+
+    @pytest.mark.skipif(
+        "get_ros_version() != RosVersion.ROS2",
+        reason="send_action_goal uses the ROS 2 rosbridge action op (see #320)",
+    )
+    def test_send_goal_completes(self, tools):
+        """A goal to rotate_absolute should run to completion and return a result."""
+        action = _action()
+        result = asyncio.run(
+            tools["send_action_goal"](
+                action_name=action["name"],
+                action_type=action["type"],
+                goal={"theta": 1.0},
+                timeout=10.0,
+            )
+        )
+        assert result["success"] is True, f"goal did not complete: {result}"
+        assert result["goal_id"]
+        assert "result" in result
+
+
+class TestCancelActionGoal:
+    """Verify cancel_action_goal MCP tool."""
+
+    def test_empty_action_returns_error(self, tools):
+        result = tools["cancel_action_goal"](action_name="", goal_id="g")
+        assert "error" in result
+
+    def test_empty_goal_id_returns_error(self, tools):
+        result = tools["cancel_action_goal"](action_name="/a", goal_id="")
+        assert "error" in result
+
+    @pytest.mark.skipif(
+        "get_ros_version() != RosVersion.ROS2",
+        reason="cancel_action_goal uses the ROS 2 rosbridge action op (see #320)",
+    )
+    def test_cancel_request_sent(self, tools):
+        """Cancelling reports success once the request is sent (not server-acked)."""
+        action_name = _action()["name"]
+        result = tools["cancel_action_goal"](action_name=action_name, goal_id="nonexistent_goal")
+        assert result["success"] is True
+        assert result["action"] == action_name
