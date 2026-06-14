@@ -20,32 +20,19 @@ _ACTION_PARTS = {
 
 
 def _parse_typedef(typedef: dict) -> dict:
-    """Parse a rosapi typedef into a structured field description."""
+    """Parse a rosapi typedef into a field-name -> type mapping.
+
+    Mirrors the shape produced by get_message_details (topics) and
+    get_service_details (services): a ``fields`` dict plus ``field_count``.
+    """
     field_names = typedef.get("fieldnames", [])
     field_types = typedef.get("fieldtypes", [])
-    field_array_len = typedef.get("fieldarraylen", [])
-    examples = typedef.get("examples", [])
-    const_names = typedef.get("constnames", [])
-    const_values = typedef.get("constvalues", [])
 
     fields = {}
-    field_details = {}
-    for i, (name, ftype) in enumerate(zip(field_names, field_types)):
+    for name, ftype in zip(field_names, field_types):
         fields[name] = ftype
-        field_details[name] = {
-            "type": ftype,
-            "array_length": field_array_len[i] if i < len(field_array_len) else -1,
-            "example": examples[i] if i < len(examples) else None,
-        }
 
-    return {
-        "fields": fields,
-        "field_count": len(fields),
-        "field_details": field_details,
-        "message_type": typedef.get("type", ""),
-        "examples": examples,
-        "constants": dict(zip(const_names, const_values)) if const_names else {},
-    }
+    return {"fields": fields, "field_count": len(fields)}
 
 
 def _fetch_action_part(ws_manager: WebSocketManager, action_type: str, part: str) -> dict:

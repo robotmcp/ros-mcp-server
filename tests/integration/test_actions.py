@@ -80,9 +80,17 @@ class TestGetActionDetails:
         result = tools["get_action_details"](action="")
         assert "error" in result
 
-    def test_nonexistent_action_returns_error(self, tools):
-        """get_action_details for nonexistent action should return error."""
+    def test_missing_action_type_returns_error(self, tools):
+        """get_action_details without action_type should error (action_type is required)."""
         result = tools["get_action_details"](action="/nonexistent_action_xyz")
+        assert "error" in result
+
+    def test_nonexistent_action_type_returns_error(self, tools):
+        """get_action_details with a bogus action_type should return a no-definition error."""
+        result = tools["get_action_details"](
+            action="/nonexistent_action_xyz",
+            action_type="nonexistent_pkg/action/DoesNotExist",
+        )
         assert "error" in result
 
 
