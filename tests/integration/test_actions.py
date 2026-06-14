@@ -81,22 +81,42 @@ class TestGetActionDetails:
         assert "error" in result
 
     def test_missing_action_type_returns_error(self, tools):
-        """get_action_details without action_type should error (action_type is required)."""
+        """Without action_type, the error must also list the available types."""
         result = tools["get_action_details"](action="/nonexistent_action_xyz")
         assert "error" in result
+        assert "action_type is required" in result["error"]
+        # The caller is told which types they could pass instead.
+        assert isinstance(result["available_action_types"], list)
 
-    def test_nonexistent_action_type_returns_error(self, tools):
-        """A bogus action_type must be rejected via the interfaces check.
+    def test_nonexistent_action_type_does_not_crash_rosapi(self, tools):
+        """A bogus action_type must be rejected WITHOUT crashing rosapi.
 
-        get_action_details validates the type against /rosapi/interfaces before
-        querying its details, because asking rosapi for the goal/result/feedback
-        of a non-existent type crashes the ROS 2 rosapi node.
+        get_action_details validates action_type against /rosapi/interfaces
+        before querying its details, because asking rosapi for the
+        goal/result/feedback of a non-existent type crashes the ROS 2 rosapi
+        node — taking down every rosapi service for the rest of the session.
+        This test locks in that guard: it asserts the type is rejected AND that
+        rosapi is still answering afterwards.
         """
         result = tools["get_action_details"](
             action="/nonexistent_action_xyz",
             action_type="nonexistent_pkg/action/DoesNotExist",
         )
+        # An unknown type must be reported as an error, never silently accepted.
         assert "error" in result
+
+        # The crash check — this is the assertion that catches the regression,
+        # independent of how the error is worded. Querying detail services for a
+        # non-existent type used to kill the ROS 2 rosapi node; a follow-up
+        # rosapi-backed call then fails with "service does not exist". If the
+        # guard is removed, this assertion fails here.
+        nodes_result = tools["get_nodes"]()
+        assert "nodes" in nodes_result, f"rosapi crashed after bogus action_type: {nodes_result}"
+
+        # The rejection should come from the interfaces validation, not from
+        # reaching (and crashing on) the detail services.
+        assert "not found" in result["error"].lower()
+        assert isinstance(result["available_action_types"], list)
 
 
 class TestGetActionStatus:
@@ -111,9 +131,17 @@ class TestGetActionStatus:
         reason="Action status subscription uses ROS 2 topic format (see #320)",
     )
     def test_action_status(self, tools):
-        """get_action_status should return status structure."""
-        result = tools["get_action_status"](action_name=_action()["name"])
-        assert "action_name" in result
+        """get_action_status should echo the action and report well-formed status.
+
+        With no goal in flight the status topic may not publish, so a "no
+        response" error is acceptable; what must hold is that the action name is
+        echoed and, when a status is returned, goal_count matches the goal list.
+        """
+        action_name = _action()["name"]
+        result = tools["get_action_status"](action_name=action_name)
+        assert result.get("action_name") == action_name
+        if "error" not in result:
+            assert result["goal_count"] == len(result["active_goals"])
 
     def test_empty_action_returns_error(self, tools):
         """get_action_status with empty string should return error."""
