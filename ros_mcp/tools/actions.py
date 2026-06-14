@@ -126,31 +126,44 @@ def register_action_tools(
         if not action or not action.strip():
             return {"error": "Action name cannot be empty"}
 
-        if not action_type or not action_type.strip():
-            # List available action types so the caller can provide one
-            interfaces_message = {
-                "op": "call_service",
-                "service": rosapi_service("interfaces"),
-                "type": rosapi_type("Interfaces"),
-                "args": {},
-                "id": f"get_interfaces_for_{action.replace('/', '_')}",
-            }
-            with ws_manager:
-                interfaces_response = ws_manager.request(interfaces_message)
-
-            available = []
-            iface_values = _safe_get_values(interfaces_response)
-            if iface_values is not None:
-                available = [i for i in iface_values.get("interfaces", []) if "/action/" in i]
-
-            return {
-                "error": f"action_type is required for {action}",
-                "action": action,
-                "available_action_types": available,
-            }
-
-        # Fetch goal, result, and feedback structures
         with ws_manager:
+            # Fetch the available action interfaces. We need them to suggest a
+            # type when none was given, and to validate a supplied type before
+            # querying its details: asking rosapi for the goal/result/feedback
+            # of a non-existent type crashes the ROS 2 rosapi node, taking down
+            # all rosapi services.
+            interfaces_response = ws_manager.request(
+                {
+                    "op": "call_service",
+                    "service": rosapi_service("interfaces"),
+                    "type": rosapi_type("Interfaces"),
+                    "args": {},
+                    "id": f"get_interfaces_for_{action.replace('/', '_')}",
+                }
+            )
+            iface_values = _safe_get_values(interfaces_response)
+            available = (
+                [i for i in iface_values.get("interfaces", []) if "/action/" in i]
+                if iface_values is not None
+                else []
+            )
+
+            if not action_type or not action_type.strip():
+                return {
+                    "error": f"action_type is required for {action}",
+                    "action": action,
+                    "available_action_types": available,
+                }
+
+            if action_type not in available:
+                return {
+                    "error": f"Action type '{action_type}' not found",
+                    "action": action,
+                    "action_type": action_type,
+                    "available_action_types": available,
+                }
+
+            # Fetch goal, result, and feedback structures
             parts = {
                 part: _fetch_action_part(ws_manager, action_type, part) for part in _ACTION_PARTS
             }

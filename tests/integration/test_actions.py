@@ -86,7 +86,12 @@ class TestGetActionDetails:
         assert "error" in result
 
     def test_nonexistent_action_type_returns_error(self, tools):
-        """get_action_details with a bogus action_type should return a no-definition error."""
+        """A bogus action_type must be rejected via the interfaces check.
+
+        get_action_details validates the type against /rosapi/interfaces before
+        querying its details, because asking rosapi for the goal/result/feedback
+        of a non-existent type crashes the ROS 2 rosapi node.
+        """
         result = tools["get_action_details"](
             action="/nonexistent_action_xyz",
             action_type="nonexistent_pkg/action/DoesNotExist",
