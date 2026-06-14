@@ -91,16 +91,24 @@ class TestCallService:
         assert result["success"] is True
 
     def test_call_spawn_turtle(self, tools):
-        """call_service for /spawn should create a new turtle."""
+        """call_service for /spawn should create a new turtle (cleaned up after)."""
         turtle_name = f"test_turtle_{int(time.time_ns())}"
-        type_result = tools["get_service_type"](service="/spawn")
-        spawn_type = type_result["type"]
-        result = tools["call_service"](
-            service_name="/spawn",
-            service_type=spawn_type,
-            request={"x": 3.0, "y": 3.0, "theta": 0.0, "name": turtle_name},
-        )
-        assert result["success"] is True
+        spawn_type = tools["get_service_type"](service="/spawn")["type"]
+        try:
+            result = tools["call_service"](
+                service_name="/spawn",
+                service_type=spawn_type,
+                request={"x": 3.0, "y": 3.0, "theta": 0.0, "name": turtle_name},
+            )
+            assert result["success"] is True
+        finally:
+            # Remove the spawned turtle so state doesn't leak across tests.
+            kill_type = tools["get_service_type"](service="/kill")["type"]
+            tools["call_service"](
+                service_name="/kill",
+                service_type=kill_type,
+                request={"name": turtle_name},
+            )
 
     def test_call_nonexistent_service(self, tools):
         """call_service for a nonexistent service should return an error."""
