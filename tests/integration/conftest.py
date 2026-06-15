@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 from fastmcp import FastMCP
 
+from ros_mcp.resources import register_all_resources
 from ros_mcp.tools import register_all_tools
 from ros_mcp.utils.rosapi_types import detect_rosapi_types
 from ros_mcp.utils.websocket import WebSocketManager
@@ -139,3 +140,19 @@ def tools(ws):
     mcp = FastMCP("test-ros-mcp")
     register_all_tools(mcp, ws, rosbridge_ip="127.0.0.1", rosbridge_port=ROSBRIDGE_PORT)
     return {name: tool.fn for name, tool in mcp._tool_manager._tools.items()}
+
+
+@pytest.fixture(scope="session")
+def resources(ws):
+    """MCP resource read-functions registered against the live ws_manager.
+
+    Returns a dict mapping resource URI to its zero-arg callable. Each callable
+    returns a JSON string, e.g.:
+        json.loads(resources["ros-mcp://ros-metadata/all"]()) → dict
+
+    Reaches into FastMCP's private resource registry, mirroring how the ``tools``
+    fixture above reads ``_tool_manager._tools`` — kept consistent on purpose.
+    """
+    mcp = FastMCP("test-ros-mcp")
+    register_all_resources(mcp, ws)
+    return {uri: res.fn for uri, res in mcp._resource_manager._resources.items()}
