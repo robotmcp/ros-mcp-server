@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _extract_error
+from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -19,17 +20,21 @@ def _safe_check_parameter_exists(
     """
 
     def _is_empty_value(value: str) -> bool:
-        """Check if a parameter value is effectively empty."""
+        """Check if a parameter value indicates the parameter does not exist."""
         if not value:
             return True
-        # Strip quotes (handles cases like '""' which represents empty string)
+        # Strip quotes (handles '""' which represents empty string)
         stripped = value.strip('"').strip("'")
-        return not stripped or stripped == ""
+        if not stripped:
+            return True
+        # ROS 1 rosbridge get_param returns the literal JSON value `null` (string "null")
+        # for missing parameters, with result=true. Treat as nonexistent.
+        return stripped == "null"
 
     message = {
         "op": "call_service",
-        "service": "/rosapi/get_param",
-        "type": "rosapi_msgs/srv/GetParam",
+        "service": rosapi_service("get_param"),
+        "type": rosapi_type("GetParam"),
         "args": {"name": name},
         "id": f"check_param_exists_{name.replace('/', '_').replace(':', '_')}",
     }
@@ -194,8 +199,8 @@ def register_parameter_tools(
 
         message = {
             "op": "call_service",
-            "service": "/rosapi/set_param",
-            "type": "rosapi_msgs/srv/SetParam",
+            "service": rosapi_service("set_param"),
+            "type": rosapi_type("SetParam"),
             "args": {"name": name, "value": value},
             "id": f"set_param_{name.replace('/', '_').replace(':', '_')}",
         }
@@ -278,6 +283,11 @@ def register_parameter_tools(
 
         Note: This uses get_param internally (via _safe_check_parameter_exists) to avoid
         crashes in rosapi_node when checking for non-existent parameters.
+
+        Limitation: existence is inferred from the parameter's value because the
+        rosbridge ROS 1 get_param API has no separate "exists" signal. A parameter
+        whose value is an empty string or the literal string "null" is therefore
+        reported as not existing (false negative).
         """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
@@ -328,8 +338,8 @@ def register_parameter_tools(
 
         message = {
             "op": "call_service",
-            "service": "/rosapi/delete_param",
-            "type": "rosapi_msgs/srv/DeleteParam",
+            "service": rosapi_service("delete_param"),
+            "type": rosapi_type("DeleteParam"),
             "args": {"name": name},
             "id": f"delete_param_{name.replace('/', '_').replace(':', '_')}",
         }
@@ -356,7 +366,13 @@ def register_parameter_tools(
         if response and "values" in response:
             result_data = response["values"]
             if isinstance(result_data, dict):
-                successful = result_data.get("successful", False)
+                # ROS 1 rosapi delete_param returns {"values": {}, "result": true} on
+                # success, so when "successful" is absent inside values, fall back to
+                # the top-level "result" field.
+                if "successful" in result_data:
+                    successful = bool(result_data["successful"])
+                else:
+                    successful = bool(response.get("result"))
                 reason = result_data.get("reason", "")
                 return {
                     "name": name,
@@ -539,8 +555,8 @@ def register_parameter_tools(
         if value_response is None:
             value_message = {
                 "op": "call_service",
-                "service": "/rosapi/get_param",
-                "type": "rosapi_msgs/srv/GetParam",
+                "service": rosapi_service("get_param"),
+                "type": rosapi_type("GetParam"),
                 "args": {"name": name},
                 "id": f"get_param_details_{name.replace('/', '_').replace(':', '_')}",
             }
@@ -589,7 +605,7 @@ def register_parameter_tools(
         # Get parameter type
         type_message = {
             "op": "call_service",
-            "service": "/rosapi/describe_parameters",
+            "service": rosapi_service("describe_parameters"),
             "type": "rcl_interfaces/DescribeParameters",
             "args": {"names": [name]},
             "id": f"describe_param_details_{name.replace('/', '_').replace(':', '_')}",
