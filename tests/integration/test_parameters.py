@@ -123,9 +123,11 @@ class TestDeleteParameter:
     def test_delete_round_trip(self, tools):
         if get_ros_version() == RosVersion.ROS2:
             pytest.skip(
-                "ROS 2 parameters are per-node; turtlesim doesn't allow deleting its "
-                "own params at runtime. ROS 2 deletion is covered by the existence "
-                "check in TestHasParameter and the set restore in TestSetParameter."
+                "ROS 2 delete-success is not exercisable against this setup: turtlesim "
+                "silently drops undeclared params (set 'succeeds' but nothing persists "
+                "to delete), and deleting a declared param crashes the rosapi node. The "
+                "testable ROS 2 delete paths (nonexistent -> unsuccessful, empty name -> "
+                "error) are covered by the other tests in this class."
             )
         name = f"/ros_mcp_test_delete_{int(time.time_ns())}"
         tools["set_parameter"](name=name, value="1")
