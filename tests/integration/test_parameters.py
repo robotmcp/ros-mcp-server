@@ -28,14 +28,12 @@ pytestmark = [pytest.mark.integration]
 
 _PARAMS = {
     RosVersion.ROS1: {
-        "read_name": "/turtlesim/background_r",
         "seed_name": "/ros_mcp_test_param",
         "seed_value": "42",
         # On ROS 1, the only param we know exists post-fixture is the one we seed.
         "existing_name": "/ros_mcp_test_param",
     },
     RosVersion.ROS2: {
-        "read_name": "/turtlesim:background_r",
         "seed_name": "/turtlesim:background_r",
         "seed_value": "100",
         # On ROS 2, turtlesim populates background_r on launch.

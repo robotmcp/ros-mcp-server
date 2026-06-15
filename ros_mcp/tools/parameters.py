@@ -283,6 +283,11 @@ def register_parameter_tools(
 
         Note: This uses get_param internally (via _safe_check_parameter_exists) to avoid
         crashes in rosapi_node when checking for non-existent parameters.
+
+        Limitation: existence is inferred from the parameter's value because the
+        rosbridge ROS 1 get_param API has no separate "exists" signal. A parameter
+        whose value is an empty string or the literal string "null" is therefore
+        reported as not existing (false negative).
         """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
@@ -365,7 +370,7 @@ def register_parameter_tools(
                 # success, so when "successful" is absent inside values, fall back to
                 # the top-level "result" field.
                 if "successful" in result_data:
-                    successful = result_data["successful"]
+                    successful = bool(result_data["successful"])
                 else:
                     successful = bool(response.get("result"))
                 reason = result_data.get("reason", "")
