@@ -57,6 +57,8 @@ Add the following to the file:
 }
 ```
 
+> **macOS: "Could not attach to MCP server"?** `zsh -lc` sources `~/.zprofile` but not `~/.zshrc`, where the `uv` installer puts `~/.local/bin` on your `PATH` — so the subprocess can't find `uvx`. Fix it by adding `~/.local/bin` to `~/.zprofile`, or by using the absolute path to `uvx`. See [Troubleshooting](../troubleshooting.md#macos-could-not-attach-to-mcp-server--uvx-not-found).
+
 **Windows (WSL):**
 ```json
 {
