@@ -19,12 +19,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/all")
     def get_all_ros_metadata() -> str:
-        """
-        Get all ROS metadata including topics, services, nodes, and parameters.
-
-        Returns:
-            str: JSON string with comprehensive ROS system information
-        """
+        """Topics, services, nodes, parameters, and ROS version as a JSON string."""
         try:
             metadata = {
                 "topics": [],
@@ -161,17 +156,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/nodes/all")
     def get_nodes_details() -> str:
-        """
-        Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.
-
-        Returns:
-            str: JSON string with detailed information about all nodes including:
-                - Node names and details
-                - Publishers for each node
-                - Subscribers for each node
-                - Services provided by each node
-                - Connection counts and statistics
-        """
+        """All nodes with their publishers, subscribers, and services, as a JSON string."""
         try:
             # First get all nodes
             nodes_message = {
@@ -258,15 +243,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/services/all")
     def get_services_details() -> str:
-        """
-        Get comprehensive information about all ROS services including types and providers.
-
-        Returns:
-            str: JSON string with detailed information about all services including:
-                - Service names and types
-                - Provider nodes for each service
-                - Connection counts and statistics
-        """
+        """All services with their types and provider nodes, as a JSON string."""
         try:
             # First get all services
             services_message = {
@@ -373,16 +350,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/topics/all")
     def get_topics_details() -> str:
-        """
-        Get comprehensive information about all ROS topics including publishers, subscribers, and message types.
-
-        Returns:
-            str: JSON string with detailed information about all topics including:
-                - Topic names and types
-                - Publishers for each topic
-                - Subscribers for each topic
-                - Connection counts and statistics
-        """
+        """All topics with their types, publishers, and subscribers, as a JSON string."""
         try:
             # First get all topics
             topics_message = {
@@ -488,15 +456,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/actions/all")
     def get_actions_details() -> str:
-        """
-        Get comprehensive information about all ROS actions including types and available actions.
-
-        Returns:
-            str: JSON string with detailed information about all actions including:
-                - Action names and types
-                - Action status and availability
-                - Connection counts and statistics
-        """
+        """All actions with their types and availability, as a JSON string."""
         try:
             # Check if required action services are available
             required_services = [rosapi_service("action_servers")]
