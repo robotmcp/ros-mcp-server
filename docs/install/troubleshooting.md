@@ -14,6 +14,38 @@
    ```
 3. **Check your client's logs** for error messages related to MCP server initialization.
 
+## macOS: "Could not attach to MCP server" / `uvx` Not Found
+
+**Symptoms:** On macOS, Claude Desktop reports "Could not attach to MCP server ros-mcp-server", even though `uvx ros-mcp --help` works fine in your terminal.
+
+**Cause:** The default macOS config launches the server with `zsh -lc`, which starts a **login, non-interactive** shell. That sources `~/.zprofile` but **not** `~/.zshrc`. The `uv` installer adds `~/.local/bin` to your `PATH` in `~/.zshrc` only, so the subprocess Claude Desktop spawns can't find `uvx`.
+
+Reproduce the clean-subprocess environment Claude Desktop uses:
+```bash
+env -i HOME="$HOME" USER="$USER" zsh -lc 'which uvx'
+# "uvx not found" → you are hitting this issue
+```
+
+**Solutions** (pick one):
+
+1. **Make `~/.local/bin` available to login shells** — add it to `~/.zprofile` (which `zsh -lc` *does* source):
+   ```bash
+   echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zprofile
+   ```
+   Then fully restart Claude Desktop.
+
+2. **Use the absolute path to `uvx`** in `claude_desktop_config.json` instead of going through a shell. Find it with `which uvx` (usually `~/.local/bin/uvx`):
+   ```json
+   {
+     "mcpServers": {
+       "ros-mcp-server": {
+         "command": "/Users/<you>/.local/bin/uvx",
+         "args": ["ros-mcp", "--transport=stdio"]
+       }
+     }
+   }
+   ```
+
 ## Connection Refused / Cannot Reach Rosbridge
 
 **Symptoms:** "Connection refused", "No valid session ID provided", or timeout errors when trying to interact with ROS.

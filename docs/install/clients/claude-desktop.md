@@ -17,6 +17,12 @@ See the [uv installation docs](https://docs.astral.sh/uv/getting-started/install
 
 ## 2. Add the MCP Server
 
+> ⚠️ **Important**: Quit Claude Desktop **completely** before editing `claude_desktop_config.json`. If the app is running in the background when you save the file, your changes can be silently overwritten the moment you enter a chat. Terminate the process first:
+>
+> - **Linux:** `pkill -f claude-desktop`
+> - **macOS:** Right-click the dock icon → Quit, or `pkill -f -i claude` in Terminal
+> - **Windows:** End the `Claude` task in Task Manager (Ctrl+Shift+Esc → find *Claude* → End task)
+
 Locate and edit the `claude_desktop_config.json` file (create it if it doesn't exist):
 
 | OS | Config file path |
@@ -50,6 +56,8 @@ Add the following to the file:
   }
 }
 ```
+
+> **macOS: "Could not attach to MCP server"?** `zsh -lc` sources `~/.zprofile` but not `~/.zshrc`, where the `uv` installer puts `~/.local/bin` on your `PATH` — so the subprocess can't find `uvx`. Fix it by adding `~/.local/bin` to `~/.zprofile`, or by using the absolute path to `uvx`. See [Troubleshooting](../troubleshooting.md#macos-could-not-attach-to-mcp-server--uvx-not-found).
 
 **Windows (WSL):**
 ```json

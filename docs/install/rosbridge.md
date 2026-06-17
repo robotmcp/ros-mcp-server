@@ -4,6 +4,8 @@ Rosbridge runs on the **robot's machine** (wherever ROS is running). It provides
 
 > **Prerequisite:** ROS must already be installed on the robot's machine. If you don't have ROS installed and want to try things out quickly, see the [Turtlesim Docker example](../../examples/5_docker_turtlesim/README.md) which runs ROS and rosbridge in a container.
 
+> **Important — rosbridge *and* rosapi are both required.** ros-mcp-server needs `rosbridge_server` (the WebSocket interface) **and** `rosapi` (the introspection services behind `get_nodes`, `get_topics`, `get_services`, `detect_ros_version`, parameter tools, etc.). The **launch file** used below starts both automatically. Do **not** start rosbridge with `ros2 run rosbridge_server ...` / `rosrun rosbridge_server ...` — those bring up the WebSocket *without* `rosapi`, and every introspection tool will fail with "Service does not exist". The `ros-<distro>-rosbridge-server` package pulls `rosapi` in as a dependency; if in doubt, install the full `ros-<distro>-rosbridge-suite` metapackage.
+
 ## Install rosbridge_server
 
 For ROS 2 Jazzy:
@@ -43,6 +45,16 @@ curl -I http://localhost:9090
 ```
 
 A successful response confirms rosbridge is listening on its default port (9090).
+
+Also confirm `rosapi` is running — its services must be present for the MCP tools to work:
+```bash
+# ROS 2
+ros2 service list | grep rosapi
+
+# ROS 1
+rosservice list | grep rosapi
+```
+If this prints nothing, you launched rosbridge without `rosapi` — use the `ros2 launch` / `roslaunch` command above rather than `ros2 run` / `rosrun`.
 
 ## Next Step
 

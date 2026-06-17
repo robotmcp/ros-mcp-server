@@ -4,6 +4,7 @@ from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _check_response, _safe_get_values
+from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -31,8 +32,8 @@ def register_node_tools(
         # rosbridge service call to get node list
         message = {
             "op": "call_service",
-            "service": "/rosapi/nodes",
-            "type": "rosapi/Nodes",
+            "service": rosapi_service("nodes"),
+            "type": rosapi_type("Nodes"),
             "args": {},
             "id": "get_nodes_request_1",
         }
@@ -91,8 +92,8 @@ def register_node_tools(
         # rosbridge service call to get node details
         message = {
             "op": "call_service",
-            "service": "/rosapi/node_details",
-            "type": "rosapi/NodeDetails",
+            "service": rosapi_service("node_details"),
+            "type": rosapi_type("NodeDetails"),
             "args": {"node": node},
             "id": f"get_node_details_{node.replace('/', '_')}",
         }

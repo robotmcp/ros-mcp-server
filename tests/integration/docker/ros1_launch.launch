@@ -10,4 +10,6 @@
   <node pkg="rosapi" type="rosapi_node" name="rosapi" output="screen" />
 
   <node pkg="turtlesim" type="turtlesim_node" name="turtlesim" output="screen" />
+
+  <node pkg="turtle_actionlib" type="shape_server" name="turtle_shape" output="screen" />
 </launch>

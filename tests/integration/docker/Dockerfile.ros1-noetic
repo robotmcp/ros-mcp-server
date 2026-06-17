@@ -8,6 +8,7 @@ SHELL ["/bin/bash", "-c"]
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-noetic-rosbridge-suite \
     ros-noetic-turtlesim \
+    ros-noetic-turtle-actionlib \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /ros_ws
