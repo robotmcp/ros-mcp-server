@@ -80,3 +80,30 @@ def test_get_all_metadata_parses_topics_with_types():
         {"name": "/a", "type": "std_msgs/String"},
         {"name": "/b", "type": "std_msgs/Int32"},
     ]
+
+
+def test_actions_type_resolved_from_interfaces_without_hardcoded_map():
+    """Regression for #317.
+
+    With the hardcoded action_type_map removed, the type must be derived from the
+    registered interfaces, matching by name across snake_case ↔ CamelCase. Uses an
+    action that was never in the old map, so it only resolves when the interface
+    lookup normalises underscores (follow_waypoints ↔ FollowWaypoints).
+    """
+    ws = _FakeWs(
+        {
+            "/rosapi/services": {"values": {"services": ["/rosapi/action_servers"]}},
+            "/rosapi/action_servers": {"values": {"action_servers": ["/nav/follow_waypoints"]}},
+            "/rosapi/interfaces": {
+                "values": {
+                    "interfaces": ["std_msgs/msg/String", "nav2_msgs/action/FollowWaypoints"]
+                }
+            },
+        }
+    )
+    mcp = _FakeMcp()
+    register_ros_metadata_resources(mcp, ws)
+    data = json.loads(mcp.resources["ros-mcp://ros-metadata/actions/all"]())
+
+    assert data["actions"]["/nav/follow_waypoints"]["type"] == "nav2_msgs/action/FollowWaypoints"
+    assert data["actions"]["/nav/follow_waypoints"]["status"] == "available"

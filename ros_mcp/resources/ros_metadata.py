@@ -585,41 +585,32 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 # Get details for each action
                 action_errors = []
                 for action in actions:
-                    # Try to get action type (this may not always work due to rosapi limitations)
+                    # rosapi exposes only interface names, so derive each action's
+                    # type from the registered action interfaces. Match the action's
+                    # final path segment by name, ignoring case and underscores
+                    # (e.g. rotate_absolute ↔ turtlesim/action/RotateAbsolute).
                     action_type = "unknown"
 
-                    # Known action type mappings for common actions
-                    action_type_map = {
-                        "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
-                        # Add more mappings as needed based on common ROS actions
+                    interfaces_message = {
+                        "op": "call_service",
+                        "service": rosapi_service("interfaces"),
+                        "type": rosapi_type("Interfaces"),
+                        "args": {},
+                        "id": f"get_interfaces_{action.replace('/', '_')}",
                     }
 
-                    if action in action_type_map:
-                        action_type = action_type_map[action]
-                    else:
-                        # Try to derive from interfaces
-                        interfaces_message = {
-                            "op": "call_service",
-                            "service": rosapi_service("interfaces"),
-                            "type": rosapi_type("Interfaces"),
-                            "args": {},
-                            "id": f"get_interfaces_{action.replace('/', '_')}",
-                        }
-
-                        interfaces_response = ws_manager.request(interfaces_message)
-                        iface_vals = _safe_get_values(interfaces_response)
-                        if iface_vals is not None:
-                            interfaces = iface_vals.get("interfaces", [])
-                            action_interfaces = [
-                                iface for iface in interfaces if "/action/" in iface
-                            ]
-
-                            # Try to match based on action name patterns
-                            action_name_part = action.split("/")[-1]
-                            for iface in action_interfaces:
-                                if action_name_part.lower() in iface.lower():
-                                    action_type = iface
-                                    break
+                    interfaces_response = ws_manager.request(interfaces_message)
+                    iface_vals = _safe_get_values(interfaces_response)
+                    if iface_vals is not None:
+                        interfaces = iface_vals.get("interfaces", [])
+                        action_name = action.split("/")[-1].replace("_", "").lower()
+                        for iface in interfaces:
+                            if (
+                                "/action/" in iface
+                                and action_name in iface.replace("_", "").lower()
+                            ):
+                                action_type = iface
+                                break
 
                     action_details[action] = {
                         "type": action_type,
