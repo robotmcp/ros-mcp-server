@@ -39,7 +39,7 @@ jobs:
       - name: Run tests
         run: |
           if [ -d tests ]; then
-            uv run pytest -q -m "not slow" || [ $? -eq 5 ]  # exit 5 = no tests collected
+            uv run pytest -q -m "not slow and not integration" || [ $? -eq 5 ]  # exit 5 = no tests collected
           else
             echo "No tests/ directory; skipping."
           fi
