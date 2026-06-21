@@ -10,6 +10,7 @@ from mcp.types import TextContent, ToolAnnotations
 from PIL import Image as PILImage
 
 from ros_mcp.tools.images import _encode_image_to_imagecontent, convert_expects_image_hint
+from ros_mcp.utils.paths import get_fixed_image_path
 from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
@@ -386,7 +387,7 @@ def register_topic_tools(
                     ws_manager.send(unsubscribe_msg)
                     # Return appropriate message based on whether image was actually parsed
                     if was_parsed_as_image:
-                        image_path = "./camera/received_image.jpeg"
+                        image_path = str(get_fixed_image_path("received_image.jpeg"))
                         if os.path.exists(image_path):
                             img = PILImage.open(image_path)
                             image_content = _encode_image_to_imagecontent(img)
@@ -537,7 +538,7 @@ def register_topic_tools(
                     msg_index = len(collected_messages)
                     # Add message based on whether it was actually parsed as image
                     if was_parsed_as_image:
-                        image_path = "./camera/received_image.jpeg"
+                        image_path = str(get_fixed_image_path("received_image.jpeg"))
                         if os.path.exists(image_path):
                             img = PILImage.open(image_path)
                             collected_messages.append(_encode_image_to_imagecontent(img))
