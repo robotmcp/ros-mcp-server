@@ -1,6 +1,39 @@
+import os
 from pathlib import Path
 
 import yaml
+
+# Default image output directory name, created under the user's home directory.
+_DEFAULT_IMAGE_DIR = Path.home() / ".ros-mcp" / "camera"
+
+
+def get_image_dir() -> str:
+    """Return the directory where received images are saved.
+
+    The location is independent of the current working directory so it works the
+    same whether the server runs via ``uv run`` (CWD inside the repo) or ``uvx``
+    (CWD set by the MCP client, often not writable — see issue #301). Defaults to
+    ``~/.ros-mcp/camera`` and can be overridden with the ``ROS_MCP_IMAGE_DIR``
+    environment variable.
+
+    Returns:
+        str: Absolute path to the image output directory.
+    """
+    env_dir = os.environ.get("ROS_MCP_IMAGE_DIR")
+    image_dir = Path(env_dir).expanduser() if env_dir else _DEFAULT_IMAGE_DIR
+    return str(image_dir)
+
+
+def get_image_path(filename: str = "received_image.jpeg") -> str:
+    """Return the full path for a saved image under :func:`get_image_dir`.
+
+    Args:
+        filename (str): Image file name. Defaults to ``received_image.jpeg``.
+
+    Returns:
+        str: Absolute path to the image file.
+    """
+    return str(Path(get_image_dir()) / filename)
 
 
 def load_robot_config(robot_name: str, specs_dir: str) -> dict:

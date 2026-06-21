@@ -9,6 +9,8 @@ import cv2
 import numpy as np
 import websocket
 
+from ros_mcp.utils.config_utils import get_image_dir, get_image_path
+
 
 def parse_json(raw: Union[str, bytes] | None) -> dict | None:
     """
@@ -116,7 +118,7 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
         return None
 
     # 4. Ensure output directory exists
-    os.makedirs("./camera", exist_ok=True)
+    os.makedirs(get_image_dir(), exist_ok=True)
 
     # 5. Determine image type and process accordingly
     format = msg.get("format")
@@ -137,7 +139,7 @@ def parse_image(raw: Union[str, bytes] | None) -> dict | None:
 
 def _handle_compressed_image(data_b64: str, result: dict) -> dict | None:
     """Handle compressed image data (JPEG/PNG already encoded)."""
-    path = "./camera/received_image.jpeg"
+    path = get_image_path()
     image_bytes = base64.b64decode(data_b64)
 
     with open(path, "wb") as f:
@@ -170,9 +172,10 @@ def _handle_raw_image(
         return None
 
     # Save as JPEG with quality 95
-    success = cv2.imwrite("./camera/received_image.jpeg", img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    path = get_image_path()
+    success = cv2.imwrite(path, img_cv, [cv2.IMWRITE_JPEG_QUALITY, 95])
     if success:
-        print("[Image] Saved raw Image to ./camera/received_image.jpeg", file=sys.stderr)
+        print(f"[Image] Saved raw Image to {path}", file=sys.stderr)
         return result if isinstance(result, dict) else None
     else:
         return None

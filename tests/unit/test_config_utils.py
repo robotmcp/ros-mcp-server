@@ -6,6 +6,8 @@ import pytest
 
 import ros_mcp.utils.config_utils as config_module
 from ros_mcp.utils.config_utils import (
+    get_image_dir,
+    get_image_path,
     get_verified_robot_spec_util,
     get_verified_robots_list_util,
     load_robot_config,
@@ -136,3 +138,29 @@ class TestGetVerifiedRobotsListUtil:
         result = get_verified_robots_list_util()
         assert "error" in result
         assert "No robot specification files found" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# get_image_dir / get_image_path — CWD-independent, env-overridable (issue #301)
+# ---------------------------------------------------------------------------
+
+
+class TestImagePath:
+    def test_default_dir_is_absolute_and_cwd_independent(self, monkeypatch):
+        monkeypatch.delenv("ROS_MCP_IMAGE_DIR", raising=False)
+        image_dir = get_image_dir()
+        assert Path(image_dir).is_absolute(), f"{image_dir} should not be CWD-relative"
+        assert Path(image_dir) == Path.home() / ".ros-mcp" / "camera"
+
+    def test_env_override(self, monkeypatch):
+        monkeypatch.setenv("ROS_MCP_IMAGE_DIR", "/tmp/ros-mcp-images")
+        assert get_image_dir() == "/tmp/ros-mcp-images"
+
+    def test_env_override_expands_user(self, monkeypatch):
+        monkeypatch.setenv("ROS_MCP_IMAGE_DIR", "~/custom-images")
+        assert get_image_dir() == str(Path.home() / "custom-images")
+
+    def test_image_path_joins_filename(self, monkeypatch):
+        monkeypatch.setenv("ROS_MCP_IMAGE_DIR", "/tmp/imgs")
+        assert get_image_path() == str(Path("/tmp/imgs") / "received_image.jpeg")
+        assert get_image_path("frame.png") == str(Path("/tmp/imgs") / "frame.png")
