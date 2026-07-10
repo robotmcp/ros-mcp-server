@@ -27,6 +27,14 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 claude mcp add ros-mcp -- uvx ros-mcp --transport=stdio
 ```
 
+Quick setup with [Autohand Code](https://github.com/autohandai/code-cli/):
+
+```bash
+autohand mcp add ros-mcp -- uvx ros-mcp --transport=stdio
+```
+
+Add `--scope project` after `mcp add` to keep the registration in the current workspace.
+
 For detailed instructions or to set up a different AI client, follow the guide for your client below.
 
 
