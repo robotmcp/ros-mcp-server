@@ -40,6 +40,7 @@ def _get_all_resource(ws):
 
 def test_get_all_metadata_handles_string_values_for_topics():
     """Regression for #251 / salvage of #343."""
+
     # Service path is version-dependent; cover both common keys by emptying responses
     # except one string-values topics entry via side_effect-like map on full service names.
     # Map by scanning keys in request: our Fake uses service field as key.
