@@ -19,12 +19,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/all")
     def get_all_ros_metadata() -> str:
-        """
-        Get all ROS metadata including topics, services, nodes, and parameters.
-
-        Returns:
-            str: JSON string with comprehensive ROS system information
-        """
+        """Topics, services, nodes, parameters, and ROS version as a JSON string."""
         try:
             metadata = {
                 "topics": [],
@@ -161,17 +156,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/nodes/all")
     def get_nodes_details() -> str:
-        """
-        Get comprehensive information about all ROS nodes including their publishers, subscribers, and services.
-
-        Returns:
-            str: JSON string with detailed information about all nodes including:
-                - Node names and details
-                - Publishers for each node
-                - Subscribers for each node
-                - Services provided by each node
-                - Connection counts and statistics
-        """
+        """All nodes with their publishers, subscribers, and services, as a JSON string."""
         try:
             # First get all nodes
             nodes_message = {
@@ -258,15 +243,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/services/all")
     def get_services_details() -> str:
-        """
-        Get comprehensive information about all ROS services including types and providers.
-
-        Returns:
-            str: JSON string with detailed information about all services including:
-                - Service names and types
-                - Provider nodes for each service
-                - Connection counts and statistics
-        """
+        """All services with their types and provider nodes, as a JSON string."""
         try:
             # First get all services
             services_message = {
@@ -373,16 +350,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/topics/all")
     def get_topics_details() -> str:
-        """
-        Get comprehensive information about all ROS topics including publishers, subscribers, and message types.
-
-        Returns:
-            str: JSON string with detailed information about all topics including:
-                - Topic names and types
-                - Publishers for each topic
-                - Subscribers for each topic
-                - Connection counts and statistics
-        """
+        """All topics with their types, publishers, and subscribers, as a JSON string."""
         try:
             # First get all topics
             topics_message = {
@@ -488,15 +456,7 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
 
     @mcp.resource("ros-mcp://ros-metadata/actions/all")
     def get_actions_details() -> str:
-        """
-        Get comprehensive information about all ROS actions including types and available actions.
-
-        Returns:
-            str: JSON string with detailed information about all actions including:
-                - Action names and types
-                - Action status and availability
-                - Connection counts and statistics
-        """
+        """All actions with their types and availability, as a JSON string."""
         try:
             # Check if required action services are available
             required_services = [rosapi_service("action_servers")]
@@ -585,41 +545,32 @@ def register_ros_metadata_resources(mcp, ws_manager: WebSocketManager):
                 # Get details for each action
                 action_errors = []
                 for action in actions:
-                    # Try to get action type (this may not always work due to rosapi limitations)
+                    # rosapi exposes only interface names, so derive each action's
+                    # type from the registered action interfaces. Match the action's
+                    # final path segment by name, ignoring case and underscores
+                    # (e.g. rotate_absolute ↔ turtlesim/action/RotateAbsolute).
                     action_type = "unknown"
 
-                    # Known action type mappings for common actions
-                    action_type_map = {
-                        "/turtle1/rotate_absolute": "turtlesim/action/RotateAbsolute",
-                        # Add more mappings as needed based on common ROS actions
+                    interfaces_message = {
+                        "op": "call_service",
+                        "service": rosapi_service("interfaces"),
+                        "type": rosapi_type("Interfaces"),
+                        "args": {},
+                        "id": f"get_interfaces_{action.replace('/', '_')}",
                     }
 
-                    if action in action_type_map:
-                        action_type = action_type_map[action]
-                    else:
-                        # Try to derive from interfaces
-                        interfaces_message = {
-                            "op": "call_service",
-                            "service": rosapi_service("interfaces"),
-                            "type": rosapi_type("Interfaces"),
-                            "args": {},
-                            "id": f"get_interfaces_{action.replace('/', '_')}",
-                        }
-
-                        interfaces_response = ws_manager.request(interfaces_message)
-                        iface_vals = _safe_get_values(interfaces_response)
-                        if iface_vals is not None:
-                            interfaces = iface_vals.get("interfaces", [])
-                            action_interfaces = [
-                                iface for iface in interfaces if "/action/" in iface
-                            ]
-
-                            # Try to match based on action name patterns
-                            action_name_part = action.split("/")[-1]
-                            for iface in action_interfaces:
-                                if action_name_part.lower() in iface.lower():
-                                    action_type = iface
-                                    break
+                    interfaces_response = ws_manager.request(interfaces_message)
+                    iface_vals = _safe_get_values(interfaces_response)
+                    if iface_vals is not None:
+                        interfaces = iface_vals.get("interfaces", [])
+                        action_name = action.split("/")[-1].replace("_", "").lower()
+                        for iface in interfaces:
+                            if (
+                                "/action/" in iface
+                                and action_name in iface.replace("_", "").lower()
+                            ):
+                                action_type = iface
+                                break
 
                     action_details[action] = {
                         "type": action_type,
