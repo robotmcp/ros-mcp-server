@@ -26,7 +26,9 @@ def response_mod():
 
 class TestCheckResponse:
     def test_none_response(self, response_mod):
-        assert response_mod._check_response(None) == {"error": "No response received from rosbridge"}
+        assert response_mod._check_response(None) == {
+            "error": "No response received from rosbridge"
+        }
 
     def test_non_dict_response(self, response_mod):
         assert response_mod._check_response("nope") == {
@@ -41,17 +43,13 @@ class TestCheckResponse:
         assert response_mod._check_response({"values": {"ok": True}}) is None
 
     def test_result_false_with_dict_values_message(self, response_mod):
-        err = response_mod._check_response(
-            {"result": False, "values": {"message": "service gone"}}
-        )
+        err = response_mod._check_response({"result": False, "values": {"message": "service gone"}})
         assert err is not None
         assert "service gone" in err["error"]
 
     def test_result_false_with_string_values_no_crash(self, response_mod):
         # Regression for #251: values can be a str when service missing.
-        err = response_mod._check_response(
-            {"result": False, "values": "Service does not exist"}
-        )
+        err = response_mod._check_response({"result": False, "values": "Service does not exist"})
         assert err is not None
         assert "Service does not exist" in err["error"]
 
