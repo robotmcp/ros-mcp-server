@@ -1,5 +1,7 @@
 # ROS MCP Server 🧠⇄🤖
 
+[![MCP Toplist](https://mcptoplist.com/badge/io.github.robotmcp%2Fros-mcp-server.svg)](https://mcptoplist.com/server/io.github.robotmcp%2Fros-mcp-server)
+
 ![Static Badge](https://img.shields.io/badge/ROS-Available-green)
 ![Static Badge](https://img.shields.io/badge/ROS2-Available-green)
 ![Static Badge](https://img.shields.io/badge/License-Apache%202.0-blue)
