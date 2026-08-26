@@ -154,7 +154,7 @@ class TestImagePath:
 
     def test_env_override(self, monkeypatch):
         monkeypatch.setenv("ROS_MCP_IMAGE_DIR", "/tmp/ros-mcp-images")
-        assert get_image_dir() == "/tmp/ros-mcp-images"
+        assert get_image_dir() == str(Path("/tmp/ros-mcp-images"))
 
     def test_env_override_expands_user(self, monkeypatch):
         monkeypatch.setenv("ROS_MCP_IMAGE_DIR", "~/custom-images")
