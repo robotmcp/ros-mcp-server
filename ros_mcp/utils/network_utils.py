@@ -1,7 +1,31 @@
 import platform
+import re
 import socket
 import subprocess
 from typing import Dict, Tuple
+
+# Round-trip time as printed by ping. The unit spacing differs by platform:
+# Linux prints "time=0.057 ms", Windows prints "time=3ms" and, for
+# sub-millisecond replies, "time<1ms".
+_PING_TIME_RE = re.compile(r"time[=<]\s*(\d+(?:\.\d+)?)\s*ms")
+
+
+def _parse_ping_time_ms(output: str) -> float | None:
+    """
+    Extract the round-trip time in milliseconds from ping's stdout.
+
+    Args:
+        output (str): Raw stdout captured from the platform ping command.
+
+    Returns:
+        float | None: Round-trip time in milliseconds, or None if ping did not
+        report one. A Windows "time<1ms" reading is returned as its upper bound
+        (1.0), because ping does not print a more precise value.
+    """
+    match = _PING_TIME_RE.search(output)
+    if match is None:
+        return None
+    return float(match.group(1))
 
 
 def _resolve_dns(hostname: str) -> Tuple[bool, str | None, str | None]:
@@ -89,19 +113,7 @@ def ping_ip_and_port(
         )
 
         if ping_result.returncode == 0:
-            # Extract response time from ping output
-            output_lines = ping_result.stdout.split("\n")
-            for line in output_lines:
-                if "time=" in line or "time<" in line:
-                    # Extract time value (format varies by OS)
-                    if "time=" in line:
-                        time_part = line.split("time=")[1].split()[0]
-                        try:
-                            result["ping"]["response_time_ms"] = float(time_part)
-                        except ValueError:
-                            result["ping"]["response_time_ms"] = None
-                    break
-
+            result["ping"]["response_time_ms"] = _parse_ping_time_ms(ping_result.stdout)
             result["ping"]["success"] = True
         else:
             result["ping"]["error"] = f"Ping failed with return code {ping_result.returncode}"
