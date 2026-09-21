@@ -268,57 +268,57 @@ Access: ros-mcp://ros-metadata/all
 **Topics:**
 ```python
 # Get topic details
-get_topic_details('/turtle1/cmd_vel')
+get_topic_details("/turtle1/cmd_vel")
 
 # Subscribe to a topic
-subscribe_once(topic='/turtle1/pose', msg_type='turtlesim/msg/Pose')
+subscribe_once(topic="/turtle1/pose", msg_type="turtlesim/msg/Pose")
 
 # Publish to a topic
 publish_once(
-    topic='/turtle1/cmd_vel',
-    msg_type='geometry_msgs/msg/Twist',
-    msg={'linear': {'x': 2.0, 'y': 0.0, 'z': 0.0}}
+    topic="/turtle1/cmd_vel",
+    msg_type="geometry_msgs/msg/Twist",
+    msg={"linear": {"x": 2.0, "y": 0.0, "z": 0.0}},
 )
 ```
 
 **Services:**
 ```python
 # Get service details
-get_service_details('/turtle1/teleport_absolute')
+get_service_details("/turtle1/teleport_absolute")
 
 # Call a service
 call_service(
-    service_name='/turtle1/teleport_absolute',
-    service_type='turtlesim/srv/TeleportAbsolute',
-    request={'x': 5.5, 'y': 5.5, 'theta': 0.0}
+    service_name="/turtle1/teleport_absolute",
+    service_type="turtlesim/srv/TeleportAbsolute",
+    request={"x": 5.5, "y": 5.5, "theta": 0.0},
 )
 ```
 
 **Nodes:**
 ```python
 # Get node details
-get_node_details('/turtlesim')
+get_node_details("/turtlesim")
 ```
 
 **Parameters (ROS 2 only):**
 ```python
 # Get parameters
-get_parameters('turtlesim')
+get_parameters("turtlesim")
 
 # Set parameter
-set_parameter('/turtlesim:background_r', '255')
+set_parameter("/turtlesim:background_r", "255")
 ```
 
 **Actions (ROS 2 only):**
 ```python
 # Get action details
-get_action_details('/turtle1/rotate_absolute')
+get_action_details("/turtle1/rotate_absolute")
 
 # Send action goal
 send_action_goal(
-    action_name='/turtle1/rotate_absolute',
-    action_type='turtlesim/action/RotateAbsolute',
-    goal={'theta': 1.57}
+    action_name="/turtle1/rotate_absolute",
+    action_type="turtlesim/action/RotateAbsolute",
+    goal={"theta": 1.57},
 )
 ```
 

@@ -33,37 +33,26 @@ from launch.actions import IncludeLaunchDescription
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
 
+
 def generate_launch_description():
     # Your existing robot nodes
-    robot_node = Node(
-        package='my_robot_pkg',
-        executable='robot_node',
-        name='my_robot'
-    )
-    
-    sensor_node = Node(
-        package='my_robot_pkg',
-        executable='sensor_node',
-        name='sensor_node'
-    )
-    
+    robot_node = Node(package="my_robot_pkg", executable="robot_node", name="my_robot")
+
+    sensor_node = Node(package="my_robot_pkg", executable="sensor_node", name="sensor_node")
+
     # Include rosbridge for MCP communication
     rosbridge_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource([
-            'ros_mcp_server', '/launch/ros_mcp_rosbridge.launch.py'
-        ]),
-        launch_arguments={
-            'port': '9090',
-            'address': '',
-            'log_level': 'info'
-        }.items()
+        PythonLaunchDescriptionSource(["ros_mcp_server", "/launch/ros_mcp_rosbridge.launch.py"]),
+        launch_arguments={"port": "9090", "address": "", "log_level": "info"}.items(),
     )
-    
-    return LaunchDescription([
-        robot_node,
-        sensor_node,
-        rosbridge_launch,  # Add this line
-    ])
+
+    return LaunchDescription(
+        [
+            robot_node,
+            sensor_node,
+            rosbridge_launch,  # Add this line
+        ]
+    )
 ```
 
 #### Method 2: Add Rosbridge Node Directly
