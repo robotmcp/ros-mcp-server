@@ -125,7 +125,8 @@ def register_all_tools(
 2. **Create `ros_integration.py`**:
    ```python
    import sys, os
-   sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'ros-mcp-server'))
+
+   sys.path.insert(0, os.path.join(os.path.dirname(__file__), "ros-mcp-server"))
    from ros_mcp.tools import register_all_tools
    from ros_mcp.utils.websocket import WebSocketManager
    ```
