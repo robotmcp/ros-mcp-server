@@ -50,6 +50,8 @@ robot_specifications = ["*.yaml"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+# docs/** contains fenced examples; floating `pip install ruff` may try experimental md format
+extend-exclude = ["docs"]
 
 # Linter config moved to new section
 [tool.ruff.lint]
