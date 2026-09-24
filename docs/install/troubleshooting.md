@@ -111,6 +111,19 @@ env -i HOME="$HOME" USER="$USER" zsh -lc 'which uvx'
 | Running processes | `ps aux \| grep rosbridge` |
 | WSL distributions | `wsl --list --verbose` |
 
+## Action goal reports timeout but the action succeeded
+
+**Symptoms:** `send_action_goal` returns a timeout error (or `success` with a timeout message) while `get_action_status` shows the action finished successfully (e.g. STATUS_SUCCEEDED).
+
+**Cause:** Older builds closed the rosbridge WebSocket on every `receive()` exception, including **read timeouts**. During an action feedback loop, a quiet gap between `action_feedback` messages can time out `recv()`. Closing the socket drops the action subscription; the next reconnect never sees `action_result`.
+
+**Workarounds (until updated):**
+1. Poll status with `get_action_status` after a reported timeout.
+2. Increase the tool timeout if the action is long-running.
+
+**Fix:** `WebSocketManager.receive` keeps the connection open on read timeout and only closes on hard socket errors (see issue #318).
+
+
 ## Still Having Issues?
 
 1. **Check logs** — look for error messages in your AI client and MCP server output. Running logs through an LLM can help with debugging.
@@ -121,3 +134,5 @@ env -i HOME="$HOME" USER="$USER" zsh -lc 'which uvx'
    - AI client being used
    - Error messages
    - Steps to reproduce
+
+
