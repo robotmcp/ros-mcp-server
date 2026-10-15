@@ -79,10 +79,36 @@ def ping_ip_and_port(
     # Step 1: Ping the IP address
     try:
         # Use platform-specific ping command
-        if platform.system().lower() == "windows":
-            ping_cmd = ["ping", "-n", "1", "-w", str(int(ping_timeout * 1000)), actual_ip]
-        else:  # Linux, macOS, etc.
-            ping_cmd = ["ping", "-c", "1", "-W", str(int(ping_timeout)), actual_ip]
+        system = platform.system().lower()
+
+        if system == "windows":
+            ping_cmd = [
+                "ping",
+                "-n",
+                "1",
+                "-w",
+                str(int(ping_timeout * 1000)),
+                actual_ip,
+            ]
+        elif system == "darwin":
+            # macOS expects the -W timeout in milliseconds.
+            ping_cmd = [
+                "ping",
+                "-c",
+                "1",
+                "-W",
+                str(int(ping_timeout * 1000)),
+                actual_ip,
+            ]
+        else:  # Linux and other Unix-like systems
+            ping_cmd = [
+                "ping",
+                "-c",
+                "1",
+                "-W",
+                str(int(ping_timeout)),
+                actual_ip,
+            ]
 
         ping_result = subprocess.run(
             ping_cmd, capture_output=True, text=True, timeout=ping_timeout + 1.0
