@@ -351,6 +351,13 @@ def register_action_tools(
         if timeout is None:
             timeout = ws_manager.default_timeout
 
+        # Isolate each goal's responses from other concurrent action calls.
+        action_ws_manager = WebSocketManager(
+            ws_manager.ip,
+            ws_manager.port,
+            default_timeout=ws_manager.default_timeout,
+        )
+
         goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
 
         message = {
@@ -362,8 +369,8 @@ def register_action_tools(
             "feedback": True,
         }
 
-        with ws_manager:
-            send_error = ws_manager.send(message)
+        with action_ws_manager:
+            send_error = action_ws_manager.send(message)
             if send_error:
                 return {
                     "error": f"Failed to send action goal: {send_error}",
@@ -377,7 +384,7 @@ def register_action_tools(
 
             while time.time() - start_time < timeout:
                 remaining = timeout - (time.time() - start_time)
-                response = ws_manager.receive(remaining)
+                response = action_ws_manager.receive(remaining)
 
                 if not response:
                     continue
@@ -387,7 +394,7 @@ def register_action_tools(
                 except json.JSONDecodeError:
                     continue
 
-                if msg_data.get("op") == "action_result":
+                if msg_data.get("op") == "action_result" and msg_data.get("id") == goal_id:
                     if ctx:
                         try:
                             await ctx.report_progress(
@@ -404,7 +411,7 @@ def register_action_tools(
                         "result": msg_data.get("values", {}),
                     }
 
-                if msg_data.get("op") == "action_feedback":
+                if msg_data.get("op") == "action_feedback" and msg_data.get("id") == goal_id:
                     feedback_count += 1
                     last_feedback = msg_data
                     if ctx:
