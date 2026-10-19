@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import threading
 from collections import deque
 from unittest.mock import patch
 
@@ -54,6 +55,42 @@ class PeerSocket:
 
     def recv(self):
         frame = self.frames.popleft()
+        self.trace.append({"receive": frame})
+        return json.dumps(frame)
+
+    def settimeout(self, _timeout):
+        pass
+
+    def close(self):
+        self.connected = False
+        self.trace.append({"close": True})
+
+
+class PendingGoalSocket:
+    def __init__(self, trace):
+        self.connected = True
+        self.trace = trace
+        self.goal_sent = threading.Event()
+        self.cancel_sent = threading.Event()
+        self.goal_id = None
+
+    def send(self, raw):
+        submitted = json.loads(raw)
+        self.trace.append({"send": submitted})
+        if submitted["op"] == "send_action_goal":
+            self.goal_id = submitted["id"]
+            self.goal_sent.set()
+        elif submitted["op"] == "cancel_action_goal":
+            self.cancel_sent.set()
+
+    def recv(self):
+        self.cancel_sent.wait(timeout=10)
+        frame = {
+            "op": "action_result",
+            "id": self.goal_id,
+            "status": 5,
+            "values": {"canceled": True},
+        }
         self.trace.append({"receive": frame})
         return json.dumps(frame)
 
@@ -142,6 +179,61 @@ def test_action_result_belongs_to_submitted_goal(overlap, same_action):
     received_ids = {frame["id"] for frame in received}
     expected_ids = set(submitted_by_id)
     assert received_ids == expected_ids | {f"{goal_id}_wrong" for goal_id in expected_ids}
+
+
+def test_cancel_action_goal_uses_pending_goal_connection():
+    trace = []
+    connections = []
+    connection_created = threading.Event()
+
+    def factory(*_args, **_kwargs):
+        socket = PendingGoalSocket(trace)
+        connections.append(socket)
+        connection_created.set()
+        return socket
+
+    manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
+    server = FastMCP("cancel-action-probe")
+    register_action_tools(server, manager)
+
+    async def exercise():
+        send_goal = server._tool_manager._tools["send_action_goal"].fn
+        cancel_goal = server._tool_manager._tools["cancel_action_goal"].fn
+        goal_task = asyncio.create_task(
+            asyncio.to_thread(
+                asyncio.run,
+                send_goal(
+                    action_name="/test",
+                    action_type="example/action/Test",
+                    goal={"value": "pending"},
+                    timeout=10,
+                ),
+            )
+        )
+        await asyncio.to_thread(connection_created.wait, 2)
+        await asyncio.to_thread(connections[0].goal_sent.wait, 2)
+        goal_id = connections[0].goal_id
+        cancel_result = await asyncio.to_thread(cancel_goal, "/test", goal_id)
+        goal_result = await goal_task
+        finished_cancel_result = cancel_goal("/test", goal_id)
+        return cancel_result, goal_result, finished_cancel_result
+
+    with patch.object(transport.websocket, "create_connection", factory):
+        cancel_result, goal_result, finished_cancel_result = asyncio.run(exercise())
+
+    sends = [item["send"] for item in trace if "send" in item]
+    assert len(connections) == 1
+    assert [message["op"] for message in sends] == [
+        "send_action_goal",
+        "cancel_action_goal",
+    ]
+    assert sends[1]["id"] == sends[0]["id"]
+    assert cancel_result["success"] is True
+    assert goal_result["success"] is True
+    assert goal_result["status"] == 5
+    assert finished_cancel_result["error"] == (
+        f"No active connection found for goal ID: {sends[0]['id']}"
+    )
 
 
 async def main():
