@@ -367,19 +367,29 @@ class WebSocketManager:
         """
         with self.lock:
             self.connect()
-            if self.ws:
-                try:
-                    # Use default timeout if none specified
-                    actual_timeout = timeout if timeout is not None else self.default_timeout
-                    print(f"[WebSocket] Using timeout of {actual_timeout} seconds", file=sys.stderr)
-                    # Temporarily set the receive timeout
-                    self.ws.settimeout(actual_timeout)
-                    raw = self.ws.recv()  # rosbridge sends JSON as a string
-                    return raw
-                except Exception as e:
-                    print(f"[WebSocket] Receive error or timeout: {e}", file=sys.stderr)
+            ws = self.ws
+            if ws is None:
+                return None
+            actual_timeout = timeout if timeout is not None else self.default_timeout
+            try:
+                ws.settimeout(actual_timeout)
+            except Exception as e:
+                print(f"[WebSocket] Failed to set receive timeout: {e}", file=sys.stderr)
+                return None
+
+        # Do not hold self.lock while waiting: another thread may need to send
+        # a cancellation request through this same connection.
+        try:
+            return ws.recv()
+        except websocket.WebSocketTimeoutException:
+            # A normal receive timeout does not mean the connection is broken.
+            return None
+        except Exception as e:
+            print(f"[WebSocket] Receive error: {e}", file=sys.stderr)
+            with self.lock:
+                # Avoid closing a replacement connection if this socket changed.
+                if self.ws is ws:
                     self.close()
-                    return None
             return None
 
     def request(self, message: dict, timeout: float | None = None) -> dict:

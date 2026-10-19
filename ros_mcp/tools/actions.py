@@ -1,8 +1,10 @@
 """Action tools for ROS MCP."""
 
 import json
+import threading
 import time
 import uuid
+from contextlib import contextmanager
 
 from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
@@ -64,6 +66,19 @@ def register_action_tools(
     ws_manager: WebSocketManager,
 ) -> None:
     """Register all action-related tools."""
+
+    active_action_connections: dict[str, WebSocketManager] = {}
+    active_action_connections_lock = threading.Lock()
+
+    @contextmanager
+    def track_action_connection(goal_id: str, manager: WebSocketManager):
+        with active_action_connections_lock:
+            active_action_connections[goal_id] = manager
+        try:
+            yield
+        finally:
+            with active_action_connections_lock:
+                active_action_connections.pop(goal_id, None)
 
     @mcp.tool(
         description=("Get list of all available ROS actions.\nExample:\nget_actions()"),
@@ -348,6 +363,13 @@ def register_action_tools(
         if timeout is None:
             timeout = ws_manager.default_timeout
 
+        # Isolate each goal's responses from other concurrent action calls.
+        action_ws_manager = WebSocketManager(
+            ws_manager.ip,
+            ws_manager.port,
+            default_timeout=ws_manager.default_timeout,
+        )
+
         goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
 
         message = {
@@ -359,8 +381,8 @@ def register_action_tools(
             "feedback": True,
         }
 
-        with ws_manager:
-            send_error = ws_manager.send(message)
+        with action_ws_manager, track_action_connection(goal_id, action_ws_manager):
+            send_error = action_ws_manager.send(message)
             if send_error:
                 return {
                     "error": f"Failed to send action goal: {send_error}",
@@ -374,7 +396,7 @@ def register_action_tools(
 
             while time.time() - start_time < timeout:
                 remaining = timeout - (time.time() - start_time)
-                response = ws_manager.receive(remaining)
+                response = action_ws_manager.receive(remaining)
 
                 if not response:
                     continue
@@ -384,7 +406,7 @@ def register_action_tools(
                 except json.JSONDecodeError:
                     continue
 
-                if msg_data.get("op") == "action_result":
+                if msg_data.get("op") == "action_result" and msg_data.get("id") == goal_id:
                     if ctx:
                         try:
                             await ctx.report_progress(
@@ -401,7 +423,7 @@ def register_action_tools(
                         "result": msg_data.get("values", {}),
                     }
 
-                if msg_data.get("op") == "action_feedback":
+                if msg_data.get("op") == "action_feedback" and msg_data.get("id") == goal_id:
                     feedback_count += 1
                     last_feedback = msg_data
                     if ctx:
@@ -456,8 +478,17 @@ def register_action_tools(
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"
 
-        with ws_manager:
-            send_error = ws_manager.send(
+        # Keep the registry lock until the send completes, preventing the
+        # goal from being removed and its connection closed during cancellation.
+        with active_action_connections_lock:
+            action_ws_manager = active_action_connections.get(goal_id)
+            if action_ws_manager is None:
+                return {
+                    "error": f"No active connection found for goal ID: {goal_id}",
+                    "action": action_name,
+                    "goal_id": goal_id,
+                }
+            send_error = action_ws_manager.send(
                 {
                     "op": "cancel_action_goal",
                     "id": goal_id,
