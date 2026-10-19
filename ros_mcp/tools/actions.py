@@ -1,8 +1,10 @@
 """Action tools for ROS MCP."""
 
 import json
+import threading
 import time
 import uuid
+from contextlib import contextmanager
 
 from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
@@ -64,6 +66,19 @@ def register_action_tools(
     ws_manager: WebSocketManager,
 ) -> None:
     """Register all action-related tools."""
+
+    active_action_connections: dict[str, WebSocketManager] = {}
+    active_action_connections_lock = threading.Lock()
+
+    @contextmanager
+    def track_action_connection(goal_id: str, manager: WebSocketManager):
+        with active_action_connections_lock:
+            active_action_connections[goal_id] = manager
+        try:
+            yield
+        finally:
+            with active_action_connections_lock:
+                active_action_connections.pop(goal_id, None)
 
     @mcp.tool(
         description=("Get list of all available ROS actions.\nExample:\nget_actions()"),
@@ -366,7 +381,7 @@ def register_action_tools(
             "feedback": True,
         }
 
-        with action_ws_manager:
+        with action_ws_manager, track_action_connection(goal_id, action_ws_manager):
             send_error = action_ws_manager.send(message)
             if send_error:
                 return {
@@ -463,8 +478,17 @@ def register_action_tools(
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"
 
-        with ws_manager:
-            send_error = ws_manager.send(
+        # Keep the registry lock until the send completes, preventing the
+        # goal from being removed and its connection closed during cancellation.
+        with active_action_connections_lock:
+            action_ws_manager = active_action_connections.get(goal_id)
+            if action_ws_manager is None:
+                return {
+                    "error": f"No active connection found for goal ID: {goal_id}",
+                    "action": action_name,
+                    "goal_id": goal_id,
+                }
+            send_error = action_ws_manager.send(
                 {
                     "op": "cancel_action_goal",
                     "id": goal_id,
