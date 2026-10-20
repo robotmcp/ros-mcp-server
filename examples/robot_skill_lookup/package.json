@@ -1,0 +1,9 @@
+{
+  "name": "robot-skill-hub-ros-mcp-example",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {"probe": "node probe.mjs"},
+  "dependencies": {"@modelcontextprotocol/sdk": "1.32.1"}
+}
