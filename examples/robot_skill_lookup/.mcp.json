@@ -1,0 +1,6 @@
+{
+  "mcpServers": {
+    "ros-mcp-server": {"type": "http", "url": "http://localhost:9000/mcp"},
+    "robot-skill-hub": {"type": "http", "url": "https://api.superfastrobotics.com/mcp"}
+  }
+}
