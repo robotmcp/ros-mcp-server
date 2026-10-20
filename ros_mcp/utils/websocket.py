@@ -376,6 +376,9 @@ class WebSocketManager:
                     self.ws.settimeout(actual_timeout)
                     raw = self.ws.recv()  # rosbridge sends JSON as a string
                     return raw
+                except (websocket.WebSocketTimeoutException, TimeoutError):
+                    # An idle connection is not necessarily a failed connection.
+                    return None
                 except Exception as e:
                     print(f"[WebSocket] Receive error or timeout: {e}", file=sys.stderr)
                     self.close()

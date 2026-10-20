@@ -1,8 +1,12 @@
 """Topic tools for ROS MCP."""
 
+import atexit
 import json
 import os
+import threading
 import time
+import uuid
+from collections import deque
 
 from fastmcp import FastMCP
 from fastmcp.tools.tool import ToolResult
@@ -15,12 +19,143 @@ from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
 from ros_mcp.utils.websocket import WebSocketManager, parse_input
 
+_active_topic_cleanups = []
+_active_topic_cleanups_lock = threading.Lock()
+
+
+def cleanup_background_subscriptions() -> None:
+    """Stop all active background subscriptions across all registered topic tools."""
+    with _active_topic_cleanups_lock:
+        cleanups = list(_active_topic_cleanups)
+    for cleanup in cleanups:
+        try:
+            cleanup()
+        except Exception:
+            pass
+
+
+atexit.register(cleanup_background_subscriptions)
+
 
 def register_topic_tools(
     mcp: FastMCP,
     ws_manager: WebSocketManager,
 ) -> None:
     """Register all topic-related tools."""
+
+    # Each background subscription owns a separate WebSocket connection.
+    background_subscriptions = {}
+    background_subscriptions_lock = threading.Lock()
+    max_active_subscriptions = 20
+    max_subscription_records = 100
+    active_statuses = {"starting", "active", "stopping"}
+
+    def _cleanup_this_registry() -> None:
+        with background_subscriptions_lock:
+            active_states = [
+                state
+                for state in background_subscriptions.values()
+                if state.get("status") in active_statuses
+            ]
+        for state in active_states:
+            state["stop_event"].set()
+            manager = state.get("manager")
+            if manager:
+                mgr_lock = getattr(manager, "lock", getattr(manager, "_lock", None))
+                if mgr_lock is not None:
+                    with mgr_lock:
+                        is_conn = manager.ws is not None and getattr(manager.ws, "connected", False)
+                else:
+                    is_conn = manager.ws is not None and getattr(manager.ws, "connected", False)
+                if is_conn:
+                    try:
+                        manager.send({"op": "unsubscribe", "topic": state.get("topic")})
+                    except Exception:
+                        pass
+                manager.close()
+            thread = state.get("thread")
+            if (
+                thread is not None
+                and thread is not threading.current_thread()
+                and thread.is_alive()
+            ):
+                thread.join(timeout=1.0)
+            thread_alive = (
+                thread is not None
+                and thread is not threading.current_thread()
+                and thread.is_alive()
+            )
+            with state["lock"]:
+                state["status"] = "stopping" if thread_alive else "stopped"
+
+    with _active_topic_cleanups_lock:
+        _active_topic_cleanups.append(_cleanup_this_registry)
+
+    def _background_listener(state):
+        """Collect JSON ROS messages until the subscription is stopped."""
+        manager = state["manager"]
+        topic = state["topic"]
+
+        try:
+            while not state["stop_event"].is_set():
+                response = manager.receive(timeout=0.5)
+                if response is None:
+                    # An intentional stop must not be reported as a disconnect.
+                    if state["stop_event"].is_set():
+                        break
+
+                    connection = manager.ws
+
+                    # A timeout is normal; a lost connection is not.
+                    if connection is None or not getattr(connection, "connected", False):
+                        if state["stop_event"].is_set():
+                            break
+                        with state["lock"]:
+                            if state["stop_event"].is_set():
+                                break
+                            state["errors"].append(
+                                "WebSocket connection lost; background subscription stopped."
+                            )
+                            state["status"] = "error"
+                        state["stop_event"].set()
+                        break
+
+                    continue
+
+                try:
+                    msg_data, _ = parse_input(response, expects_image=False)
+                except Exception as exc:
+                    with state["lock"]:
+                        state["errors"].append(f"Message parsing failed: {exc}")
+                    continue
+
+                if not isinstance(msg_data, dict):
+                    continue
+
+                if msg_data.get("op") == "status" and msg_data.get("level") == "error":
+                    with state["lock"]:
+                        state["errors"].append(msg_data.get("msg", "Unknown rosbridge error"))
+                    continue
+
+                if msg_data.get("op") != "publish" or msg_data.get("topic") != topic:
+                    continue
+
+                message = msg_data.get("msg", {})
+                with state["lock"]:
+                    if len(state["messages"]) == state["messages"].maxlen:
+                        state["dropped_messages"] += 1
+                    state["messages"].append(message)
+                    state["total_messages"] += 1
+
+        except Exception as exc:
+            if not state["stop_event"].is_set():
+                with state["lock"]:
+                    if not state["stop_event"].is_set():
+                        state["errors"].append(f"Background listener failed: {exc}")
+                        state["status"] = "error"
+            state["stop_event"].set()
+        finally:
+            manager.close()
 
     @mcp.tool(
         description=("Get list of all available ROS topics.\nExample:\nget_topics()"),
@@ -817,3 +952,309 @@ def register_topic_tools(
             "success": True,
             "note": "Message published using advertise → publish → unadvertise pattern",
         }
+
+    @mcp.tool(
+        description=(
+            "Start a background subscription to a ROS topic and return immediately. "
+            "Use the returned subscription_id with get_subscription_messages to "
+            "retrieve collected JSON messages, and stop_background_subscription "
+            "when finished. Each subscription uses its own WebSocket connection."
+        ),
+        annotations=ToolAnnotations(
+            title="Subscribe in Background",
+        ),
+    )
+    def subscribe_background(
+        topic: str = "",
+        msg_type: str = "",
+        queue_length: int = 10,
+        throttle_rate_ms: int = 0,
+        max_buffer: int = 1000,
+    ) -> dict:
+        """Start collecting messages without blocking other MCP tool calls."""
+        if ws_manager is None:
+            return {"error": "WebSocket manager is not initialized"}
+
+        if not isinstance(topic, str) or not topic.strip():
+            return {"error": "topic is required and cannot be empty"}
+        if not isinstance(msg_type, str) or not msg_type.strip():
+            return {"error": "msg_type is required and cannot be empty"}
+
+        topic = topic.strip()
+        msg_type = msg_type.strip()
+
+        if isinstance(queue_length, bool):
+            return {"error": "queue_length must be an integer"}
+        try:
+            queue_length = int(queue_length)
+        except (ValueError, TypeError):
+            return {"error": "queue_length must be an integer"}
+        if queue_length < 1:
+            return {"error": "queue_length must be >= 1"}
+
+        if isinstance(throttle_rate_ms, bool):
+            return {"error": "throttle_rate_ms must be an integer"}
+        try:
+            throttle_rate_ms = int(throttle_rate_ms)
+        except (ValueError, TypeError):
+            return {"error": "throttle_rate_ms must be an integer"}
+        if throttle_rate_ms < 0:
+            return {"error": "throttle_rate_ms must be >= 0"}
+
+        if isinstance(max_buffer, bool):
+            return {"error": "max_buffer must be an integer"}
+        try:
+            max_buffer = int(max_buffer)
+        except (ValueError, TypeError):
+            return {"error": "max_buffer must be an integer"}
+        if not 1 <= max_buffer <= 10000:
+            return {"error": "max_buffer must be between 1 and 10000"}
+
+        subscription_id = uuid.uuid4().hex
+        manager = WebSocketManager(
+            ws_manager.ip,
+            ws_manager.port,
+            default_timeout=ws_manager.default_timeout,
+        )
+        state = {
+            "subscription_id": subscription_id,
+            "topic": topic,
+            "msg_type": msg_type,
+            "manager": manager,
+            "messages": deque(maxlen=max_buffer),
+            "dropped_messages": 0,
+            "total_messages": 0,
+            "errors": deque(maxlen=50),
+            "lock": threading.Lock(),
+            "stop_event": threading.Event(),
+            "thread": None,
+            "status": "starting",
+        }
+
+        # Reserve a slot before connecting so concurrent starts respect the limit.
+        with background_subscriptions_lock:
+            active_count = sum(
+                item["status"] in active_statuses for item in background_subscriptions.values()
+            )
+            if active_count >= max_active_subscriptions:
+                manager.close()
+                return {
+                    "error": (
+                        f"Maximum active background subscriptions "
+                        f"({max_active_subscriptions}) reached"
+                    )
+                }
+
+            # Prune older stopped/error records if the registry is full.
+            if len(background_subscriptions) >= max_subscription_records:
+                for old_id, old_state in list(background_subscriptions.items()):
+                    if old_state["status"] in ("stopped", "error"):
+                        del background_subscriptions[old_id]
+                        if len(background_subscriptions) < max_subscription_records:
+                            break
+
+            if len(background_subscriptions) >= max_subscription_records:
+                manager.close()
+                return {"error": "Subscription record limit reached; stop or clear old records"}
+
+            background_subscriptions[subscription_id] = state
+
+        connect_error = manager.connect()
+        if connect_error:
+            with background_subscriptions_lock:
+                background_subscriptions.pop(subscription_id, None)
+            manager.close()
+            return {"error": f"Could not connect to rosbridge: {connect_error}"}
+
+        if state["stop_event"].is_set():
+            manager.close()
+            with background_subscriptions_lock:
+                background_subscriptions.pop(subscription_id, None)
+            return {"error": "Subscription was stopped before starting"}
+
+        send_error = manager.send(
+            {
+                "op": "subscribe",
+                "topic": topic,
+                "type": msg_type,
+                "queue_length": queue_length,
+                "throttle_rate": throttle_rate_ms,
+            }
+        )
+        if send_error:
+            with background_subscriptions_lock:
+                background_subscriptions.pop(subscription_id, None)
+            manager.close()
+            return {"error": f"Failed to subscribe: {send_error}"}
+
+        with state["lock"]:
+            if state["stop_event"].is_set():
+                if manager.ws and getattr(manager.ws, "connected", False):
+                    manager.send({"op": "unsubscribe", "topic": topic})
+                manager.close()
+                with background_subscriptions_lock:
+                    background_subscriptions.pop(subscription_id, None)
+                return {"error": "Subscription was stopped before starting"}
+
+            thread = threading.Thread(
+                target=_background_listener,
+                args=(state,),
+                name=f"ros-subscription-{subscription_id[:8]}",
+                daemon=True,
+            )
+            state["thread"] = thread
+
+            try:
+                thread.start()
+            except RuntimeError as exc:
+                state["stop_event"].set()
+                if manager.ws and getattr(manager.ws, "connected", False):
+                    manager.send({"op": "unsubscribe", "topic": topic})
+                manager.close()
+                with background_subscriptions_lock:
+                    background_subscriptions.pop(subscription_id, None)
+                return {"error": f"Could not start subscription listener: {exc}"}
+
+            state["status"] = "active"
+
+        return {
+            "success": True,
+            "subscription_id": subscription_id,
+            "topic": topic,
+            "msg_type": msg_type,
+            "status": "active",
+            "max_buffer": max_buffer,
+        }
+
+    @mcp.tool(
+        description=(
+            "Retrieve messages collected by subscribe_background. "
+            "Use clear=true to remove the returned messages from the buffer. "
+            "Messages can still be retrieved after stopping the subscription."
+        ),
+        annotations=ToolAnnotations(
+            title="Get Background Subscription Messages",
+            readOnlyHint=True,
+        ),
+    )
+    def get_subscription_messages(
+        subscription_id: str = "",
+        max_messages: int = 100,
+        clear: bool = False,
+    ) -> dict:
+        """Retrieve buffered messages for a background subscription."""
+        if not isinstance(subscription_id, str) or not subscription_id.strip():
+            return {"error": "subscription_id is required"}
+        subscription_id = subscription_id.strip()
+
+        if isinstance(max_messages, bool):
+            return {"error": "max_messages must be an integer"}
+        try:
+            max_messages = int(max_messages)
+        except (ValueError, TypeError):
+            return {"error": "max_messages must be an integer"}
+
+        if not 1 <= max_messages <= 1000:
+            return {"error": "max_messages must be between 1 and 1000"}
+        if not isinstance(clear, bool):
+            return {"error": "clear must be a boolean"}
+
+        with background_subscriptions_lock:
+            state = background_subscriptions.get(subscription_id)
+
+        if state is None:
+            return {"error": f"Unknown subscription_id: {subscription_id}"}
+
+        with state["lock"]:
+            messages = list(state["messages"])[:max_messages]
+            if clear:
+                for _ in range(len(messages)):
+                    state["messages"].popleft()
+
+            return {
+                "subscription_id": subscription_id,
+                "topic": state["topic"],
+                "status": state["status"],
+                "messages": messages,
+                "returned_count": len(messages),
+                "buffered_count": len(state["messages"]),
+                "total_messages_received": state["total_messages"],
+                "dropped_messages": state["dropped_messages"],
+                "errors": list(state["errors"]),
+            }
+
+    @mcp.tool(
+        description=(
+            "Stop a background ROS topic subscription and release its WebSocket "
+            "connection. Previously collected messages remain available through "
+            "get_subscription_messages."
+        ),
+        annotations=ToolAnnotations(
+            title="Stop Background Subscription",
+        ),
+    )
+    def stop_background_subscription(subscription_id: str = "") -> dict:
+        """Stop a subscription and release its resources."""
+        if not isinstance(subscription_id, str) or not subscription_id.strip():
+            return {"error": "subscription_id is required"}
+        subscription_id = subscription_id.strip()
+
+        with background_subscriptions_lock:
+            state = background_subscriptions.get(subscription_id)
+
+        if state is None:
+            return {"error": f"Unknown subscription_id: {subscription_id}"}
+
+        with state["lock"]:
+            if state["status"] == "stopped":
+                return {
+                    "success": True,
+                    "subscription_id": subscription_id,
+                    "status": "stopped",
+                    "total_messages_received": state["total_messages"],
+                }
+
+            state["stop_event"].set()
+            manager = state["manager"]
+            thread = state["thread"]
+            topic = state["topic"]
+            state["status"] = "stopping"
+
+        # Only send unsubscribe if the connection is currently open.
+        # This prevents WebSocketManager.send() from triggering an unwanted reconnect.
+        unsubscribe_error = None
+        mgr_lock = getattr(manager, "lock", getattr(manager, "_lock", None))
+        if mgr_lock is not None:
+            with mgr_lock:
+                is_connected = manager.ws is not None and getattr(manager.ws, "connected", False)
+        else:
+            is_connected = manager.ws is not None and getattr(manager.ws, "connected", False)
+        if is_connected:
+            unsubscribe_error = manager.send({"op": "unsubscribe", "topic": topic})
+
+        manager.close()
+
+        if thread is not None and thread is not threading.current_thread() and thread.is_alive():
+            thread.join(timeout=2.0)
+
+        if thread is not None and thread.is_alive():
+            return {
+                "success": False,
+                "subscription_id": subscription_id,
+                "status": "stopping",
+                "warning": "Listener thread did not stop within 2 seconds",
+            }
+
+        with state["lock"]:
+            state["status"] = "stopped"
+            total_messages = state["total_messages"]
+
+        result = {
+            "success": True,
+            "subscription_id": subscription_id,
+            "status": "stopped",
+            "total_messages_received": total_messages,
+        }
+        if unsubscribe_error:
+            result["warning"] = f"Unsubscribe reported: {unsubscribe_error}"
+        return result
