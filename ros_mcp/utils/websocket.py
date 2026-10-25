@@ -283,6 +283,36 @@ def _handle_auto_detection(raw: Union[str, bytes], parsed_data: dict) -> tuple[d
     return parsed_data, False
 
 
+def _is_websocket_timeout(exc: BaseException) -> bool:
+    """Return True if *exc* is a socket/websocket read timeout (not a hard error)."""
+    if isinstance(exc, TimeoutError):
+        return True
+    # stdlib socket.timeout is an OSError subclass (alias of TimeoutError on 3.10+)
+    try:
+        import socket
+
+        if isinstance(exc, socket.timeout):
+            return True
+    except Exception:
+        pass
+    # websocket-client
+    try:
+        from websocket import WebSocketTimeoutException
+
+        if isinstance(exc, WebSocketTimeoutException):
+            return True
+    except Exception:
+        pass
+    # Some backends raise OSError with errno EAGAIN/EWOULDBLOCK or timed out message
+    name = type(exc).__name__.lower()
+    if "timeout" in name:
+        return True
+    msg = str(exc).lower()
+    if "timed out" in msg or "timeout" == msg.strip():
+        return True
+    return False
+
+
 class WebSocketManager:
     def __init__(self, ip: str, port: int, default_timeout: float = 2.0):
         self.ip = ip
@@ -364,6 +394,12 @@ class WebSocketManager:
 
         Returns:
             str | None: JSON string received from rosbridge, or None if timeout/error.
+
+        Note:
+            Read timeouts return None without closing the connection. Closing on
+            timeout drops roslibjs/rosbridge subscriptions on the next reconnect
+            (see issue #318 / send_action_goal feedback loops). Real socket errors
+            still call close().
         """
         with self.lock:
             self.connect()
@@ -377,7 +413,12 @@ class WebSocketManager:
                     raw = self.ws.recv()  # rosbridge sends JSON as a string
                     return raw
                 except Exception as e:
-                    print(f"[WebSocket] Receive error or timeout: {e}", file=sys.stderr)
+                    # Keep connection open on read timeout so long-running action
+                    # feedback loops do not lose their rosbridge subscription.
+                    if _is_websocket_timeout(e):
+                        print(f"[WebSocket] Receive timeout: {e}", file=sys.stderr)
+                        return None
+                    print(f"[WebSocket] Receive error: {e}", file=sys.stderr)
                     self.close()
                     return None
             return None
