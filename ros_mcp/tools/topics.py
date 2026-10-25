@@ -749,9 +749,6 @@ def register_topic_tools(
                 - {"success": True} if sent without errors
                 - {"error": "<error message>"} if connection/send failed
         """
-        # Neutralize the mutable default arguments
-        msg = dict(msg)
-
         # Validate ws_manager is available
         if ws_manager is None:
             return {"error": "WebSocket manager is not initialized"}
@@ -762,9 +759,11 @@ def register_topic_tools(
         if not msg_type or not msg_type.strip():
             return {"error": "msg_type is required and cannot be empty"}
 
-        # Validate msg is a dict
+        # Validate msg is a dict before neutralizing the default / copying
         if not isinstance(msg, dict):
             return {"error": f"Message must be a dict, got: {type(msg).__name__}"}
+        # Neutralize the mutable default arguments
+        msg = dict(msg)
         if msg == {}:
             return {"error": "msg cannot be empty"}
 
