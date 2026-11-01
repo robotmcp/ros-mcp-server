@@ -481,16 +481,10 @@ def register_action_tools(
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"
 
-        # Keep the registry lock until the send completes, preventing the
-        # goal from being removed and its connection closed during cancellation.
+        # Route cancellation through the dedicated connection if the goal is active,
+        # otherwise fall back to the default WebSocket manager.
         with active_action_connections_lock:
-            action_ws_manager = active_action_connections.get(goal_id)
-            if action_ws_manager is None:
-                return {
-                    "error": f"No active connection found for goal ID: {goal_id}",
-                    "action": action_name,
-                    "goal_id": goal_id,
-                }
+            action_ws_manager = active_action_connections.get(goal_id) or ws_manager
             send_error = action_ws_manager.send(
                 {
                     "op": "cancel_action_goal",

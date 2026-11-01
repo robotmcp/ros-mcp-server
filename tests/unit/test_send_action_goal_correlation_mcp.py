@@ -222,18 +222,50 @@ def test_cancel_action_goal_uses_pending_goal_connection():
         cancel_result, goal_result, finished_cancel_result = asyncio.run(exercise())
 
     sends = [item["send"] for item in trace if "send" in item]
-    assert len(connections) == 1
+    assert len(connections) == 2
     assert [message["op"] for message in sends] == [
         "send_action_goal",
         "cancel_action_goal",
+        "cancel_action_goal",
     ]
     assert sends[1]["id"] == sends[0]["id"]
+    assert sends[2]["id"] == sends[0]["id"]
+    assert connections[0].cancel_sent.is_set()
+    assert connections[1].cancel_sent.is_set()
     assert cancel_result["success"] is True
     assert goal_result["success"] is True
     assert goal_result["status"] == 5
-    assert finished_cancel_result["error"] == (
-        f"No active connection found for goal ID: {sends[0]['id']}"
-    )
+    assert finished_cancel_result["success"] is True
+
+
+def test_cancel_action_goal_untracked_falls_back_to_default_manager():
+    trace = []
+    connections = []
+
+    def factory(*_args, **_kwargs):
+        socket = PendingGoalSocket(trace)
+        connections.append(socket)
+        return socket
+
+    manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
+    server = FastMCP("cancel-untracked-probe")
+    register_action_tools(server, manager)
+
+    cancel_goal = server._tool_manager._tools["cancel_action_goal"].fn
+    with patch.object(transport.websocket, "create_connection", factory):
+        result = cancel_goal("/test_action", "nonexistent_goal")
+
+    assert result["success"] is True
+    assert result["action"] == "/test_action"
+    assert result["goal_id"] == "nonexistent_goal"
+    assert len(connections) == 1
+    sends = [item["send"] for item in trace if "send" in item]
+    assert len(sends) == 1
+    assert sends[0] == {
+        "op": "cancel_action_goal",
+        "id": "nonexistent_goal",
+        "action": "/test_action",
+    }
 
 
 async def main():
