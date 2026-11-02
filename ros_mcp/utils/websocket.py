@@ -354,6 +354,11 @@ class WebSocketManager:
 
             return "[WebSocket] Not connected, send aborted."
 
+    def is_connected(self) -> bool:
+        """Check if the WebSocket is currently connected."""
+        with self.lock:
+            return self.ws is not None and getattr(self.ws, "connected", False)
+
     def receive(self, timeout: float | None = None) -> Union[str, bytes] | None:
         """
         Receive a single message from rosbridge within the given timeout.
@@ -366,9 +371,8 @@ class WebSocketManager:
             str | None: JSON string received from rosbridge, or None if timeout/error.
         """
         with self.lock:
-            self.connect()
             ws = self.ws
-            if ws is None:
+            if ws is None or not getattr(ws, "connected", False):
                 return None
             actual_timeout = timeout if timeout is not None else self.default_timeout
             try:
@@ -381,7 +385,7 @@ class WebSocketManager:
         # a cancellation request through this same connection.
         try:
             return ws.recv()
-        except websocket.WebSocketTimeoutException:
+        except (websocket.WebSocketTimeoutException, TimeoutError):
             # A normal receive timeout does not mean the connection is broken.
             return None
         except Exception as e:

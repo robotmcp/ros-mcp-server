@@ -1,5 +1,6 @@
 """Action tools for ROS MCP."""
 
+import asyncio
 import json
 import threading
 import time
@@ -336,6 +337,7 @@ def register_action_tools(
         action_type: str,
         goal: dict,
         timeout: float = None,  # type: ignore[assignment]  # See issue #140
+        goal_id: str = None,  # type: ignore[assignment]
         ctx: Context = None,  # type: ignore[assignment]  # See issue #140
     ) -> dict:
         """
@@ -346,6 +348,8 @@ def register_action_tools(
             action_type (str): The type of the action (e.g., 'turtlesim/action/RotateAbsolute')
             goal (dict): The goal message to send
             timeout (float): Timeout for action completion in seconds. If None, uses ws_manager.default_timeout.
+            goal_id (str, optional): Custom goal ID. If omitted, a unique ID is generated.
+            ctx (Context, optional): FastMCP context for progress reporting.
 
         Returns:
             dict: Contains action response including goal_id, status, and result.
@@ -370,7 +374,10 @@ def register_action_tools(
             default_timeout=ws_manager.default_timeout,
         )
 
-        goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
+        if not goal_id or not str(goal_id).strip():
+            goal_id = f"goal_{int(time.time() * 1000)}_{uuid.uuid4().hex[:8]}"
+        else:
+            goal_id = str(goal_id).strip()
 
         message = {
             "op": "send_action_goal",
@@ -390,15 +397,33 @@ def register_action_tools(
                     "success": False,
                 }
 
+            if ctx:
+                try:
+                    await ctx.report_progress(
+                        progress=0, total=None, message=f"Goal submitted: {goal_id}"
+                    )
+                except Exception:
+                    pass
+
             start_time = time.time()
             last_feedback = None
             feedback_count = 0
 
             while time.time() - start_time < timeout:
                 remaining = timeout - (time.time() - start_time)
-                response = action_ws_manager.receive(remaining)
+                if remaining <= 0:
+                    break
+
+                # Run blocking socket receive in worker thread so the event loop is not blocked
+                response = await asyncio.to_thread(action_ws_manager.receive, remaining)
 
                 if not response:
+                    if not action_ws_manager.is_connected():
+                        return {
+                            "error": "Connection to rosbridge lost while waiting for action result",
+                            "action": action_name,
+                            "goal_id": goal_id,
+                        }
                     continue
 
                 try:
@@ -482,19 +507,20 @@ def register_action_tools(
         # otherwise fall back to the default WebSocket manager.
         with active_action_connections_lock:
             action_ws_manager = active_action_connections.get(goal_id) or ws_manager
-            send_error = action_ws_manager.send(
-                {
-                    "op": "cancel_action_goal",
-                    "id": goal_id,
-                    "action": action_name,
-                }
-            )
-            if send_error:
-                return {
-                    "error": f"Failed to send cancel request: {send_error}",
-                    "action": action_name,
-                    "goal_id": goal_id,
-                }
+
+        send_error = action_ws_manager.send(
+            {
+                "op": "cancel_action_goal",
+                "id": goal_id,
+                "action": action_name,
+            }
+        )
+        if send_error:
+            return {
+                "error": f"Failed to send cancel request: {send_error}",
+                "action": action_name,
+                "goal_id": goal_id,
+            }
 
         # success here confirms the request was sent, not that the server
         # accepted it — the action may still be executing.
