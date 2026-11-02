@@ -3,6 +3,7 @@
 import asyncio
 import json
 import threading
+import time
 from collections import deque
 from unittest.mock import patch
 
@@ -181,42 +182,86 @@ def test_action_result_belongs_to_submitted_goal(overlap, same_action):
     assert received_ids == expected_ids | {f"{goal_id}_wrong" for goal_id in expected_ids}
 
 
+class DroppingSocket:
+    def __init__(self, trace):
+        self.connected = True
+        self.trace = trace
+
+    def send(self, raw):
+        submitted = json.loads(raw)
+        self.trace.append({"send": submitted})
+
+    def recv(self):
+        # Simulate abrupt connection drop
+        self.connected = False
+        raise transport.websocket.WebSocketConnectionClosedException(
+            "Connection to remote host was lost"
+        )
+
+    def settimeout(self, _timeout):
+        pass
+
+    def close(self):
+        self.connected = False
+        self.trace.append({"close": True})
+
+
 def test_cancel_action_goal_uses_pending_goal_connection():
     trace = []
     connections = []
-    connection_created = threading.Event()
+    goal_submitted_event = asyncio.Event()
+    captured_goal_id = []
 
     def factory(*_args, **_kwargs):
         socket = PendingGoalSocket(trace)
         connections.append(socket)
-        connection_created.set()
         return socket
+
+    async def progress_handler(_progress, _total, message):
+        if message and message.startswith("Goal submitted: "):
+            gid = message.replace("Goal submitted: ", "").strip()
+            captured_goal_id.append(gid)
+            goal_submitted_event.set()
 
     manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
     server = FastMCP("cancel-action-probe")
     register_action_tools(server, manager)
 
     async def exercise():
-        send_goal = server._tool_manager._tools["send_action_goal"].fn
-        cancel_goal = server._tool_manager._tools["cancel_action_goal"].fn
-        goal_task = asyncio.create_task(
-            asyncio.to_thread(
-                asyncio.run,
-                send_goal(
-                    action_name="/test",
-                    action_type="example/action/Test",
-                    goal={"value": "pending"},
-                    timeout=10,
-                ),
+        async with Client(server, progress_handler=progress_handler) as client:
+            goal_task = asyncio.create_task(
+                client.call_tool(
+                    "send_action_goal",
+                    {
+                        "action_name": "/test",
+                        "action_type": "example/action/Test",
+                        "goal": {"value": "pending"},
+                        "timeout": 10,
+                    },
+                )
             )
-        )
-        await asyncio.to_thread(connection_created.wait, 2)
-        await asyncio.to_thread(connections[0].goal_sent.wait, 2)
-        goal_id = connections[0].goal_id
-        cancel_result = await asyncio.to_thread(cancel_goal, "/test", goal_id)
-        goal_result = await goal_task
-        finished_cancel_result = cancel_goal("/test", goal_id)
-        return cancel_result, goal_result, finished_cancel_result
+
+            await asyncio.wait_for(goal_submitted_event.wait(), timeout=2.0)
+            goal_id = captured_goal_id[0]
+
+            # Cancel through the same Client on the single server event loop
+            cancel_response = await client.call_tool(
+                "cancel_action_goal",
+                {"action_name": "/test", "goal_id": goal_id},
+            )
+            cancel_result = cancel_response.data
+
+            goal_response = await asyncio.wait_for(goal_task, timeout=2.0)
+            goal_result = goal_response.data
+
+            # Cancel for finished goal through the same client falls back to default manager
+            finished_cancel_response = await client.call_tool(
+                "cancel_action_goal",
+                {"action_name": "/test", "goal_id": goal_id},
+            )
+            finished_cancel_result = finished_cancel_response.data
+
+            return cancel_result, goal_result, finished_cancel_result
 
     with patch.object(transport.websocket, "create_connection", factory):
         cancel_result, goal_result, finished_cancel_result = asyncio.run(exercise())
@@ -251,9 +296,16 @@ def test_cancel_action_goal_untracked_falls_back_to_default_manager():
     server = FastMCP("cancel-untracked-probe")
     register_action_tools(server, manager)
 
-    cancel_goal = server._tool_manager._tools["cancel_action_goal"].fn
+    async def exercise():
+        async with Client(server) as client:
+            response = await client.call_tool(
+                "cancel_action_goal",
+                {"action_name": "/test_action", "goal_id": "nonexistent_goal"},
+            )
+            return response.data
+
     with patch.object(transport.websocket, "create_connection", factory):
-        result = cancel_goal("/test_action", "nonexistent_goal")
+        result = asyncio.run(exercise())
 
     assert result["success"] is True
     assert result["action"] == "/test_action"
@@ -266,6 +318,121 @@ def test_cancel_action_goal_untracked_falls_back_to_default_manager():
         "id": "nonexistent_goal",
         "action": "/test_action",
     }
+
+
+def test_send_action_goal_connection_loss_reports_error_immediately():
+    trace = []
+    connections = []
+
+    def factory(*_args, **_kwargs):
+        socket = DroppingSocket(trace)
+        connections.append(socket)
+        return socket
+
+    manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
+    server = FastMCP("drop-probe")
+    register_action_tools(server, manager)
+
+    async def exercise():
+        async with Client(server) as client:
+            start = time.time()
+            response = await client.call_tool(
+                "send_action_goal",
+                {
+                    "action_name": "/test",
+                    "action_type": "example/action/Test",
+                    "goal": {"value": "drop"},
+                    "timeout": 10,  # 10s timeout, but connection drops immediately
+                },
+            )
+            elapsed = time.time() - start
+            return response.data, elapsed
+
+    with patch.object(transport.websocket, "create_connection", factory):
+        result, elapsed = asyncio.run(exercise())
+
+    assert "Connection to rosbridge lost" in result["error"]
+    assert elapsed < 2.0  # Must not wait out the 10s timeout
+    # Did not spin-reconnect
+    assert len(connections) == 1
+
+
+def test_other_tools_can_run_concurrently_with_action_goal():
+    trace = []
+    connections = []
+
+    class SlowSocket:
+        def __init__(self, trace):
+            self.connected = True
+            self.trace = trace
+            self.release_goal = threading.Event()
+
+        def send(self, raw):
+            self.trace.append({"send": json.loads(raw)})
+
+        def recv(self):
+            # Block until released by the test
+            self.release_goal.wait(timeout=5)
+            frame = {
+                "op": "action_result",
+                "id": "slow_goal",
+                "status": 4,
+                "values": {"done": True},
+            }
+            return json.dumps(frame)
+
+        def settimeout(self, _timeout):
+            pass
+
+        def close(self):
+            self.connected = False
+
+    slow_socket = SlowSocket(trace)
+
+    def factory(*_args, **_kwargs):
+        connections.append(slow_socket)
+        return slow_socket
+
+    manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
+    server = FastMCP("concurrency-probe")
+    register_action_tools(server, manager)
+
+    @server.tool()
+    def ping() -> str:
+        return "pong"
+
+    async def exercise():
+        async with Client(server) as client:
+            goal_task = asyncio.create_task(
+                client.call_tool(
+                    "send_action_goal",
+                    {
+                        "action_name": "/test",
+                        "action_type": "example/action/Test",
+                        "goal": {"value": "slow"},
+                        "goal_id": "slow_goal",
+                        "timeout": 5,
+                    },
+                )
+            )
+            # Give goal a moment to enter receive worker thread
+            await asyncio.sleep(0.05)
+
+            # Concurrent call to another tool while goal is in receive
+            ping_start = time.time()
+            ping_response = await client.call_tool("ping", {})
+            ping_duration = time.time() - ping_start
+
+            slow_socket.release_goal.set()
+            goal_response = await goal_task
+            return ping_response.data, ping_duration, goal_response.data
+
+    with patch.object(transport.websocket, "create_connection", factory):
+        ping_data, ping_duration, goal_data = asyncio.run(exercise())
+
+    assert ping_data == "pong"
+    assert ping_duration < 0.5  # Not blocked by the goal's socket receive
+    assert goal_data["success"] is True
 
 
 async def main():

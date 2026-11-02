@@ -375,6 +375,11 @@ class WebSocketManager:
 
             return "[WebSocket] Not connected, send aborted."
 
+    def is_connected(self) -> bool:
+        """Check if the WebSocket is currently connected."""
+        with self.lock:
+            return self.ws is not None and getattr(self.ws, "connected", False)
+
     def receive(
         self,
         timeout: float | None = None,
