@@ -6,6 +6,7 @@ import os
 import threading
 import time
 import uuid
+import weakref
 from collections import deque
 
 from fastmcp import FastMCP
@@ -17,19 +18,84 @@ from ros_mcp.tools.images import _encode_image_to_imagecontent, convert_expects_
 from ros_mcp.utils.config_utils import get_image_path
 from ros_mcp.utils.response import _check_response, _safe_get_values
 from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
-from ros_mcp.utils.websocket import WebSocketManager, parse_input
+from ros_mcp.utils.websocket import WebSocketManager, parse_input, parse_json
 
-_active_topic_cleanups = []
+_active_topic_registries = weakref.WeakSet()
 _active_topic_cleanups_lock = threading.Lock()
+
+
+def _stop_and_cleanup_subscription(
+    state: dict, join_timeout: float = 2.0
+) -> tuple[bool, str | None]:
+    """
+    Stop a subscription, send unsubscribe if connected, close socket, and join listener.
+
+    Returns:
+        tuple[bool, str | None]: (thread_alive, unsubscribe_error)
+    """
+    with state["lock"]:
+        if state["status"] == "stopped":
+            return False, None
+        state["stop_event"].set()
+        manager = state.get("manager")
+        thread = state.get("thread")
+        topic = state.get("topic")
+        state["status"] = "stopping"
+
+    unsubscribe_error = None
+    if manager:
+        with manager.lock:
+            is_connected = manager.ws is not None and getattr(manager.ws, "connected", False)
+        if is_connected:
+            try:
+                unsubscribe_error = manager.send({"op": "unsubscribe", "topic": topic})
+            except Exception as exc:
+                unsubscribe_error = str(exc)
+        manager.close()
+
+    if thread is not None and thread is not threading.current_thread() and thread.is_alive():
+        thread.join(timeout=join_timeout)
+
+    thread_alive = (
+        thread is not None and thread is not threading.current_thread() and thread.is_alive()
+    )
+
+    with state["lock"]:
+        if not thread_alive:
+            state["status"] = "stopped"
+            state["messages"].clear()
+        else:
+            state["status"] = "stopping"
+
+    return thread_alive, unsubscribe_error
+
+
+class _TopicSubscriptionRegistry:
+    def __init__(self):
+        self.subscriptions = {}
+        self.lock = threading.Lock()
+        self.max_active_subscriptions = 20
+        self.max_subscription_records = 100
+        self.active_statuses = {"starting", "active", "stopping"}
+
+    def cleanup(self) -> None:
+        with self.lock:
+            active_states = [
+                state
+                for state in self.subscriptions.values()
+                if state.get("status") in self.active_statuses
+            ]
+        for state in active_states:
+            _stop_and_cleanup_subscription(state, join_timeout=1.0)
 
 
 def cleanup_background_subscriptions() -> None:
     """Stop all active background subscriptions across all registered topic tools."""
     with _active_topic_cleanups_lock:
-        cleanups = list(_active_topic_cleanups)
-    for cleanup in cleanups:
+        registries = list(_active_topic_registries)
+    for registry in registries:
         try:
-            cleanup()
+            registry.cleanup()
         except Exception:
             pass
 
@@ -43,53 +109,20 @@ def register_topic_tools(
 ) -> None:
     """Register all topic-related tools."""
 
-    # Each background subscription owns a separate WebSocket connection.
-    background_subscriptions = {}
-    background_subscriptions_lock = threading.Lock()
-    max_active_subscriptions = 20
-    max_subscription_records = 100
-    active_statuses = {"starting", "active", "stopping"}
-
-    def _cleanup_this_registry() -> None:
-        with background_subscriptions_lock:
-            active_states = [
-                state
-                for state in background_subscriptions.values()
-                if state.get("status") in active_statuses
-            ]
-        for state in active_states:
-            state["stop_event"].set()
-            manager = state.get("manager")
-            if manager:
-                mgr_lock = getattr(manager, "lock", getattr(manager, "_lock", None))
-                if mgr_lock is not None:
-                    with mgr_lock:
-                        is_conn = manager.ws is not None and getattr(manager.ws, "connected", False)
-                else:
-                    is_conn = manager.ws is not None and getattr(manager.ws, "connected", False)
-                if is_conn:
-                    try:
-                        manager.send({"op": "unsubscribe", "topic": state.get("topic")})
-                    except Exception:
-                        pass
-                manager.close()
-            thread = state.get("thread")
-            if (
-                thread is not None
-                and thread is not threading.current_thread()
-                and thread.is_alive()
-            ):
-                thread.join(timeout=1.0)
-            thread_alive = (
-                thread is not None
-                and thread is not threading.current_thread()
-                and thread.is_alive()
-            )
-            with state["lock"]:
-                state["status"] = "stopping" if thread_alive else "stopped"
-
+    registry = _TopicSubscriptionRegistry()
     with _active_topic_cleanups_lock:
-        _active_topic_cleanups.append(_cleanup_this_registry)
+        _active_topic_registries.add(registry)
+    try:
+        setattr(mcp, "_topic_registry", registry)
+    except Exception:
+        pass
+
+    # Each background subscription owns a separate WebSocket connection.
+    background_subscriptions = registry.subscriptions
+    background_subscriptions_lock = registry.lock
+    max_active_subscriptions = registry.max_active_subscriptions
+    max_subscription_records = registry.max_subscription_records
+    active_statuses = registry.active_statuses
 
     def _background_listener(state):
         """Collect JSON ROS messages until the subscription is stopped."""
@@ -98,16 +131,21 @@ def register_topic_tools(
 
         try:
             while not state["stop_event"].is_set():
-                response = manager.receive(timeout=0.5)
-                if response is None:
+                response = manager.receive(timeout=0.5, auto_connect=False, verbose=False)
+                if not response:
                     # An intentional stop must not be reported as a disconnect.
                     if state["stop_event"].is_set():
                         break
 
                     connection = manager.ws
 
-                    # A timeout is normal; a lost connection is not.
-                    if connection is None or not getattr(connection, "connected", False):
+                    # A timeout (None with active connection) is normal;
+                    # an empty string (close frame) or lost connection is not.
+                    if (
+                        response == ""
+                        or connection is None
+                        or not getattr(connection, "connected", False)
+                    ):
                         if state["stop_event"].is_set():
                             break
                         with state["lock"]:
@@ -123,7 +161,7 @@ def register_topic_tools(
                     continue
 
                 try:
-                    msg_data, _ = parse_input(response, expects_image=False)
+                    msg_data = parse_json(response)
                 except Exception as exc:
                     with state["lock"]:
                         state["errors"].append(f"Message parsing failed: {exc}")
@@ -156,6 +194,10 @@ def register_topic_tools(
             state["stop_event"].set()
         finally:
             manager.close()
+            with state["lock"]:
+                if state["status"] != "error":
+                    state["status"] = "stopped"
+                state["messages"].clear()
 
     @mcp.tool(
         description=("Get list of all available ROS topics.\nExample:\nget_topics()"),
@@ -1015,6 +1057,7 @@ def register_topic_tools(
             ws_manager.ip,
             ws_manager.port,
             default_timeout=ws_manager.default_timeout,
+            close_on_timeout=False,
         )
         state = {
             "subscription_id": subscription_id,
@@ -1128,13 +1171,11 @@ def register_topic_tools(
 
     @mcp.tool(
         description=(
-            "Retrieve messages collected by subscribe_background. "
-            "Use clear=true to remove the returned messages from the buffer. "
-            "Messages can still be retrieved after stopping the subscription."
+            "Retrieve messages collected by subscribe_background while the subscription "
+            "is active. Use clear=true to remove the returned messages from the buffer."
         ),
         annotations=ToolAnnotations(
             title="Get Background Subscription Messages",
-            readOnlyHint=True,
         ),
     )
     def get_subscription_messages(
@@ -1186,8 +1227,7 @@ def register_topic_tools(
     @mcp.tool(
         description=(
             "Stop a background ROS topic subscription and release its WebSocket "
-            "connection. Previously collected messages remain available through "
-            "get_subscription_messages."
+            "connection and buffered messages."
         ),
         annotations=ToolAnnotations(
             title="Stop Background Subscription",
@@ -1214,30 +1254,9 @@ def register_topic_tools(
                     "total_messages_received": state["total_messages"],
                 }
 
-            state["stop_event"].set()
-            manager = state["manager"]
-            thread = state["thread"]
-            topic = state["topic"]
-            state["status"] = "stopping"
+        thread_alive, unsubscribe_error = _stop_and_cleanup_subscription(state, join_timeout=2.0)
 
-        # Only send unsubscribe if the connection is currently open.
-        # This prevents WebSocketManager.send() from triggering an unwanted reconnect.
-        unsubscribe_error = None
-        mgr_lock = getattr(manager, "lock", getattr(manager, "_lock", None))
-        if mgr_lock is not None:
-            with mgr_lock:
-                is_connected = manager.ws is not None and getattr(manager.ws, "connected", False)
-        else:
-            is_connected = manager.ws is not None and getattr(manager.ws, "connected", False)
-        if is_connected:
-            unsubscribe_error = manager.send({"op": "unsubscribe", "topic": topic})
-
-        manager.close()
-
-        if thread is not None and thread is not threading.current_thread() and thread.is_alive():
-            thread.join(timeout=2.0)
-
-        if thread is not None and thread.is_alive():
+        if thread_alive:
             return {
                 "success": False,
                 "subscription_id": subscription_id,
@@ -1246,7 +1265,6 @@ def register_topic_tools(
             }
 
         with state["lock"]:
-            state["status"] = "stopped"
             total_messages = state["total_messages"]
 
         result = {

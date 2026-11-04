@@ -284,10 +284,17 @@ def _handle_auto_detection(raw: Union[str, bytes], parsed_data: dict) -> tuple[d
 
 
 class WebSocketManager:
-    def __init__(self, ip: str, port: int, default_timeout: float = 2.0):
+    def __init__(
+        self,
+        ip: str,
+        port: int,
+        default_timeout: float = 2.0,
+        close_on_timeout: bool = True,
+    ):
         self.ip = ip
         self.port = port
         self.default_timeout = default_timeout
+        self.close_on_timeout = close_on_timeout
         self.ws = None
         self.lock = threading.RLock()
 
@@ -354,33 +361,50 @@ class WebSocketManager:
 
             return "[WebSocket] Not connected, send aborted."
 
-    def receive(self, timeout: float | None = None) -> Union[str, bytes] | None:
+    def receive(
+        self,
+        timeout: float | None = None,
+        auto_connect: bool = True,
+        verbose: bool = True,
+    ) -> Union[str, bytes] | None:
         """
         Receive a single message from rosbridge within the given timeout.
 
         Args:
             timeout (float | None): Seconds to wait before timing out.
                                      If None, uses the default timeout.
+            auto_connect (bool): Whether to connect automatically if not connected.
+            verbose (bool): Whether to log timeout information to stderr.
 
         Returns:
             str | None: JSON string received from rosbridge, or None if timeout/error.
         """
         with self.lock:
-            self.connect()
-            if self.ws:
+            if auto_connect:
+                self.connect()
+            if self.ws and self.ws.connected:
                 try:
                     # Use default timeout if none specified
                     actual_timeout = timeout if timeout is not None else self.default_timeout
-                    print(f"[WebSocket] Using timeout of {actual_timeout} seconds", file=sys.stderr)
+                    if verbose:
+                        print(
+                            f"[WebSocket] Using timeout of {actual_timeout} seconds",
+                            file=sys.stderr,
+                        )
                     # Temporarily set the receive timeout
                     self.ws.settimeout(actual_timeout)
                     raw = self.ws.recv()  # rosbridge sends JSON as a string
+                    if raw == "":
+                        self.close()
+                        return None
                     return raw
                 except (websocket.WebSocketTimeoutException, TimeoutError):
-                    # An idle connection is not necessarily a failed connection.
+                    if self.close_on_timeout:
+                        self.close()
                     return None
                 except Exception as e:
-                    print(f"[WebSocket] Receive error or timeout: {e}", file=sys.stderr)
+                    if verbose:
+                        print(f"[WebSocket] Receive error or timeout: {e}", file=sys.stderr)
                     self.close()
                     return None
             return None
@@ -408,6 +432,7 @@ class WebSocketManager:
         # Attempt to receive a response (connect() is called internally in receive())
         response = self.receive(timeout=timeout)
         if response is None:
+            self.close()
             return {"error": "no response or timeout from rosbridge"}
 
         # Attempt to parse response (auto-detect images, but services rarely return images)

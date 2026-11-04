@@ -33,10 +33,18 @@ class FakeConnection:
 class FakeWebSocketManager:
     """In-memory WebSocket manager for deterministic unit tests."""
 
-    def __init__(self, ip, port, default_timeout=2.0, disconnect_on_idle=False):
+    def __init__(
+        self,
+        ip,
+        port,
+        default_timeout=2.0,
+        disconnect_on_idle=False,
+        close_on_timeout=True,
+    ):
         self.ip = ip
         self.port = port
         self.default_timeout = default_timeout
+        self.close_on_timeout = close_on_timeout
         self.ws = FakeConnection()
         self.incoming = queue.Queue()
         self.sent = []
@@ -59,9 +67,15 @@ class FakeWebSocketManager:
         self.sent.append(message)
         return self.send_error
 
-    def receive(self, timeout=None):
+    def receive(self, timeout=None, auto_connect=True, verbose=True):
+        if auto_connect:
+            self.connect()
         try:
-            return self.incoming.get(timeout=min(timeout or 0.05, 0.05))
+            raw = self.incoming.get(timeout=min(timeout or 0.05, 0.05))
+            if raw == "":
+                self.close()
+                return ""
+            return raw
         except queue.Empty:
             if self.disconnect_on_idle:
                 self.ws = None
@@ -80,12 +94,13 @@ def harness(monkeypatch):
     connect_error_next = {"value": None}
     send_error_next = {"value": None}
 
-    def manager_factory(ip, port, default_timeout=2.0):
+    def manager_factory(ip, port, default_timeout=2.0, close_on_timeout=True):
         manager = FakeWebSocketManager(
             ip,
             port,
             default_timeout,
             disconnect_on_idle=disconnect_next["value"],
+            close_on_timeout=close_on_timeout,
         )
         manager.connect_error = connect_error_next["value"]
         manager.send_error = send_error_next["value"]
@@ -189,9 +204,11 @@ def test_subscribe_and_retrieve_messages(harness):
     assert stopped["status"] == "stopped"
     assert manager.sent[-1] == {"op": "unsubscribe", "topic": "/chatter"}
 
-    # Messages remain available after stopping.
+    # Message buffer is cleared upon terminal state, but counts and metadata remain.
     after_stop = get_messages(result["subscription_id"])
-    assert after_stop["messages"] == [{"data": "hello"}]
+    assert after_stop["messages"] == []
+    assert after_stop["buffered_count"] == 0
+    assert after_stop["total_messages_received"] == 1
 
 
 def test_get_messages_clear_removes_only_returned_messages(harness):
@@ -548,7 +565,7 @@ def test_cleanup_keeps_status_stopping_while_listener_is_alive(harness, monkeypa
     entered_receive = threading.Event()
     release_receive = threading.Event()
 
-    def blocking_receive(self, timeout=None):
+    def blocking_receive(self, *args, **kwargs):
         entered_receive.set()
         release_receive.wait(timeout=5.0)
         return None
@@ -572,3 +589,77 @@ def test_cleanup_keeps_status_stopping_while_listener_is_alive(harness, monkeypa
     finally:
         # Always release the listener so the test cannot leak a thread.
         release_receive.set()
+
+    # Once released, the listener's finally block transitions status to 'stopped'
+    assert wait_for(
+        lambda: harness.tools["get_subscription_messages"](subscription_id)["status"] == "stopped"
+    )
+
+
+def test_server_close_frame_marks_subscription_as_error(harness):
+    """When the server sends a close frame (empty frame), mark subscription as error."""
+    result = harness.tools["subscribe_background"](
+        topic="/close_test",
+        msg_type="std_msgs/String",
+    )
+    assert result["success"] is True
+    subscription_id = result["subscription_id"]
+    get_messages = harness.tools["get_subscription_messages"]
+
+    manager = harness.managers[0]
+    # Simulate server-initiated close frame
+    manager.incoming.put("")
+
+    assert wait_for(lambda: get_messages(subscription_id)["status"] == "error")
+    state = get_messages(subscription_id)
+    assert any("connection lost" in err.lower() for err in state["errors"])
+
+
+def test_listener_finally_sets_stopped_when_stop_times_out(harness, monkeypatch):
+    """If stop_background_subscription 2s join times out, listener finally sets stopped."""
+    entered_receive = threading.Event()
+    release_receive = threading.Event()
+
+    def blocking_receive(self, *args, **kwargs):
+        entered_receive.set()
+        release_receive.wait(timeout=5.0)
+        return None
+
+    monkeypatch.setattr(FakeWebSocketManager, "receive", blocking_receive)
+
+    result = harness.tools["subscribe_background"](
+        topic="/stop_timeout", msg_type="std_msgs/String"
+    )
+    assert result["success"] is True
+    subscription_id = result["subscription_id"]
+
+    try:
+        assert entered_receive.wait(timeout=2.0)
+        # Calling stop will time out after 2 seconds while thread is blocked in receive
+        stop_result = harness.tools["stop_background_subscription"](subscription_id)
+        assert stop_result["status"] == "stopping"
+        assert "warning" in stop_result
+    finally:
+        release_receive.set()
+
+    # The listener thread exits and sets terminal status 'stopped' in finally
+    assert wait_for(
+        lambda: harness.tools["get_subscription_messages"](subscription_id)["status"] == "stopped"
+    )
+
+
+def test_receive_does_not_reconnect_during_stop(harness):
+    """When a subscription is stopped, receive(auto_connect=False) must not reconnect."""
+    result = harness.tools["subscribe_background"](
+        topic="/no_reconnect", msg_type="std_msgs/String"
+    )
+    assert result["success"] is True
+    subscription_id = result["subscription_id"]
+    manager = harness.managers[0]
+
+    harness.tools["stop_background_subscription"](subscription_id)
+
+    # Calling receive on manager with auto_connect=False does not reconnect
+    frame = manager.receive(timeout=0.01, auto_connect=False)
+    assert frame is None
+    assert manager.ws is None
