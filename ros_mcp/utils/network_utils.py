@@ -62,6 +62,16 @@ def ping_ip_and_port(
         "overall_status": "unknown",
     }
 
+    if ping_timeout <= 0:
+        result["ping"]["error"] = "ping_timeout must be greater than 0"
+        result["overall_status"] = "Invalid_parameters"
+        return result
+
+    if port_timeout <= 0:
+        result["port_check"]["error"] = "port_timeout must be greater than 0"
+        result["overall_status"] = "Invalid_parameters"
+        return result
+
     # Step 0: DNS Resolution (do this FIRST)
     dns_success, resolved_ip, dns_error = _resolve_dns(ip)
     if not dns_success:
@@ -79,10 +89,28 @@ def ping_ip_and_port(
     # Step 1: Ping the IP address
     try:
         # Use platform-specific ping command
-        if platform.system().lower() == "windows":
-            ping_cmd = ["ping", "-n", "1", "-w", str(int(ping_timeout * 1000)), actual_ip]
-        else:  # Linux, macOS, etc.
-            ping_cmd = ["ping", "-c", "1", "-W", str(int(ping_timeout)), actual_ip]
+        system = platform.system().lower()
+        is_windows = system == "windows"
+        is_bsd_or_darwin = system == "darwin" or "bsd" in system
+
+        count_flag = "-n" if is_windows else "-c"
+        wait_flag = "-w" if is_windows else "-W"
+
+        if is_windows or is_bsd_or_darwin:
+            timeout_val = str(int(ping_timeout * 1000))
+        else:
+            timeout_val = (
+                str(int(ping_timeout)) if ping_timeout == int(ping_timeout) else str(ping_timeout)
+            )
+
+        ping_cmd = [
+            "ping",
+            count_flag,
+            "1",
+            wait_flag,
+            timeout_val,
+            actual_ip,
+        ]
 
         ping_result = subprocess.run(
             ping_cmd, capture_output=True, text=True, timeout=ping_timeout + 1.0
@@ -94,12 +122,13 @@ def ping_ip_and_port(
             for line in output_lines:
                 if "time=" in line or "time<" in line:
                     # Extract time value (format varies by OS)
-                    if "time=" in line:
-                        time_part = line.split("time=")[1].split()[0]
-                        try:
-                            result["ping"]["response_time_ms"] = float(time_part)
-                        except ValueError:
-                            result["ping"]["response_time_ms"] = None
+                    delimiter = "time=" if "time=" in line else "time<"
+                    raw_time = line.split(delimiter)[1].split()[0]
+                    time_part = raw_time.lower().lstrip("<=").rstrip("ms")
+                    try:
+                        result["ping"]["response_time_ms"] = float(time_part)
+                    except ValueError:
+                        result["ping"]["response_time_ms"] = None
                     break
 
             result["ping"]["success"] = True
