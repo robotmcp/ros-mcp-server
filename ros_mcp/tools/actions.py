@@ -309,7 +309,8 @@ def register_action_tools(
     @mcp.tool(
         description=(
             "Send a goal to a ROS action server. Works only with ROS 2.\n"
-            "Example:\nsend_action_goal('/turtle1/rotate_absolute', 'turtlesim/action/RotateAbsolute', {'theta': 1.57})"
+            "Example:\nsend_action_goal('/turtle1/rotate_absolute', 'turtlesim/action/RotateAbsolute', {'theta': 1.57})\n"
+            "success reflects the rosbridge result flag; inspect status for the ROS goal outcome."
         ),
         annotations=ToolAnnotations(
             title="Send Action Goal",
@@ -334,6 +335,8 @@ def register_action_tools(
 
         Returns:
             dict: Contains action response including goal_id, status, and result.
+                success is true only when rosbridge reports result=true. The ROS
+                goal outcome is reported separately in status.
         """
         if not action_name or not action_name.strip():
             return {"error": "Action name cannot be empty"}
@@ -395,7 +398,7 @@ def register_action_tools(
                     return {
                         "action": action_name,
                         "action_type": action_type,
-                        "success": True,
+                        "success": msg_data.get("result") is True,
                         "goal_id": goal_id,
                         "status": msg_data.get("status", "unknown"),
                         "result": msg_data.get("values", {}),
