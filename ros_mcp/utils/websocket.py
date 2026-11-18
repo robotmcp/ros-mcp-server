@@ -156,14 +156,28 @@ def _handle_raw_image(
     # Decode base64 to numpy array
     image_bytes = base64.b64decode(data_b64)
 
-    # Determine data type based on encoding
-    if encoding.lower() in ["mono16", "16uc1"]:
-        img_np = np.frombuffer(image_bytes, dtype=np.uint16)
-    else:
-        img_np = np.frombuffer(image_bytes, dtype=np.uint8)
-
     # Process based on encoding type
     try:
+        # sensor_msgs/Image.step includes any padding at the end of each row.
+        bytes_per_pixel = {"rgb8": 3, "bgr8": 3, "mono8": 1, "mono16": 2, "16uc1": 2}
+        pixel_size = bytes_per_pixel.get(encoding.lower())
+        if pixel_size is not None:
+            row_bytes = width * pixel_size
+            step = msg.get("step", row_bytes)
+            if not isinstance(step, int) or step < row_bytes:
+                raise ValueError("Image step is smaller than a pixel row or is not an integer")
+            if len(image_bytes) != height * step:
+                raise ValueError("Image data length does not match height * step")
+            if step != row_bytes:
+                rows = np.frombuffer(image_bytes, dtype=np.uint8).reshape(height, step)
+                image_bytes = rows[:, :row_bytes].tobytes()
+
+        # Remove byte padding before interpreting 16-bit pixel values.
+        if encoding.lower() in ["mono16", "16uc1"]:
+            img_np = np.frombuffer(image_bytes, dtype=np.uint16)
+        else:
+            img_np = np.frombuffer(image_bytes, dtype=np.uint8)
+
         img_cv = _decode_image_data(img_np, height, width, encoding, msg)
         if img_cv is None:
             return None
