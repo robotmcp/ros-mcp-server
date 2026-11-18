@@ -3,8 +3,8 @@
 These tests call the actual MCP tool functions (get_nodes, get_node_details)
 against a live rosbridge container.
 
-Note: calling get_node_details for nonexistent nodes crashes rosapi_node
-on ROS 2 (#273). Tests only query nodes confirmed to exist.
+Note: nonexistent node queries are guarded by pre-checking active nodes to
+prevent upstream rosapi_node crash on ROS 2 (#273).
 """
 
 import pytest
@@ -51,11 +51,7 @@ class TestGetNodes:
 
 
 class TestGetNodeDetails:
-    """Verify get_node_details MCP tool returns publishers/subscribers/services.
-
-    Only queries nodes confirmed to exist — calling get_node_details for
-    nonexistent nodes crashes rosapi_node on ROS 2 (#273).
-    """
+    """Verify get_node_details MCP tool returns publishers/subscribers/services."""
 
     def test_turtlesim_details(self, tools):
         """get_node_details for /turtlesim should return publishers and subscribers."""
@@ -94,4 +90,9 @@ class TestGetNodeDetails:
     def test_whitespace_node_name_returns_error(self, tools):
         """get_node_details with whitespace should return error dict."""
         result = tools["get_node_details"](node="   ")
+        assert "error" in result
+
+    def test_nonexistent_node_returns_error(self, tools):
+        """get_node_details with nonexistent node should return error dict safely (#273)."""
+        result = tools["get_node_details"](node="/nonexistent_node_12345")
         assert "error" in result
