@@ -5,7 +5,6 @@ import json
 import threading
 import time
 import uuid
-from contextlib import contextmanager
 
 from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
@@ -70,16 +69,6 @@ def register_action_tools(
 
     active_action_connections: dict[str, WebSocketManager] = {}
     active_action_connections_lock = threading.Lock()
-
-    @contextmanager
-    def track_action_connection(goal_id: str, manager: WebSocketManager):
-        with active_action_connections_lock:
-            active_action_connections[goal_id] = manager
-        try:
-            yield
-        finally:
-            with active_action_connections_lock:
-                active_action_connections.pop(goal_id, None)
 
     @mcp.tool(
         description=("Get list of all available ROS actions.\nExample:\nget_actions()"),
@@ -375,6 +364,7 @@ def register_action_tools(
             ws_manager.ip,
             ws_manager.port,
             default_timeout=ws_manager.default_timeout,
+            close_on_timeout=False,
         )
 
         if not goal_id or not str(goal_id).strip():
@@ -382,100 +372,120 @@ def register_action_tools(
         else:
             goal_id = str(goal_id).strip()
 
-        message = {
-            "op": "send_action_goal",
-            "id": goal_id,
-            "action": action_name,
-            "action_type": action_type,
-            "args": goal,
-            "feedback": True,
-        }
-
-        with action_ws_manager, track_action_connection(goal_id, action_ws_manager):
-            send_error = action_ws_manager.send(message)
-            if send_error:
+        with active_action_connections_lock:
+            if goal_id in active_action_connections:
                 return {
-                    "error": f"Failed to send action goal: {send_error}",
+                    "error": f"Goal ID '{goal_id}' is already active",
                     "action": action_name,
+                    "goal_id": goal_id,
                     "success": False,
                 }
+            active_action_connections[goal_id] = action_ws_manager
 
-            if ctx:
-                try:
-                    await ctx.report_progress(
-                        progress=0, total=None, message=f"Goal submitted: {goal_id}"
-                    )
-                except Exception:
-                    pass
+        try:
+            message = {
+                "op": "send_action_goal",
+                "id": goal_id,
+                "action": action_name,
+                "action_type": action_type,
+                "args": goal,
+                "feedback": True,
+            }
 
-            start_time = time.time()
-            last_feedback = None
-            feedback_count = 0
-
-            while time.time() - start_time < timeout:
-                remaining = timeout - (time.time() - start_time)
-                if remaining <= 0:
-                    break
-
-                # Run blocking socket receive in worker thread so the event loop is not blocked
-                response = await asyncio.to_thread(action_ws_manager.receive, remaining)
-
-                if not response:
-                    if not action_ws_manager.is_connected():
-                        return {
-                            "error": "Connection to rosbridge lost while waiting for action result",
-                            "action": action_name,
-                            "goal_id": goal_id,
-                        }
-                    continue
-
-                try:
-                    msg_data = json.loads(response)
-                except json.JSONDecodeError:
-                    continue
-
-                if msg_data.get("op") == "action_result" and msg_data.get("id") == goal_id:
-                    if ctx:
-                        try:
-                            await ctx.report_progress(
-                                progress=feedback_count, total=None, message="Action completed"
-                            )
-                        except Exception:
-                            pass
+            with action_ws_manager:
+                send_error = action_ws_manager.send(message)
+                if send_error:
                     return {
+                        "error": f"Failed to send action goal: {send_error}",
                         "action": action_name,
-                        "action_type": action_type,
-                        "success": msg_data.get("result") is True,
-                        "goal_id": goal_id,
-                        "status": msg_data.get("status", "unknown"),
-                        "result": msg_data.get("values", {}),
+                        "success": False,
                     }
 
-                if msg_data.get("op") == "action_feedback" and msg_data.get("id") == goal_id:
-                    feedback_count += 1
-                    last_feedback = msg_data
-                    if ctx:
-                        try:
-                            await ctx.report_progress(
-                                progress=feedback_count,
-                                total=None,
-                                message=f"Feedback #{feedback_count}: {str(msg_data.get('values', {}))[:100]}",
-                            )
-                        except Exception:
-                            pass
+                if ctx:
+                    try:
+                        await ctx.report_progress(
+                            progress=0, total=None, message=f"Goal submitted: {goal_id}"
+                        )
+                    except Exception:
+                        pass
 
-        # Timeout
-        result = {
-            "action": action_name,
-            "action_type": action_type,
-            "success": False,
-            "goal_id": goal_id,
-            "error": f"Action timed out after {timeout} seconds",
-        }
-        if last_feedback:
-            result["last_feedback"] = last_feedback.get("values", {})
-            result["feedback_count"] = feedback_count
-        return result
+                start_time = time.time()
+                last_feedback = None
+                feedback_count = 0
+
+                while time.time() - start_time < timeout:
+                    remaining = timeout - (time.time() - start_time)
+                    if remaining <= 0:
+                        break
+
+                    # Run blocking socket receive in worker thread so the event loop is not blocked
+                    response = await asyncio.to_thread(
+                        action_ws_manager.receive,
+                        remaining,
+                        auto_connect=False,
+                        verbose=False,
+                    )
+
+                    if not response:
+                        if not action_ws_manager.is_connected():
+                            return {
+                                "error": "Connection to rosbridge lost while waiting for action result",
+                                "action": action_name,
+                                "goal_id": goal_id,
+                                "success": False,
+                            }
+                        continue
+
+                    try:
+                        msg_data = json.loads(response)
+                    except json.JSONDecodeError:
+                        continue
+
+                    if msg_data.get("op") == "action_result" and msg_data.get("id") == goal_id:
+                        if ctx:
+                            try:
+                                await ctx.report_progress(
+                                    progress=feedback_count, total=None, message="Action completed"
+                                )
+                            except Exception:
+                                pass
+                        return {
+                            "action": action_name,
+                            "action_type": action_type,
+                            "success": msg_data.get("result") is True,
+                            "goal_id": goal_id,
+                            "status": msg_data.get("status", "unknown"),
+                            "result": msg_data.get("values", {}),
+                        }
+
+                    if msg_data.get("op") == "action_feedback" and msg_data.get("id") == goal_id:
+                        feedback_count += 1
+                        last_feedback = msg_data
+                        if ctx:
+                            try:
+                                await ctx.report_progress(
+                                    progress=feedback_count,
+                                    total=None,
+                                    message=f"Feedback #{feedback_count}: {str(msg_data.get('values', {}))[:100]}",
+                                )
+                            except Exception:
+                                pass
+
+            # Timeout
+            result = {
+                "action": action_name,
+                "action_type": action_type,
+                "success": False,
+                "goal_id": goal_id,
+                "error": f"Action timed out after {timeout} seconds",
+            }
+            if last_feedback:
+                result["last_feedback"] = last_feedback.get("values", {})
+                result["feedback_count"] = feedback_count
+            return result
+        finally:
+            with active_action_connections_lock:
+                active_action_connections.pop(goal_id, None)
 
     @mcp.tool(
         description=(
@@ -506,10 +516,16 @@ def register_action_tools(
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"
 
-        # Route cancellation through the dedicated connection if the goal is active,
-        # otherwise fall back to the default WebSocket manager.
         with active_action_connections_lock:
-            action_ws_manager = active_action_connections.get(goal_id) or ws_manager
+            action_ws_manager = active_action_connections.get(goal_id)
+
+        if action_ws_manager is None:
+            return {
+                "action": action_name,
+                "goal_id": goal_id,
+                "success": False,
+                "error": f"No active connection found for goal '{goal_id}'",
+            }
 
         send_error = action_ws_manager.send(
             {
@@ -523,6 +539,7 @@ def register_action_tools(
                 "error": f"Failed to send cancel request: {send_error}",
                 "action": action_name,
                 "goal_id": goal_id,
+                "success": False,
             }
 
         # success here confirms the request was sent, not that the server

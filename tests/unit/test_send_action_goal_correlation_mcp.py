@@ -89,6 +89,7 @@ class PendingGoalSocket:
         frame = {
             "op": "action_result",
             "id": self.goal_id,
+            "result": True,
             "status": 5,
             "values": {"canceled": True},
         }
@@ -117,7 +118,7 @@ async def run(overlap, same_action=False):
         return socket
 
     manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
-    server = FastMCP("mission-overlap-probe")
+    server = FastMCP("action-overlap-test")
     register_action_tools(server, manager)
     with patch.object(transport.websocket, "create_connection", factory):
         async with Client(server, progress_handler=progress) as client:
@@ -254,7 +255,7 @@ def test_cancel_action_goal_uses_pending_goal_connection():
             goal_response = await asyncio.wait_for(goal_task, timeout=2.0)
             goal_result = goal_response.data
 
-            # Cancel for finished goal through the same client falls back to default manager
+            # Cancel for finished goal through the same client returns error (no active connection)
             finished_cancel_response = await client.call_tool(
                 "cancel_action_goal",
                 {"action_name": "/test", "goal_id": goal_id},
@@ -267,23 +268,21 @@ def test_cancel_action_goal_uses_pending_goal_connection():
         cancel_result, goal_result, finished_cancel_result = asyncio.run(exercise())
 
     sends = [item["send"] for item in trace if "send" in item]
-    assert len(connections) == 2
+    assert len(connections) == 1
     assert [message["op"] for message in sends] == [
         "send_action_goal",
         "cancel_action_goal",
-        "cancel_action_goal",
     ]
     assert sends[1]["id"] == sends[0]["id"]
-    assert sends[2]["id"] == sends[0]["id"]
     assert connections[0].cancel_sent.is_set()
-    assert connections[1].cancel_sent.is_set()
     assert cancel_result["success"] is True
     assert goal_result["success"] is True
     assert goal_result["status"] == 5
-    assert finished_cancel_result["success"] is True
+    assert finished_cancel_result["success"] is False
+    assert "No active connection found" in finished_cancel_result["error"]
 
 
-def test_cancel_action_goal_untracked_falls_back_to_default_manager():
+def test_cancel_action_goal_untracked_returns_error():
     trace = []
     connections = []
 
@@ -307,17 +306,75 @@ def test_cancel_action_goal_untracked_falls_back_to_default_manager():
     with patch.object(transport.websocket, "create_connection", factory):
         result = asyncio.run(exercise())
 
-    assert result["success"] is True
+    assert result["success"] is False
     assert result["action"] == "/test_action"
     assert result["goal_id"] == "nonexistent_goal"
-    assert len(connections) == 1
+    assert "No active connection found" in result["error"]
+    assert len(connections) == 0
     sends = [item["send"] for item in trace if "send" in item]
-    assert len(sends) == 1
-    assert sends[0] == {
-        "op": "cancel_action_goal",
-        "id": "nonexistent_goal",
-        "action": "/test_action",
-    }
+    assert len(sends) == 0
+
+
+def test_send_action_goal_duplicate_goal_id_rejected():
+    trace = []
+    connections = []
+
+    def factory(*_args, **_kwargs):
+        socket = PendingGoalSocket(trace)
+        connections.append(socket)
+        return socket
+
+    manager = transport.WebSocketManager("127.0.0.1", 9090, default_timeout=1)
+    server = FastMCP("duplicate-goal-probe")
+    register_action_tools(server, manager)
+
+    async def exercise():
+        async with Client(server) as client:
+            # First goal with custom goal_id="dup"
+            goal1_task = asyncio.create_task(
+                client.call_tool(
+                    "send_action_goal",
+                    {
+                        "action_name": "/test",
+                        "action_type": "example/action/Test",
+                        "goal": {"value": "first"},
+                        "goal_id": "dup",
+                        "timeout": 5,
+                    },
+                )
+            )
+
+            # Wait briefly so goal 1 is registered and active
+            await asyncio.sleep(0.05)
+
+            # Second goal with identical goal_id="dup"
+            dup_response = await client.call_tool(
+                "send_action_goal",
+                {
+                    "action_name": "/test",
+                    "action_type": "example/action/Test",
+                    "goal": {"value": "second"},
+                    "goal_id": "dup",
+                    "timeout": 5,
+                },
+            )
+            dup_result = dup_response.data
+
+            # Cancel goal 1 to let it finish
+            await client.call_tool(
+                "cancel_action_goal",
+                {"action_name": "/test", "goal_id": "dup"},
+            )
+            goal1_result = (await goal1_task).data
+
+            return dup_result, goal1_result
+
+    with patch.object(transport.websocket, "create_connection", factory):
+        dup_result, goal1_result = asyncio.run(exercise())
+
+    assert dup_result["success"] is False
+    assert "Goal ID 'dup' is already active" in dup_result["error"]
+    assert goal1_result["success"] is True
 
 
 def test_send_action_goal_connection_loss_reports_error_immediately():
@@ -352,6 +409,7 @@ def test_send_action_goal_connection_loss_reports_error_immediately():
         result, elapsed = asyncio.run(exercise())
 
     assert "Connection to rosbridge lost" in result["error"]
+    assert result["success"] is False
     assert elapsed < 2.0  # Must not wait out the 10s timeout
     # Did not spin-reconnect
     assert len(connections) == 1
@@ -376,6 +434,7 @@ def test_other_tools_can_run_concurrently_with_action_goal():
             frame = {
                 "op": "action_result",
                 "id": "slow_goal",
+                "result": True,
                 "status": 4,
                 "values": {"done": True},
             }
@@ -433,11 +492,3 @@ def test_other_tools_can_run_concurrently_with_action_goal():
     assert ping_data == "pong"
     assert ping_duration < 0.5  # Not blocked by the goal's socket receive
     assert goal_data["success"] is True
-
-
-async def main():
-    print(json.dumps({"serialized": await run(False), "concurrent": await run(True)}, indent=2))
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
