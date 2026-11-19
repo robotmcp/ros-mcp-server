@@ -1554,6 +1554,7 @@ dev = [
     { name = "pytest" },
     { name = "pytest-timeout" },
     { name = "ruff" },
+    { name = "websockets" },
 ]
 
 [package.metadata]
@@ -1567,6 +1568,7 @@ requires-dist = [
     { name = "pytest-timeout", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "websocket-client", specifier = ">=1.8.0" },
+    { name = "websockets", marker = "extra == 'dev'", specifier = ">=15.0.1" },
 ]
 provides-extras = ["dev"]
 
