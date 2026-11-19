@@ -214,9 +214,44 @@ class TestCancelActionGoal:
         "get_ros_version() != RosVersion.ROS2",
         reason="cancel_action_goal uses the ROS 2 rosbridge action op (see #320)",
     )
-    def test_cancel_request_sent(self, tools):
-        """Cancelling reports success once the request is sent (not server-acked)."""
+    def test_cancel_active_goal(self, tools):
+        """Cancelling an active goal reports success once the request is sent."""
+        action = _action()
+        goal_id = "test_cancel_active_goal_id"
+
+        async def cancel_flow():
+            goal_task = asyncio.create_task(
+                tools["send_action_goal"](
+                    action_name=action["name"],
+                    action_type=action["type"],
+                    goal={"theta": 3.14},
+                    goal_id=goal_id,
+                    timeout=10.0,
+                )
+            )
+            # Give goal time to connect and submit
+            await asyncio.sleep(0.1)
+
+            cancel_result = tools["cancel_action_goal"](
+                action_name=action["name"],
+                goal_id=goal_id,
+            )
+            goal_result = await goal_task
+            return cancel_result, goal_result
+
+        cancel_result, goal_result = asyncio.run(cancel_flow())
+        assert cancel_result["success"] is True
+        assert cancel_result["goal_id"] == goal_id
+        assert "Cancel request sent" in cancel_result["note"]
+
+    @pytest.mark.skipif(
+        "get_ros_version() != RosVersion.ROS2",
+        reason="cancel_action_goal uses the ROS 2 rosbridge action op (see #320)",
+    )
+    def test_cancel_nonexistent_goal_returns_error(self, tools):
+        """Cancelling an unknown or finished goal returns an explicit error."""
         action_name = _action()["name"]
         result = tools["cancel_action_goal"](action_name=action_name, goal_id="nonexistent_goal")
-        assert result["success"] is True
+        assert result["success"] is False
         assert result["action"] == action_name
+        assert "No active connection found" in result["error"]
