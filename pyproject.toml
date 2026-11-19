@@ -27,6 +27,7 @@ dev = [
     "ruff",           # single tool for linting & formatting
     "pytest",         # for tests
     "pytest-timeout", # test timeouts
+    "websockets>=15.0.1", # local rosbridge fixture
 ]
 
 [project.scripts]
