@@ -8,7 +8,14 @@ from fastmcp import Context, FastMCP
 from mcp.types import ToolAnnotations
 
 from ros_mcp.utils.response import _check_response, _safe_get_values
-from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
+from ros_mcp.utils.rosapi_types import (
+    DetectionError,
+    RosVersion,
+    get_ros_version,
+    rosapi_service,
+    rosapi_type,
+)
+from ros_mcp.utils.service_verifier import is_service_available, make_compatibility_response
 from ros_mcp.utils.websocket import WebSocketManager
 
 # Action detail parts: result key → (rosapi service name, rosapi type name)
@@ -80,9 +87,24 @@ def register_action_tools(
             dict: Contains list of all active actions,
                 or a message string if no actions are found.
         """
+        action_servers_svc = rosapi_service("action_servers")
+        if not is_service_available(action_servers_svc, ws_manager):
+            return make_compatibility_response(
+                tool_name="get_actions",
+                issue=f"Action listing not supported: service '{action_servers_svc}' is not available",
+                missing_services=[action_servers_svc],
+                required_services=[action_servers_svc],
+                suggestions=[
+                    "This rosbridge/rosapi version does not expose action_servers service",
+                    "Action servers discovery requires rosapi action_servers service",
+                ],
+                note=f"Action listing requires {action_servers_svc} service",
+                extra_fields={"actions": [], "action_count": 0},
+            )
+
         message = {
             "op": "call_service",
-            "service": rosapi_service("action_servers"),
+            "service": action_servers_svc,
             "type": rosapi_type("ActionServers"),
             "args": {},
             "id": "get_actions_request_1",
@@ -93,6 +115,17 @@ def register_action_tools(
 
         error = _check_response(response)
         if error:
+            if "does not exist" in str(error).lower():
+                return make_compatibility_response(
+                    tool_name="get_actions",
+                    issue=f"Action listing not supported: {error.get('error', 'service does not exist')}",
+                    missing_services=[action_servers_svc],
+                    required_services=[action_servers_svc],
+                    suggestions=[
+                        "This rosbridge/rosapi version does not expose action_servers service",
+                    ],
+                    extra_fields={"actions": [], "action_count": 0},
+                )
             return error
 
         values = _safe_get_values(response)
@@ -165,14 +198,26 @@ def register_action_tools(
             # and we must not fall through to the detail services (a bad type
             # crashes rosapi). Report that distinctly from a genuine "not found".
             if interfaces_error:
-                return {
-                    "error": (
+                return make_compatibility_response(
+                    tool_name="get_action_details",
+                    issue=(
                         f"Cannot validate action_type for {action}: "
                         "the action interfaces service is unavailable"
                     ),
-                    "action": action,
-                    "action_type": action_type,
-                }
+                    missing_services=[rosapi_service("interfaces")],
+                    required_services=[
+                        rosapi_service("interfaces"),
+                        rosapi_service("action_goal_details"),
+                        rosapi_service("action_result_details"),
+                        rosapi_service("action_feedback_details"),
+                    ],
+                    suggestions=[
+                        "Action detail inspection requires ROS 2 Humble or newer with rosapi action services",
+                        "On ROS 1, inspect action message definitions from package definitions",
+                    ],
+                    note="Action detail inspection requires /rosapi/interfaces service",
+                    extra_fields={"action": action, "action_type": action_type},
+                )
 
             if action_type not in available:
                 return {
@@ -218,6 +263,21 @@ def register_action_tools(
         """
         if not action_name or not action_name.strip():
             return {"error": "Action name cannot be empty"}
+
+        try:
+            if get_ros_version() == RosVersion.ROS1:
+                return make_compatibility_response(
+                    tool_name="get_action_status",
+                    issue="get_action_status with ROS 2 action_msgs is not available on ROS 1",
+                    warning=True,
+                    suggestions=[
+                        "ROS 1 actionlib uses actionlib_msgs/GoalStatusArray on <action>/status (see issue #320)",
+                    ],
+                    note="Action status subscription requires ROS 2 action_msgs/msg/GoalStatusArray",
+                    extra_fields={"action_name": action_name, "active_goals": [], "goal_count": 0},
+                )
+        except DetectionError:
+            pass
 
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"
@@ -345,6 +405,25 @@ def register_action_tools(
         if not goal:
             return {"error": "Goal cannot be empty"}
 
+        try:
+            if get_ros_version() == RosVersion.ROS1:
+                return make_compatibility_response(
+                    tool_name="send_action_goal",
+                    issue="send_action_goal is not available on ROS 1",
+                    suggestions=[
+                        "rosbridge send_action_goal operation is only supported on ROS 2",
+                        "ROS 1 actions use the 5-topic actionlib pattern (see issue #320)",
+                    ],
+                    note="send_action_goal requires ROS 2 rosbridge protocol",
+                    extra_fields={
+                        "action": action_name,
+                        "action_type": action_type,
+                        "success": False,
+                    },
+                )
+        except DetectionError:
+            pass
+
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"
 
@@ -455,6 +534,21 @@ def register_action_tools(
             return {"error": "Action name cannot be empty"}
         if not goal_id or not goal_id.strip():
             return {"error": "Goal ID cannot be empty"}
+
+        try:
+            if get_ros_version() == RosVersion.ROS1:
+                return make_compatibility_response(
+                    tool_name="cancel_action_goal",
+                    issue="cancel_action_goal is not available on ROS 1",
+                    suggestions=[
+                        "rosbridge cancel_action_goal operation is only supported on ROS 2",
+                        "ROS 1 actions use the 5-topic actionlib pattern (see issue #320)",
+                    ],
+                    note="cancel_action_goal requires ROS 2 rosbridge protocol",
+                    extra_fields={"action": action_name, "goal_id": goal_id, "success": False},
+                )
+        except DetectionError:
+            pass
 
         if not action_name.startswith("/"):
             action_name = f"/{action_name}"

@@ -3,8 +3,9 @@
 from fastmcp import FastMCP
 from mcp.types import ToolAnnotations
 
-from ros_mcp.utils.response import _extract_error
+from ros_mcp.utils.response import _extract_error, _safe_get_values
 from ros_mcp.utils.rosapi_types import rosapi_service, rosapi_type
+from ros_mcp.utils.service_verifier import is_service_available, make_compatibility_response
 from ros_mcp.utils.websocket import WebSocketManager
 
 
@@ -31,9 +32,13 @@ def _safe_check_parameter_exists(
         # for missing parameters, with result=true. Treat as nonexistent.
         return stripped == "null"
 
+    get_param_svc = rosapi_service("get_param")
+    if not is_service_available(get_param_svc, ws_manager):
+        return False, f"Service '{get_param_svc}' is not available", None
+
     message = {
         "op": "call_service",
-        "service": rosapi_service("get_param"),
+        "service": get_param_svc,
         "type": rosapi_type("GetParam"),
         "args": {"name": name},
         "id": f"check_param_exists_{name.replace('/', '_').replace(':', '_')}",
@@ -84,8 +89,8 @@ def register_parameter_tools(
 
     @mcp.tool(
         description=(
-            "Get a single ROS parameter value by name. Works only with ROS 2.\n"
-            "Example:\nget_parameter('/turtlesim:background_b')"
+            "Get a single ROS parameter value by name.\n"
+            "Example:\nget_parameter('/turtlesim:background_b') (ROS 2) or get_parameter('/turtlesim/background_b') (ROS 1)"
         ),
         annotations=ToolAnnotations(
             title="Get Parameter",
@@ -94,10 +99,10 @@ def register_parameter_tools(
     )
     def get_parameter(name: str) -> dict:
         """
-        Get a single ROS parameter value by name. Works only with ROS 2.
+        Get a single ROS parameter value by name.
 
         Args:
-            name (str): The parameter name (e.g., '/turtlesim:background_b')
+            name (str): The parameter name (e.g., '/turtlesim:background_b' on ROS 2 or '/turtlesim/background_b' on ROS 1)
 
         Returns:
             dict: Contains parameter value and metadata, or error message if parameter not found.
@@ -110,6 +115,26 @@ def register_parameter_tools(
         # The response is returned if parameter exists, so we can reuse it
         exists, reason, response = _safe_check_parameter_exists(name, ws_manager)
         if not exists:
+            get_param_svc = rosapi_service("get_param")
+            if not is_service_available(get_param_svc, ws_manager):
+                return make_compatibility_response(
+                    tool_name="get_parameter",
+                    issue=f"Failed to get parameter '{name}': service '{get_param_svc}' is not available",
+                    missing_services=[get_param_svc],
+                    required_services=[get_param_svc],
+                    suggestions=[
+                        "Ensure rosbridge and rosapi are running",
+                        "Check if parameter service is available using get_services()",
+                    ],
+                    note=f"Parameter retrieval requires {get_param_svc} service",
+                    extra_fields={
+                        "name": name,
+                        "value": "",
+                        "successful": False,
+                        "reason": reason or f"Service {get_param_svc} is not available",
+                        "exists": False,
+                    },
+                )
             return {
                 "name": name,
                 "value": "",
@@ -170,8 +195,8 @@ def register_parameter_tools(
 
     @mcp.tool(
         description=(
-            "Set a single ROS parameter value. Works only with ROS 2.\n"
-            "Example:\nset_parameter('/turtlesim:background_b', '255')"
+            "Set a single ROS parameter value.\n"
+            "Example:\nset_parameter('/turtlesim:background_b', '255') (ROS 2) or set_parameter('/turtlesim/background_b', '255') (ROS 1)"
         ),
         annotations=ToolAnnotations(
             title="Set Parameter",
@@ -180,10 +205,10 @@ def register_parameter_tools(
     )
     def set_parameter(name: str, value: str) -> dict:
         """
-        Set a single ROS parameter value. Works only with ROS 2.
+        Set a single ROS parameter value.
 
         Args:
-            name (str): The parameter name (e.g., '/turtlesim:background_b')
+            name (str): The parameter name (e.g., '/turtlesim:background_b' on ROS 2 or '/turtlesim/background_b' on ROS 1)
             value (str): The parameter value to set
 
         Returns:
@@ -192,6 +217,21 @@ def register_parameter_tools(
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
+        set_param_svc = rosapi_service("set_param")
+        if not is_service_available(set_param_svc, ws_manager):
+            return make_compatibility_response(
+                tool_name="set_parameter",
+                issue=f"Failed to set parameter '{name}': service '{set_param_svc}' is not available",
+                missing_services=[set_param_svc],
+                required_services=[set_param_svc],
+                suggestions=[
+                    "Ensure rosbridge and rosapi are running",
+                    "Check if parameter service is available using get_services()",
+                ],
+                note=f"Setting parameters requires {set_param_svc} service",
+                extra_fields={"name": name, "value": value, "successful": False},
+            )
+
         # Check if parameter exists first (set_param can create parameters, but checking
         # helps avoid issues and provides better error messages)
         exists, reason, _ = _safe_check_parameter_exists(name, ws_manager)
@@ -199,7 +239,7 @@ def register_parameter_tools(
 
         message = {
             "op": "call_service",
-            "service": rosapi_service("set_param"),
+            "service": set_param_svc,
             "type": rosapi_type("SetParam"),
             "args": {"name": name, "value": value},
             "id": f"set_param_{name.replace('/', '_').replace(':', '_')}",
@@ -263,8 +303,8 @@ def register_parameter_tools(
 
     @mcp.tool(
         description=(
-            "Check if a ROS parameter exists. Works only with ROS 2.\n"
-            "Example:\nhas_parameter('/turtlesim:background_b')"
+            "Check if a ROS parameter exists.\n"
+            "Example:\nhas_parameter('/turtlesim:background_b') (ROS 2) or has_parameter('/turtlesim/background_b') (ROS 1)"
         ),
         annotations=ToolAnnotations(
             title="Has Parameter",
@@ -273,10 +313,10 @@ def register_parameter_tools(
     )
     def has_parameter(name: str) -> dict:
         """
-        Check if a ROS parameter exists. Works only with ROS 2.
+        Check if a ROS parameter exists.
 
         Args:
-            name (str): The parameter name (e.g., '/turtlesim:background_b')
+            name (str): The parameter name (e.g., '/turtlesim:background_b' on ROS 2 or '/turtlesim/background_b' on ROS 1)
 
         Returns:
             dict: Contains existence status and metadata, or error message if failed.
@@ -292,6 +332,21 @@ def register_parameter_tools(
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
 
+        get_param_svc = rosapi_service("get_param")
+        if not is_service_available(get_param_svc, ws_manager):
+            return make_compatibility_response(
+                tool_name="has_parameter",
+                issue=f"Failed to check parameter '{name}': service '{get_param_svc}' is not available",
+                missing_services=[get_param_svc],
+                required_services=[get_param_svc],
+                suggestions=[
+                    "Ensure rosbridge and rosapi are running",
+                    "Check if parameter service is available using get_services()",
+                ],
+                note=f"Checking parameter existence requires {get_param_svc} service",
+                extra_fields={"name": name, "exists": False, "successful": False},
+            )
+
         # Use safe check function directly to avoid rosapi_node crashes
         # The /rosapi/has_param service crashes when the parameter doesn't exist
         exists, reason, _ = _safe_check_parameter_exists(name, ws_manager)
@@ -305,8 +360,8 @@ def register_parameter_tools(
 
     @mcp.tool(
         description=(
-            "Delete a ROS parameter. Works only with ROS 2.\n"
-            "Example:\ndelete_parameter('/turtlesim:background_b')"
+            "Delete a ROS parameter.\n"
+            "Example:\ndelete_parameter('/turtlesim:background_b') (ROS 2) or delete_parameter('/turtlesim/background_b') (ROS 1)"
         ),
         annotations=ToolAnnotations(
             title="Delete Parameter",
@@ -315,16 +370,31 @@ def register_parameter_tools(
     )
     def delete_parameter(name: str) -> dict:
         """
-        Delete a ROS parameter. Works only with ROS 2.
+        Delete a ROS parameter.
 
         Args:
-            name (str): The parameter name (e.g., '/turtlesim:background_b')
+            name (str): The parameter name (e.g., '/turtlesim:background_b' on ROS 2 or '/turtlesim/background_b' on ROS 1)
 
         Returns:
             dict: Contains success status and metadata, or error message if failed.
         """
         if not name or not name.strip():
             return {"error": "Parameter name cannot be empty"}
+
+        delete_param_svc = rosapi_service("delete_param")
+        if not is_service_available(delete_param_svc, ws_manager):
+            return make_compatibility_response(
+                tool_name="delete_parameter",
+                issue=f"Failed to delete parameter '{name}': service '{delete_param_svc}' is not available",
+                missing_services=[delete_param_svc],
+                required_services=[delete_param_svc],
+                suggestions=[
+                    "Ensure rosbridge and rosapi are running",
+                    "Check if parameter service is available using get_services()",
+                ],
+                note=f"Deleting parameters requires {delete_param_svc} service",
+                extra_fields={"name": name, "successful": False, "exists": False},
+            )
 
         # Check if parameter exists first to avoid unnecessary calls
         exists, reason, _ = _safe_check_parameter_exists(name, ws_manager)
@@ -338,7 +408,7 @@ def register_parameter_tools(
 
         message = {
             "op": "call_service",
-            "service": rosapi_service("delete_param"),
+            "service": delete_param_svc,
             "type": rosapi_type("DeleteParam"),
             "args": {"name": name},
             "id": f"delete_param_{name.replace('/', '_').replace(':', '_')}",
@@ -437,6 +507,21 @@ def register_parameter_tools(
 
         service_name = f"{normalized_node}/list_parameters"
 
+        if not is_service_available(service_name, ws_manager):
+            return make_compatibility_response(
+                tool_name="get_parameters",
+                issue=f"Failed to get parameters for node {normalized_node}: service '{service_name}' is not available",
+                missing_services=[service_name],
+                required_services=[service_name],
+                suggestions=[
+                    "Node parameter listing via list_parameters is only available on ROS 2 nodes.",
+                    "On ROS 1, parameters are managed globally; use inspect_all_parameters or get_parameter.",
+                    f"Ensure node '{normalized_node}' is running and exposes parameter services.",
+                ],
+                note=f"Requires {service_name} (rcl_interfaces/srv/ListParameters)",
+                extra_fields={"node": normalized_node, "parameters": [], "parameter_count": 0},
+            )
+
         message = {
             "op": "call_service",
             "service": service_name,
@@ -473,6 +558,19 @@ def register_parameter_tools(
         if response and "result" in response and not response["result"]:
             # Service call failed - return error with details from values
             error_msg = _extract_error(response)
+            if "does not exist" in error_msg.lower():
+                return make_compatibility_response(
+                    tool_name="get_parameters",
+                    issue=f"Failed to get parameters for node {normalized_node}: {error_msg}",
+                    missing_services=[service_name],
+                    required_services=[service_name],
+                    suggestions=[
+                        "Node parameter listing via list_parameters is only available on ROS 2 nodes.",
+                        "On ROS 1, parameters are managed globally; use inspect_all_parameters or get_parameter.",
+                    ],
+                    note=f"Requires {service_name} (rcl_interfaces/srv/ListParameters)",
+                    extra_fields={"node": normalized_node, "parameters": [], "parameter_count": 0},
+                )
             return {"error": f"Failed to get parameters for node {normalized_node}: {error_msg}"}
 
         # Extract parameter names from response
@@ -508,10 +606,155 @@ def register_parameter_tools(
 
     @mcp.tool(
         description=(
-            "Get comprehensive details about a specific ROS parameter including value, type, and metadata. "
-            "Works only with ROS 2.\n"
-            "Example:\n"
-            "get_parameter_details('/turtlesim:background_r')"
+            "Get comprehensive information about all ROS parameters including values and metadata.\n"
+            "Example:\ninspect_all_parameters()"
+        ),
+        annotations=ToolAnnotations(
+            title="Inspect All Parameters",
+            readOnlyHint=True,
+        ),
+    )
+    def inspect_all_parameters() -> dict:
+        """Get comprehensive information about all ROS parameters including values and metadata.
+
+        Returns:
+            dict: Contains total_parameters, parameters dict with values and types,
+                and any parameter_errors encountered during inspection.
+        """
+        get_param_names_svc = rosapi_service("get_param_names")
+        if not is_service_available(get_param_names_svc, ws_manager):
+            return make_compatibility_response(
+                tool_name="inspect_all_parameters",
+                issue="Parameter inspection not supported by this rosbridge/rosapi version",
+                missing_services=[get_param_names_svc],
+                required_services=[get_param_names_svc],
+                suggestions=[
+                    "This rosbridge version doesn't support get_param_names service",
+                    "Use get_parameter(name) to read known parameters individually",
+                ],
+                note=f"Parameter inspection requires {get_param_names_svc} service",
+                extra_fields={"total_parameters": 0, "parameters": {}, "parameter_errors": []},
+            )
+
+        parameters_message = {
+            "op": "call_service",
+            "service": get_param_names_svc,
+            "type": rosapi_type("GetParamNames"),
+            "args": {},
+            "id": "inspect_all_parameters_request_1",
+        }
+
+        try:
+            with ws_manager:
+                parameters_response = ws_manager.request(parameters_message)
+        except Exception as e:
+            return {
+                "error": f"Failed to get parameters list: {e}",
+                "total_parameters": 0,
+                "parameters": {},
+                "parameter_errors": [str(e)],
+            }
+
+        if not parameters_response:
+            return {
+                "error": "Failed to get parameters list: no response from service",
+                "total_parameters": 0,
+                "parameters": {},
+                "parameter_errors": [],
+            }
+
+        param_values = _safe_get_values(parameters_response)
+        if param_values is None or not isinstance(param_values, dict):
+            if isinstance(parameters_response.get("result"), dict):
+                names = parameters_response["result"].get("names", [])
+            elif isinstance(parameters_response.get("result"), list):
+                names = parameters_response["result"]
+            else:
+                return {
+                    "error": "Failed to get parameters list: invalid response format",
+                    "total_parameters": 0,
+                    "parameters": {},
+                    "parameter_errors": [],
+                }
+        else:
+            names = param_values.get("names", [])
+
+        parameter_details = {}
+        parameter_errors = []
+
+        # Check if describe_parameters is available
+        describe_svc = rosapi_service("describe_parameters")
+        has_describe = is_service_available(describe_svc, ws_manager)
+
+        for param_name in names:
+            exists, reason, val_resp = _safe_check_parameter_exists(param_name, ws_manager)
+            param_value = ""
+            param_successful = exists
+
+            if val_resp and isinstance(val_resp, dict):
+                val_data = val_resp.get("values") or val_resp.get("result")
+                if isinstance(val_data, dict):
+                    param_value = val_data.get("value", "")
+                elif val_data is not None:
+                    param_value = str(val_data)
+
+            param_type = "unknown"
+            if has_describe:
+                try:
+                    type_message = {
+                        "op": "call_service",
+                        "service": describe_svc,
+                        "type": "rcl_interfaces/DescribeParameters",
+                        "args": {"names": [param_name]},
+                        "id": f"describe_param_{param_name.replace('/', '_').replace(':', '_')}",
+                    }
+                    with ws_manager:
+                        type_response = ws_manager.request(type_message)
+                    if type_response and isinstance(type_response, dict):
+                        t_vals = _safe_get_values(type_response)
+                        if isinstance(t_vals, dict):
+                            descriptors = t_vals.get("descriptors", [])
+                            if descriptors:
+                                param_type = descriptors[0].get("type", "unknown")
+                except Exception:
+                    pass
+
+            # Fallback to type inference from value
+            if param_type == "unknown" and param_value:
+                try:
+                    clean_value = param_value.strip('"')
+                    if clean_value.lower() in ["true", "false"]:
+                        param_type = "bool"
+                    elif clean_value.isdigit() or (
+                        clean_value.startswith("-") and clean_value[1:].isdigit()
+                    ):
+                        param_type = "int"
+                    elif (
+                        "." in clean_value
+                        and clean_value.replace(".", "").replace("-", "").isdigit()
+                    ):
+                        param_type = "float"
+                    else:
+                        param_type = "string"
+                except Exception:
+                    param_type = "string"
+
+            parameter_details[param_name] = {
+                "value": param_value,
+                "type": param_type,
+                "exists": param_successful,
+            }
+
+        return {
+            "total_parameters": len(names),
+            "parameters": parameter_details,
+            "parameter_errors": parameter_errors,
+        }
+
+    @mcp.tool(
+        description=(
+            "Get comprehensive details about a specific ROS parameter including value, type, and metadata.\n"
+            "Example:\nget_parameter_details('/turtlesim:background_r') (ROS 2) or get_parameter_details('/turtlesim/background_r') (ROS 1)"
         ),
         annotations=ToolAnnotations(
             title="Get Parameter Details",
@@ -520,10 +763,10 @@ def register_parameter_tools(
     )
     def get_parameter_details(name: str) -> dict:
         """
-        Get comprehensive details about a specific ROS parameter including value, type, and metadata. Works only with ROS 2.
+        Get comprehensive details about a specific ROS parameter including value, type, and metadata.
 
         Args:
-            name (str): The parameter name (e.g., '/turtlesim:background_r')
+            name (str): The parameter name (e.g., '/turtlesim:background_r' on ROS 2 or '/turtlesim/background_r' on ROS 1)
 
         Returns:
             dict: Contains detailed parameter information or error details.
@@ -544,6 +787,18 @@ def register_parameter_tools(
                 "parameter": name.split(":")[1] if ":" in name else name,
                 "reason": reason,
             }
+
+        get_param_svc = rosapi_service("get_param")
+        if not is_service_available(get_param_svc, ws_manager):
+            return make_compatibility_response(
+                tool_name="get_parameter_details",
+                issue=f"Failed to get parameter details for '{name}': service '{get_param_svc}' is not available",
+                missing_services=[get_param_svc],
+                required_services=[get_param_svc],
+                suggestions=["Ensure rosbridge and rosapi are running"],
+                note=f"Parameter inspection requires {get_param_svc} service",
+                extra_fields=_error_response(f"Service {get_param_svc} is not available"),
+            )
 
         # Check if parameter exists first
         exists, reason, value_response = _safe_check_parameter_exists(name, ws_manager)

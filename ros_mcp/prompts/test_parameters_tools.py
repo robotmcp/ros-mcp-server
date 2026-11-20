@@ -19,7 +19,7 @@ def register_test_parameters_tools_prompts(mcp):
 
 This is a detailed guide for testing parameter tools. For a quick overview of all ROS MCP Server tools, see `test-server-tools`.
 
-**Note: Parameter tools work only with ROS 2.**
+**Note: Node parameter listing (`get_parameters`) works with ROS 2; general parameter operations (`get_parameter`, `set_parameter`, `inspect_all_parameters`) work across ROS 1 and ROS 2.**
 
 ## When to Use This Guide
 
@@ -209,7 +209,7 @@ Parameters can be of various types:
 - Use `get_parameters()` first to discover available parameters
 - `get_parameter_details()` provides the most comprehensive information
 - `inspect_all_parameters()` is useful for getting a complete snapshot but may be slow
-- Parameter operations are ROS 2 only - they won't work with ROS 1
+- Node-specific parameter listing requires ROS 2; global parameter tools support ROS 1 and ROS 2
 - Some parameters may be read-only and cannot be modified
 
 ## Related Guides
