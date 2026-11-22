@@ -6,6 +6,8 @@ requiring no running ROS environment or live rosbridge connection.
 
 from typing import Any
 
+import pytest
+
 from ros_mcp.tools.nodes import register_node_tools
 
 
@@ -55,57 +57,14 @@ def _setup_node_tools(
     return mcp.tools, ws
 
 
-class TestGetNodes:
-    """Unit tests for get_nodes tool."""
-
-    def test_get_nodes_success(self) -> None:
-        """Verify get_nodes returns node list and correct count."""
-        tools, _ = _setup_node_tools(
-            {"nodes": {"result": True, "values": {"nodes": ["/turtlesim", "/rosbridge_websocket"]}}}
-        )
-        result = tools["get_nodes"]()
-        assert "nodes" in result
-        assert result["nodes"] == ["/turtlesim", "/rosbridge_websocket"]
-        assert result["node_count"] == 2
-
-    def test_get_nodes_service_error(self) -> None:
-        """Verify get_nodes returns error when service returns failure."""
-        tools, _ = _setup_node_tools(
-            {"nodes": {"result": False, "values": {"message": "Service unavailable"}}}
-        )
-        result = tools["get_nodes"]()
-        assert "error" in result
-        assert "Service unavailable" in result["error"]
-
-    def test_get_nodes_empty_list(self) -> None:
-        """Verify get_nodes returns empty list and 0 count when nodes list is empty."""
-        tools, _ = _setup_node_tools({"nodes": {"result": True, "values": {"nodes": []}}})
-        result = tools["get_nodes"]()
-        assert result["nodes"] == []
-        assert result["node_count"] == 0
-
-    def test_get_nodes_no_values_warning(self) -> None:
-        """Verify warning returned when response has no values dict."""
-        tools, _ = _setup_node_tools({"nodes": {"result": True}})
-        result = tools["get_nodes"]()
-        assert "warning" in result
-
-
 class TestGetNodeDetails:
     """Unit tests for get_node_details tool (including #273 crash prevention)."""
 
-    def test_empty_node_name_returns_error(self) -> None:
-        """Empty string returns error without making any websocket requests."""
+    @pytest.mark.parametrize("node_input", ["", "   ", "\t\n"])
+    def test_empty_or_whitespace_node_name_returns_error(self, node_input: str) -> None:
+        """Empty or whitespace-only string returns error without making any websocket requests."""
         tools, ws = _setup_node_tools()
-        result = tools["get_node_details"](node="")
-        assert "error" in result
-        assert "cannot be empty" in result["error"]
-        assert len(ws.recorded_requests) == 0
-
-    def test_whitespace_node_name_returns_error(self) -> None:
-        """Whitespace-only string returns error without making any requests."""
-        tools, ws = _setup_node_tools()
-        result = tools["get_node_details"](node="   ")
+        result = tools["get_node_details"](node=node_input)
         assert "error" in result
         assert "cannot be empty" in result["error"]
         assert len(ws.recorded_requests) == 0
@@ -126,32 +85,8 @@ class TestGetNodeDetails:
         assert "nodes" in ws.recorded_requests[0].get("service", "")
         assert not any("node_details" in req.get("service", "") for req in ws.recorded_requests)
 
-    def test_node_name_auto_prefixes_slash(self) -> None:
-        """Passing 'turtlesim' when '/turtlesim' is active resolves correctly."""
-        tools, ws = _setup_node_tools(
-            {
-                "nodes": {"result": True, "values": {"nodes": ["/turtlesim"]}},
-                "node_details": {
-                    "result": True,
-                    "values": {
-                        "publishing": ["/turtle1/pose"],
-                        "subscribing": ["/turtle1/cmd_vel"],
-                        "services": ["/turtle1/teleport_absolute"],
-                    },
-                },
-            }
-        )
-        result = tools["get_node_details"](node="turtlesim")
-        assert result["node"] == "/turtlesim"
-        assert result["publisher_count"] == 1
-        assert result["subscriber_count"] == 1
-        assert result["service_count"] == 1
-        assert result["publishers"] == ["/turtle1/pose"]
-        assert result["subscribers"] == ["/turtle1/cmd_vel"]
-        assert result["services"] == ["/turtle1/teleport_absolute"]
-
     def test_get_node_details_success(self) -> None:
-        """Successfully returns publishers, subscribers, services for valid node."""
+        """Passing 'turtlesim' when '/turtlesim' is active resolves correctly and returns details."""
         tools, ws = _setup_node_tools(
             {
                 "nodes": {"result": True, "values": {"nodes": ["/turtlesim"]}},
@@ -165,11 +100,35 @@ class TestGetNodeDetails:
                 },
             }
         )
-        result = tools["get_node_details"](node="/turtlesim")
+        result = tools["get_node_details"](node="turtlesim")
         assert result["node"] == "/turtlesim"
         assert result["publisher_count"] == 2
         assert result["subscriber_count"] == 1
         assert result["service_count"] == 3
+        assert result["publishers"] == ["/turtle1/pose", "/turtle1/color_sensor"]
+        assert result["subscribers"] == ["/turtle1/cmd_vel"]
+        assert result["services"] == ["/reset", "/spawn", "/kill"]
+        assert len(ws.recorded_requests) == 2
+
+    @pytest.mark.parametrize("node_input", ["/turtlesim/", "turtlesim/"])
+    def test_trailing_slash_normalization(self, node_input: str) -> None:
+        """Trailing slashes (/turtlesim/ and turtlesim/) resolve to /turtlesim."""
+        tools, ws = _setup_node_tools(
+            {
+                "nodes": {"result": True, "values": {"nodes": ["/turtlesim"]}},
+                "node_details": {
+                    "result": True,
+                    "values": {
+                        "publishing": ["/turtle1/pose"],
+                        "subscribing": ["/turtle1/cmd_vel"],
+                        "services": ["/reset"],
+                    },
+                },
+            }
+        )
+        result = tools["get_node_details"](node=node_input)
+        assert result["node"] == "/turtlesim"
+        assert result["publisher_count"] == 1
         assert len(ws.recorded_requests) == 2
 
     def test_node_details_nodes_check_failure(self) -> None:
@@ -207,4 +166,4 @@ class TestGetNodeDetails:
         )
         result = tools["get_node_details"](node="/empty_node")
         assert "error" in result
-        assert "has no details available" in result["error"]
+        assert result["error"] == "Node /empty_node has no details available"

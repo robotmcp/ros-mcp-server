@@ -96,3 +96,9 @@ class TestGetNodeDetails:
         """get_node_details with nonexistent node should return error dict safely (#273)."""
         result = tools["get_node_details"](node="/nonexistent_node_12345")
         assert "error" in result
+        assert "not found or is not running" in result["error"]
+
+        # Verify rosapi_node did not crash (issue #273)
+        nodes_result = tools["get_nodes"]()
+        assert "nodes" in nodes_result
+        assert nodes_result.get("node_count", 0) > 0

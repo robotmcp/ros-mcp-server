@@ -57,7 +57,7 @@ def register_node_tools(
         description=(
             "Get detailed information about a specific node including its publishers, subscribers, and services.\n"
             "Example:\n"
-            "get_node_details('/turtlesim')"
+            "get_node_details('/turtlesim')  # leading slash is optional"
         ),
         annotations=ToolAnnotations(
             title="Get Node Details",
@@ -69,7 +69,7 @@ def register_node_tools(
         Get detailed information about a specific node including its publishers, subscribers, and services.
 
         Args:
-            node (str): The node name (e.g., '/turtlesim')
+            node (str): The node name (e.g., '/turtlesim', leading slash is optional)
 
         Returns:
             dict: Contains detailed node information including publishers, subscribers, and services,
@@ -81,11 +81,10 @@ def register_node_tools(
 
         node_name = node.strip()
 
-        # Check running nodes first to avoid rosapi_node crash on ROS 2 (#273)
-        # Calling /rosapi/node_details with a nonexistent or invalid node causes
-        # proxy.get_node_info() to return None, resulting in:
-        #   TypeError: cannot unpack non-iterable NoneType object
-        # which fatally crashes the rosapi_node process.
+        # Check running nodes first to avoid rosapi_node crash on ROS 2 (#273).
+        # Querying /rosapi/node_details for a nonexistent node causes rosapi_node
+        # to crash with TypeError on ROS 2. Note: a race condition remains if a node
+        # exits between the list check and details call.
         nodes_message = {
             "op": "call_service",
             "service": rosapi_service("nodes"),
@@ -97,47 +96,45 @@ def register_node_tools(
         with ws_manager:
             nodes_response = ws_manager.request(nodes_message)
 
-        nodes_error = _check_response(nodes_response)
-        if nodes_error:
-            return nodes_error
+            nodes_error = _check_response(nodes_response)
+            if nodes_error:
+                return nodes_error
 
-        nodes_values = _safe_get_values(nodes_response)
-        if nodes_values is None or not isinstance(nodes_values.get("nodes"), list):
-            return {"error": "Failed to retrieve active nodes list"}
+            nodes_values = _safe_get_values(nodes_response)
+            if nodes_values is None or not isinstance(nodes_values.get("nodes"), list):
+                return {"error": "Failed to retrieve active nodes list"}
 
-        running_nodes = nodes_values.get("nodes", [])
+            running_nodes = nodes_values.get("nodes", [])
 
-        # Match node name (support with or without leading/trailing slashes)
-        target_node = node_name
-        if target_node not in running_nodes:
-            if not target_node.startswith("/") and f"/{target_node}" in running_nodes:
-                target_node = f"/{target_node}"
-            elif target_node.rstrip("/") in running_nodes:
-                target_node = target_node.rstrip("/")
-            else:
-                return {"error": f"Node '{node}' not found or is not running"}
+            # Match node name (support with or without leading/trailing slashes)
+            target_node = node_name
+            if target_node not in running_nodes:
+                normalized = "/" + node_name.strip("/")
+                if normalized in running_nodes:
+                    target_node = normalized
+                else:
+                    return {"error": f"Node '{node}' not found or is not running"}
 
-        result = {
-            "node": target_node,
-            "publishers": [],
-            "subscribers": [],
-            "services": [],
-            "publisher_count": 0,
-            "subscriber_count": 0,
-            "service_count": 0,
-        }
+            result = {
+                "node": target_node,
+                "publishers": [],
+                "subscribers": [],
+                "services": [],
+                "publisher_count": 0,
+                "subscriber_count": 0,
+                "service_count": 0,
+            }
 
-        # rosbridge service call to get node details
-        message = {
-            "op": "call_service",
-            "service": rosapi_service("node_details"),
-            "type": rosapi_type("NodeDetails"),
-            "args": {"node": target_node},
-            "id": f"get_node_details_{target_node.replace('/', '_')}",
-        }
+            # rosbridge service call to get node details
+            message = {
+                "op": "call_service",
+                "service": rosapi_service("node_details"),
+                "type": rosapi_type("NodeDetails"),
+                "args": {"node": target_node},
+                "id": f"get_node_details_{target_node.replace('/', '_')}",
+            }
 
-        # Request node details from rosbridge
-        with ws_manager:
+            # Request node details from rosbridge
             response = ws_manager.request(message)
 
         error = _check_response(response)
@@ -162,6 +159,6 @@ def register_node_tools(
 
         # Check if we got any data
         if not result["publishers"] and not result["subscribers"] and not result["services"]:
-            return {"error": f"Node {target_node} not found or has no details available"}
+            return {"error": f"Node {target_node} has no details available"}
 
         return result
