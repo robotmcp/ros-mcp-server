@@ -540,7 +540,8 @@ def register_topic_tools(
             # Loop until we receive the first message or timeout
             end_time = time.time() + actual_timeout
             while time.time() < end_time:
-                response = ws_manager.receive(timeout=0.5)  # non-blocking small timeout
+                # An idle slice keeps the socket, and with it the subscription.
+                response = ws_manager.receive(timeout=0.5, close_on_timeout=False)
                 if response is None:
                     continue  # idle timeout: no frame this tick
 
@@ -692,7 +693,8 @@ def register_topic_tools(
 
             # Loop until duration expires or we hit max_messages
             while time.time() < end_time and len(collected_messages) < max_messages:
-                response = ws_manager.receive(timeout=0.5)  # non-blocking small timeout
+                # An idle slice keeps the socket, and with it the subscription.
+                response = ws_manager.receive(timeout=0.5, close_on_timeout=False)
                 if response is None:
                     continue  # idle timeout: no frame this tick
 

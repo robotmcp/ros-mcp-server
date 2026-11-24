@@ -380,6 +380,7 @@ class WebSocketManager:
         timeout: float | None = None,
         auto_connect: bool = True,
         verbose: bool = True,
+        close_on_timeout: bool | None = None,
     ) -> Union[str, bytes] | None:
         """
         Receive a single message from rosbridge within the given timeout.
@@ -389,6 +390,10 @@ class WebSocketManager:
                                      If None, uses the default timeout.
             auto_connect (bool): Whether to connect automatically if not connected.
             verbose (bool): Whether to log timeout information to stderr.
+            close_on_timeout (bool | None): Whether a timeout closes the connection.
+                                     If None, uses the manager's close_on_timeout. A caller
+                                     reading in short slices passes False, since closing
+                                     drops the subscriptions it is waiting on.
 
         Returns:
             str | None: JSON string received from rosbridge, or None if timeout/error.
@@ -413,7 +418,9 @@ class WebSocketManager:
                         return None
                     return raw
                 except (websocket.WebSocketTimeoutException, TimeoutError):
-                    if self.close_on_timeout:
+                    if close_on_timeout is None:
+                        close_on_timeout = self.close_on_timeout
+                    if close_on_timeout:
                         self.close()
                     return None
                 except Exception as e:
